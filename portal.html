@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installer Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .installer-info {
+            text-align: right;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .filters {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            min-width: 80px;
+        }
+
+        .filter-group select, .filter-group input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .jobs-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .job-item {
+            border-bottom: 1px solid #eee;
+            padding: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .job-item:hover {
+            background: #f8f9fa;
+        }
+
+        .job-item:last-child {
+            border-bottom: none;
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .job-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .job-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-scheduled {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status-in-progress {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-completed {
+            background: #e8f5e8;
+            color: #388e3c;
+        }
+
+        .job-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .job-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .job-detail strong {
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #388e3c;
+            padding: 1rem;
+            border-radius: 4px;
+            margin: 1rem 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .future-sections {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #ddd;
+        }
+
+        .future-sections h3 {
+            color: #666;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .future-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .future-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 4px;
+            text-align: center;
+            opacity: 0.7;
+        }
+
+        .future-card h4 {
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .future-card p {
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .installer-info {
+                text-align: center;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group label {
+                min-width: auto;
+            }
+
+            .job-header {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .job-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>Installer Portal</h1>
+            <div class="installer-info">
+                <div><strong><?= installer.name ?></strong></div>
+                <div><?= installer.email ?></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="filters">
+            <div class="filter-group">
+                <label for="daysFilter">Days:</label>
+                <select id="daysFilter">
+                    <option value="7">Next 7 days</option>
+                    <option value="14" selected>Next 14 days</option>
+                    <option value="30">Next 30 days</option>
+                </select>
+                
+                <label for="statusFilter">Status:</label>
+                <select id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="COMPLETED">Completed</option>
+                </select>
+                
+                <button class="btn" onclick="loadJobs()">Refresh</button>
+            </div>
+        </div>
+
+        <div id="messageContainer"></div>
+
+        <div class="jobs-container">
+            <div id="jobsList" class="loading">
+                Loading jobs...
+            </div>
+        </div>
+
+        <div class="future-sections">
+            <h3>Future Features (Coming Soon)</h3>
+            <div class="future-grid">
+                <div class="future-card">
+                    <h4>📊 Status Reporting</h4>
+                    <p>Update job status and progress</p>
+                </div>
+                <div class="future-card">
+                    <h4>🔧 Defects & Service</h4>
+                    <p>Track issues and service items</p>
+                </div>
+                <div class="future-card">
+                    <h4>📷 Photos & Documents</h4>
+                    <p>Attach photos and documents</p>
+                </div>
+                <div class="future-card">
+                    <h4>✅ Completion Certificates</h4>
+                    <p>Customer-signed walkthroughs</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Detail Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalJobTitle">Job Details</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalJobContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const token = '<?= token ?>';
+        const installerKey = '<?= installer.installer_key ?>';
+        let currentJobs = [];
+
+        // Initialize the portal
+        document.addEventListener('DOMContentLoaded', function() {
+            loadJobs();
+            
+            // Set up event listeners
+            document.getElementById('daysFilter').addEventListener('change', loadJobs);
+            document.getElementById('statusFilter').addEventListener('change', loadJobs);
+            
+            // Close modal when clicking outside
+            document.getElementById('jobModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeModal();
+                }
+            });
+        });
+
+        function loadJobs() {
+            const days = document.getElementById('daysFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            showMessage('Loading jobs...', 'info');
+            
+            // COMPLETELY REMOVE API CALL - USE STATIC DATA
+            setTimeout(() => {
+                const mockJobs = [
+                    {
+                        id: 'JOB_001',
+                        title: 'Test Installation',
+                        location: '123 Test Street',
+                        crew: 'Test Crew',
+                        status: 'scheduled',
+                        start_time: new Date().toISOString(),
+                        end_time: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+                        description: 'This is a test job for the installer portal'
+                    },
+                    {
+                        id: 'JOB_002',
+                        title: 'Another Test Job',
+                        location: '456 Test Avenue',
+                        crew: 'Test Crew 2',
+                        status: 'in_progress',
+                        start_time: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                        end_time: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+                        description: 'Another test job for demonstration'
+                    }
+                ];
+                
+                currentJobs = mockJobs;
+                displayJobs(currentJobs);
+                hideMessage();
+                
+                // Update counts
+                updateJobCounts();
+            }, 1000); // Simulate loading
+        }
+
+        function displayJobs(jobs) {
+            const container = document.getElementById('jobsList');
+            
+            if (jobs.length === 0) {
+                container.innerHTML = '<div class="loading">No jobs found for your assigned crews.</div>';
+                return;
+            }
+            
+            const statusFilter = document.getElementById('statusFilter').value;
+            const filteredJobs = statusFilter ? 
+                jobs.filter(job => job.status === statusFilter) : 
+                jobs;
+            
+            if (filteredJobs.length === 0) {
+                container.innerHTML = '<div class="loading">No jobs found matching the selected filters.</div>';
+                return;
+            }
+            
+            container.innerHTML = filteredJobs.map(job => `
+                <div class="job-item" onclick="showJobDetail('${job.id}')">
+                    <div class="job-header">
+                        <div class="job-title">${escapeHtml(job.title)}</div>
+                        <div class="job-status status-${job.status.toLowerCase().replace('_', '-')}">
+                            ${job.status.replace('_', ' ')}
+                        </div>
+                    </div>
+                    <div class="job-details">
+                        <div class="job-detail">
+                            <strong>Job #:</strong> ${escapeHtml(job.job_number || 'N/A')}
+                        </div>
+                        <div class="job-detail">
+                            <strong>Crew:</strong> ${escapeHtml(job.crew_key)}
+                        </div>
+                        <div class="job-detail">
+                            <strong>Customer:</strong> ${escapeHtml(job.customer_name || 'N/A')}
+                        </div>
+                        <div class="job-detail">
+                            <strong>Location:</strong> ${escapeHtml(job.location || 'N/A')}
+                        </div>
+                        <div class="job-detail">
+                            <strong>Start:</strong> ${formatDateTime(job.start_time)}
+                        </div>
+                        <div class="job-detail">
+                            <strong>End:</strong> ${formatDateTime(job.end_time)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showJobDetail(jobId) {
+            const job = currentJobs.find(j => j.id === jobId);
+            if (!job) return;
+            
+            document.getElementById('modalJobTitle').textContent = job.title;
+            document.getElementById('modalJobContent').innerHTML = `
+                <div class="job-details">
+                    <div class="job-detail">
+                        <strong>Job Number:</strong> ${escapeHtml(job.job_number || 'N/A')}
+                    </div>
+                    <div class="job-detail">
+                        <strong>Status:</strong> 
+                        <span class="job-status status-${job.status.toLowerCase().replace('_', '-')}">
+                            ${job.status.replace('_', ' ')}
+                        </span>
+                    </div>
+                    <div class="job-detail">
+                        <strong>Crew:</strong> ${escapeHtml(job.crew_key)}
+                    </div>
+                    <div class="job-detail">
+                        <strong>Customer:</strong> ${escapeHtml(job.customer_name || 'N/A')}
+                    </div>
+                    <div class="job-detail">
+                        <strong>Location:</strong> ${escapeHtml(job.location || 'N/A')}
+                    </div>
+                    <div class="job-detail">
+                        <strong>Start Time:</strong> ${formatDateTime(job.start_time)}
+                    </div>
+                    <div class="job-detail">
+                        <strong>End Time:</strong> ${formatDateTime(job.end_time)}
+                    </div>
+                    ${job.description ? `
+                        <div style="margin-top: 1rem;">
+                            <strong>Description:</strong>
+                            <p style="margin-top: 0.5rem; line-height: 1.5;">${escapeHtml(job.description)}</p>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                    <h4>Future Actions (Coming Soon)</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn btn-secondary" disabled>Update Status</button>
+                        <button class="btn btn-secondary" disabled>Add Photo</button>
+                        <button class="btn btn-secondary" disabled>Report Issue</button>
+                        <button class="btn btn-secondary" disabled>Complete Job</button>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('jobModal').style.display = 'block';
+            
+            // Log job view
+            logAction('JOB_VIEW', jobId);
+        }
+
+        function closeModal() {
+            document.getElementById('jobModal').style.display = 'none';
+        }
+
+        function logAction(action, jobId) {
+            const data = {
+                installer_key: installerKey,
+                action: action,
+                job_id: jobId,
+                user_agent: navigator.userAgent
+            };
+            
+            fetch(`${window.location.origin}${window.location.pathname}?endpoint=test`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            }).catch(error => {
+                console.error('Failed to log action:', error);
+            });
+        }
+
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('messageContainer');
+            const className = type === 'error' ? 'error' : (type === 'success' ? 'success' : 'loading');
+            container.innerHTML = `<div class="${className}">${message}</div>`;
+        }
+
+        function hideMessage() {
+            document.getElementById('messageContainer').innerHTML = '';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+    </script>
+</body>
+</html>
