@@ -1,210 +1,95 @@
-# Installer Portal V2
+# 🔧 Installer Portal System
 
-A secure installer-facing portal + office admin portal built with Google Apps Script and Google Sheets integration.
+**Production-ready Installer Portal with TeamUp integration, Google Sheets database, and comprehensive admin management.**
 
-## Architecture
+## 🚀 Quick Start with CLASP
 
-- **Backend**: Google Apps Script Web App
-- **Frontend**: HTML + Vanilla JavaScript
-- **Data Store**: Google Sheets (all data - auth, tokens, jobs, logs)
-- **Schedule Source**: Teamup Calendar → Google Sheets cache
-- **Tooling**: clasp + VS Code + GitHub
+```bash
+# Install CLASP
+npm install -g @google/clasp
 
-## Features
+# Clone this repository
+git clone <repository-url>
+cd installer-portal
 
-### Installer Portal
-- Mobile-first responsive design
-- Token-based authentication via Google Sheets
-- Crew-based job filtering (server-side only)
-- Job viewing with details
-- Scaffolded sections for future features
+# Login to Google
+clasp login
 
-### Admin Portal
-- Installer management
-- Token issuance and revocation
-- Teamup sync control
-- System diagnostics and logging
-- Access restricted to admin emails
+# Create Apps Script project
+clasp create --title "Installer Portal System"
 
-## Setup Instructions
+# Push code to Google
+npm run push
 
-### 1. Google Apps Script Setup
-
-1. Create a new Google Apps Script project
-2. Copy all files to the project
-3. Set up script properties:
-
-```javascript
-// Run this in the Apps Script editor
-PropertiesService.getScriptProperties().setProperties({
-  'ADMIN_EMAILS': 'admin1@company.com,admin2@company.com',
-  'TEAMUP_API_KEY': 'your-teamup-api-key',
-  'TEAMUP_CALENDAR_ID': 'your-teamup-calendar-id'
-});
+# Deploy web app
+clasp deploy --description "Production deployment"
 ```
 
-### 2. Google Sheets Setup
+## ✅ Features
 
-The app automatically creates these sheets when first run:
+- **🔧 Installer Portal** - Job management, photo uploads, issue reporting
+- **📊 Admin Dashboard** - Complete system management and analytics  
+- **🔗 TeamUp Integration** - Automatic calendar syncing and job parsing
+- **📁 Google Sheets Database** - 8 integrated tabs with data validation
+- **📱 Mobile Responsive** - Works on all devices
+- **🔒 Secure** - Google authentication and role-based access
 
-- **Config** - App configuration
-- **Installers** - Installer records and crew assignments
-- **Tokens** - Token management
-- **Crews** - Crew definitions
-- **Teamup_Events** - Cached Teamup calendar events
-- **Run_Log** - Execution logs
-- **Installer_Sync** - Installer sync status
+## 📁 Project Structure
 
-### 3. Initial Data Setup
-
-After running the app for the first time, populate these sheets:
-
-**Installers Sheet:**
 ```
-id | email | name | role | crew_keys | installer_key | active | created_at | updated_at | phone
----|-------|------|------|-----------|---------------|--------|------------|------------|------
-   |       | John | INSTALLER | CREW_A,CREW_B | JOHN_KEY | TRUE |            |            | 555-1234
+installer-portal/
+├── Code.gs                    # Complete production system (2,200+ lines)
+├── clasp.json                 # CLASP configuration
+├── package.json                # NPM scripts for deployment
+├── DEPLOYMENT.md              # Detailed deployment guide
+├── .github/workflows/deploy.yml # GitHub Actions for CI/CD
+└── .gitignore                 # Git ignore rules
 ```
 
-**Crews Sheet:**
+## 🛠️ Available Scripts
+
+```bash
+npm run login      # Login to Google Apps Script
+npm run create     # Create new Apps Script project
+npm run push       # Push code to Google
+npm run deploy     # Push and deploy web app
+npm run logs       # View execution logs
+npm run status     # Check deployment status
+npm run setup      # Full setup (login + create + push)
 ```
-id | crew_key | name | active | created_at | updated_at | notes
----|----------|------|--------|------------|------------|------
-   | CREW_A   | Crew A | TRUE |            |            | 
-   | CREW_B   | Crew B | TRUE |            |            |
-```
 
-### 4. Deployment
+## 🔗 Access URLs
 
-1. In Apps Script editor, go to **Deploy > New Deployment**
-2. Select **Web App**
-3. Set:
-   - Description: "Installer Portal V2"
-   - Execute as: "User deploying"
-   - Who has access: "Anyone"
-4. Deploy and copy the Web App URL
+After deployment:
 
-### 5. Access URLs
+- **Setup**: `YOUR_URL?action=setup`
+- **Admin**: `YOUR_URL?action=admin`
+- **Installer**: `YOUR_URL?email=installer@company.com`
 
-- **Installer Portal**: `{WEB_APP_URL}/exec?token={TOKEN}`
-- **Admin Portal**: `{WEB_APP_URL}/admin`
+## 📋 Requirements
 
-## API Endpoints
+- **Node.js** 14+ (for CLASP)
+- **Google Account** with Google Drive access
+- **TeamUp API Key** (for calendar integration)
+- **Google Sheets** access (automatically created)
 
-### Installer Portal APIs
-- `GET /api/jobs?token={token}&days={14}` - Get filtered jobs
-- `GET /api/job/{id}?token={token}` - Get job details
-- `POST /api/log` - Log portal actions
+## 📖 Documentation
 
-### Admin Portal APIs
-- `GET /admin/api/installers` - List installers
-- `GET /admin/api/diagnostics` - System diagnostics
-- `POST /admin/api/tokens/issue` - Issue new token
-- `POST /admin/api/tokens/revoke` - Revoke token
-- `POST /admin/api/sync/teamup` - Trigger Teamup sync
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
+- **[API Documentation](./DEPLOYMENT.md#-api-endpoints)** - All available endpoints
 
-## Google Sheets Schema
+## 🔄 CI/CD
 
-### Installers Sheet
-- `id` - Unique identifier
-- `email` - Installer email
-- `name` - Installer name
-- `role` - Role (INSTALLER/ADMIN)
-- `crew_keys` - Comma-separated crew assignments
-- `installer_key` - Unique key for authentication
-- `active` - Active status
-- `created_at` - Creation timestamp
-- `updated_at` - Last update timestamp
-- `phone` - Phone number
+Includes GitHub Actions workflow for automatic deployment when pushing to main/master branch.
 
-### Tokens Sheet
-- `token` - Authentication token
-- `installer_key` - Associated installer
-- `created_at` - Creation timestamp
-- `created_by_email` - Who created it
-- `revoked_at` - Revocation timestamp (empty = active)
-- `last_sent_to` - Last email sent to
-- `last_sent_at` - Last sent timestamp
-- `note` - Notes
+**Required Secrets:**
+- `CLASP_ID` - Google Apps Script project ID
+- `CLASP_CREDENTIALS` - CLASP authentication credentials
 
-### Crews Sheet
-- `id` - Unique identifier
-- `crew_key` - Crew key
-- `name` - Crew name
-- `active` - Active status
-- `created_at` - Creation timestamp
-- `updated_at` - Last update timestamp
-- `notes` - Additional notes
+## 📞 Support
 
-### Teamup_Events Sheet
-- `external_id` - Teamup event ID
-- `calendar_id` - Calendar ID
-- `crew_key` - Assigned crew
-- `job_number` - Job number
-- `title` - Job title
-- `description` - Job description
-- `location` - Job location
-- `customer_name` - Customer name
-- `start_time` - Start time
-- `end_time` - End time
-- `status` - Job status
-- `last_synced_at` - Last sync timestamp
-- `teamup_subcalendar_id` - Teamup subcalendar ID
+Built with Google Apps Script - free hosting, automatic scaling, and enterprise-grade security.
 
-## Security Features
+---
 
-- **Token Validation**: All installer actions require valid token
-- **Crew Filtering**: Server-side job filtering by assigned crews
-- **Admin Access**: Admin portal restricted to configured emails
-- **Audit Logging**: All actions logged to Google Sheets
-- **One Token Per Installer**: Enforced via app logic
-
-## Future Features (Scaffolded)
-
-The app includes placeholder sections for:
-
-- **Status Reporting**: Job status updates with history
-- **Defects & Service Tracking**: Issue tracking and resolution
-- **Photos & Documents**: File attachments per job
-- **Completion Certificates**: Customer-signed walkthroughs
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Token required" error**: Ensure token is passed as URL parameter
-2. **"Invalid token" error**: Check token exists in Tokens sheet and not revoked
-3. **"No crews assigned" error**: Verify installer has crew assignments
-4. **Admin access denied**: Check ADMIN_EMAILS configuration
-5. **Sheet access errors**: Ensure script has permission to access spreadsheet
-
-### Debugging
-
-- Check **Run_Log** sheet for detailed error messages
-- Use browser developer tools for frontend debugging
-- Verify sheet data matches expected format
-- Check Apps Script execution logs
-
-## Maintenance
-
-- **Regular sync**: Set up time-driven triggers for Teamup sync
-- **Token cleanup**: Regularly revoke old unused tokens
-- **Log rotation**: Archive old logs periodically
-- **Monitor errors**: Check Run_Log for recurring issues
-
-## Benefits of Google Sheets Architecture
-
-- **Completely free** - No database costs
-- **Simple setup** - No external services needed
-- **Easy backup** - Sheets can be exported easily
-- **Familiar interface** - Easy for non-technical users
-- **Real-time collaboration** - Multiple users can view data
-- **Built-in formulas** - Can add calculations and reporting
-
-## Support
-
-For issues or questions:
-1. Check the Run_Log sheet for detailed error messages
-2. Verify all configuration properties are set correctly
-3. Ensure sheet data matches expected format
-4. Test with a fresh token if authentication issues occur
+**Ready for production deployment!** 🚀

@@ -1,32 +1,6 @@
 // PRODUCTION INSTALLER PORTAL SYSTEM - COMPLETE VERSION
 // ===================================================
 
-// UTILITY FUNCTIONS
-function formatDate(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function formatTime(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleTimeString('en-US', { 
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function generateJobId() {
-  return 'JOB-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-}
-
 // Global configuration
 const CONFIG = {
   APP_NAME: 'Installer Portal',
@@ -39,53 +13,6 @@ const CONFIG = {
 };
 
 // SETUP WIZARD
-// GLOBAL JAVASCRIPT FUNCTIONS - Available to all HTML templates
-function createGlobalSetupFunctions() {
-  return `
-<script>
-function setupDatabase() {
-    const resultDiv = document.getElementById("setupResult");
-    resultDiv.innerHTML = "<div class=\\"alert alert-info\\">🔄 Setting up database...</div>";
-    
-    fetch("?api=setupDatabase")
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                resultDiv.innerHTML = "<div class=\\"alert alert-success\\">✅ Database setup successful! Sheet ID: " + result.sheetId + "</div>";
-            } else {
-                resultDiv.innerHTML = "<div class=\\"alert alert-danger\\">❌ Setup failed: " + result.error + "</div>";
-            }
-        })
-        .catch(error => {
-            resultDiv.innerHTML = "<div class=\\"alert alert-danger\\">❌ Error: " + error.message + "</div>";
-        });
-}
-
-function saveConfiguration() {
-    const config = {
-        teamupApiKey: document.getElementById("teamupApiKey").value,
-        calendarKeys: document.getElementById("calendarKeys").value,
-        notificationEmail: document.getElementById("notificationEmail").value,
-        syncInterval: document.getElementById("syncInterval").value
-    };
-    
-    fetch("?api=saveConfiguration", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config)
-    })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                alert("✅ Configuration saved successfully!");
-            } else {
-                alert("❌ Error saving configuration: " + result.error);
-            }
-        });
-}
-</script>`;
-}
-
 function showSetupWizard() {
   return HtmlService.createHtmlOutput(
     '<!DOCTYPE html>' +
@@ -143,7 +70,49 @@ function showSetupWizard() {
             
             '<div id="setupResult"></div>' +
         '</div>' +
-        createGlobalSetupFunctions() +
+        
+        '<script>' +
+            'function setupDatabase() {' +
+                'const resultDiv = document.getElementById("setupResult");' +
+                'resultDiv.innerHTML = "<div class=\"alert alert-info\">🔄 Setting up database...</div>";' +
+                
+                'fetch("?api=setupDatabase")' +
+                    '.then(response => response.json())' +
+                    '.then(result => {' +
+                        'if (result.success) {' +
+                            'resultDiv.innerHTML = "<div class=\"alert alert-success\">✅ Database setup successful! Sheet ID: " + result.sheetId + "</div>";' +
+                        '} else {' +
+                            'resultDiv.innerHTML = "<div class=\"alert alert-danger\">❌ Setup failed: " + result.error + "</div>";' +
+                        '}' +
+                    '})' +
+                    '.catch(error => {' +
+                        'resultDiv.innerHTML = "<div class=\"alert alert-danger\">❌ Error: " + error.message + "</div>";' +
+                    '});' +
+            '}' +
+            
+            'function saveConfiguration() {' +
+                'const config = {' +
+                    'teamupApiKey: document.getElementById("teamupApiKey").value,' +
+                    'calendarKeys: document.getElementById("calendarKeys").value,' +
+                    'notificationEmail: document.getElementById("notificationEmail").value,' +
+                    'syncInterval: document.getElementById("syncInterval").value' +
+                '};' +
+                
+                'fetch("?api=saveConfiguration", {' +
+                    'method: "POST",' +
+                    'headers: { "Content-Type": "application/json" },' +
+                    'body: JSON.stringify(config)' +
+                '})' +
+                '.then(response => response.json())' +
+                '.then(result => {' +
+                    'if (result.success) {' +
+                        'alert("✅ Configuration saved successfully!");' +
+                    '} else {' +
+                        'alert("❌ Error saving configuration: " + result.error);' +
+                    '}' +
+                '});' +
+            '}' +
+        '</script>' +
     '</body>' +
     '</html>'
   ).setTitle('Setup Wizard');
@@ -874,6 +843,16 @@ function showInstallerPortal(params) {
         let currentJobId = null;
         let currentWeekOffset = 0;
         
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+        
+        function formatTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+        
         function updateJobStatus(jobId, status) {
             fetch("?api=updateJobStatus", {
                 method: 'POST',
@@ -995,9 +974,36 @@ function showInstallerPortal(params) {
 function getInstallerJobs(installerEmail) {
   const spreadsheet = getDatabaseSpreadsheet();
   
-  // If no database sheet exists, return empty array
+  // If no database sheet exists, return sample data
   if (!spreadsheet) {
-    return [];
+    return [
+      {
+        id: 'JOB001',
+        title: 'Sample Installation - Smith Family',
+        status: 'Scheduled',
+        start: new Date(),
+        end: new Date(Date.now() + 86400000),
+        location: '123 Main St, City, State',
+        customerName: 'John Smith',
+        customerPhone: '555-0123',
+        customerEmail: 'john@example.com',
+        photoRequirements: 'Before photos, after photos, detail shots',
+        specialInstructions: 'Customer has pets, please be careful'
+      },
+      {
+        id: 'JOB002',
+        title: 'Sample Installation - Johnson Family',
+        status: 'In Progress',
+        start: new Date(Date.now() - 86400000),
+        end: new Date(),
+        location: '456 Oak Ave, City, State',
+        customerName: 'Sarah Johnson',
+        customerPhone: '555-0456',
+        customerEmail: 'sarah@example.com',
+        photoRequirements: 'Standard installation photos',
+        specialInstructions: ''
+      }
+    ];
   }
   
   try {

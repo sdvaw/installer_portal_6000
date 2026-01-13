@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .header h1 { color: #2c3e50; font-size: 2rem; margin-bottom: 10px; }
+        .dashboard-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .nav-card { background: white; padding: 20px; border-radius: 12px; text-align: center; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .nav-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.12); }
+        .nav-card h3 { color: #2c3e50; margin-bottom: 10px; }
+        .nav-card p { color: #666; font-size: 0.9rem; }
+        .dashboard-section { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .section-header h2 { color: #2c3e50; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: 700; color: #3498db; }
+        .stat-label { color: #666; font-size: 0.9rem; margin-top: 5px; }
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        .table th { background: #f8f9fa; font-weight: 600; color: #666; }
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .status-scheduled { background: #e3f2fd; color: #1976d2; }
+        .status-in-progress { background: #fff3e0; color: #f57c00; }
+        .status-completed { background: #e8f5e8; color: #388e3c; }
+        .status-ready-inspection { background: #f3e5f5; color: #7b1fa2; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .alert-warning { background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; }
+        .alert-danger { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Admin Dashboard</h1>
+            <p>Installer Management System</p>
+        </div>
+
+        <div class="dashboard-nav">
+            <div class="nav-card" onclick="showSection('service')">
+                <h3>🔧 Service</h3>
+                <p>Jobs ready for install<br>Service issues<br>Installer availability</p>
+            </div>
+            <div class="nav-card" onclick="showSection('ar')">
+                <h3>💰 Accounts Receivable</h3>
+                <p>Payment status<br>Collection tracking<br>Billing issues</p>
+            </div>
+            <div class="nav-card" onclick="showSection('installers')">
+                <h3>👥 Installers</h3>
+                <p>Crew management<br>Calendar mapping<br>Contact info</p>
+            </div>
+            <div class="nav-card" onclick="showSection('calendars')">
+                <h3>📅 Calendars</h3>
+                <p>TeamUp integration<br>Calendar mapping<br>Sync status</p>
+            </div>
+        </div>
+
+        <!-- Service Dashboard Section -->
+        <div id="service-section" class="dashboard-section">
+            <div class="section-header">
+                <h2>🔧 Service Dashboard</h2>
+                <button class="btn btn-primary" onclick="refreshServiceData()">🔄 Refresh</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number"><?= readyJobsCount ?></div>
+                    <div class="stat-label">Ready for Install</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= inProgressJobsCount ?></div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= serviceIssuesCount ?></div>
+                    <div class="stat-label">Service Issues</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= availableInstallersCount ?></div>
+                    <div class="stat-label">Available Installers</div>
+                </div>
+            </div>
+
+            <h3>📋 Jobs Ready for Install</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Title</th>
+                        <th>Location</th>
+                        <th>Installer</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <? for (var i = 0; i < readyJobs.length; i++) { ?>
+                        <tr>
+                            <td><strong><?= readyJobs[i].id ?></strong></td>
+                            <td><?= readyJobs[i].title ?></td>
+                            <td><?= readyJobs[i].location ?></td>
+                            <td><?= readyJobs[i].installerName ?></td>
+                            <td><span class="status-badge status-<?= readyJobs[i].status.toLowerCase().replace(' ', '-') ?>"><?= readyJobs[i].status ?></span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="viewJobDetails('<?= readyJobs[i].id ?>')">View</button>
+                                <button class="btn btn-sm btn-warning" onclick="assignJob('<?= readyJobs[i].id ?>')">Reassign</button>
+                            </td>
+                        </tr>
+                    <? } ?>
+                </tbody>
+            </table>
+
+            <h3>⚠️ Service Issues</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Issue Type</th>
+                        <th>Description</th>
+                        <th>Reported By</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <? for (var i = 0; i < serviceIssues.length; i++) { ?>
+                        <tr>
+                            <td><?= serviceIssues[i].jobId ?></td>
+                            <td><?= serviceIssues[i].issueType ?></td>
+                            <td><?= serviceIssues[i].description ?></td>
+                            <td><?= serviceIssues[i].reportedBy ?></td>
+                            <td><?= formatDate(serviceIssues[i].date) ?></td>
+                            <td><span class="status-badge status-<?= serviceIssues[i].status.toLowerCase() ?>"><?= serviceIssues[i].status ?></span></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="resolveIssue('<?= serviceIssues[i].id ?>')">Resolve</button>
+                            </td>
+                        </tr>
+                    <? } ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Accounts Receivable Section -->
+        <div id="ar-section" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2>💰 Accounts Receivable</h2>
+                <button class="btn btn-primary" onclick="refreshARData()">🔄 Refresh</button>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">$<?= totalAR ?></div>
+                    <div class="stat-label">Total A/R</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">$<?= overdueAmount ?></div>
+                    <div class="stat-label">Overdue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= paidThisMonth ?></div>
+                    <div class="stat-label">Paid This Month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= pendingPayments ?></div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Job ID</th>
+                        <th>Customer</th>
+                        <th>Amount</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Notes</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <? for (var i = 0; i < arData.length; i++) { ?>
+                        <tr>
+                            <td><?= arData[i].jobId ?></td>
+                            <td><?= arData[i].customer ?></td>
+                            <td>$<?= arData[i].amount ?></td>
+                            <td><?= formatDate(arData[i].dueDate) ?></td>
+                            <td><span class="status-badge status-<?= arData[i].status.toLowerCase() ?>"><?= arData[i].status ?></span></td>
+                            <td><?= arData[i].notes ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="markAsPaid('<?= arData[i].id ?>')">Mark Paid</button>
+                                <button class="btn btn-sm btn-primary" onclick="addPaymentNote('<?= arData[i].id ?>')">Add Note</button>
+                            </td>
+                        </tr>
+                    <? } ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Installer Management Section -->
+        <div id="installers-section" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2>👥 Installer Management</h2>
+                <button class="btn btn-success" onclick="showAddInstallerModal()">➕ Add Installer</button>
+            </div>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Calendar Key</th>
+                        <th>Crew Size</th>
+                        <th>Phone</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <? for (var i = 0; i < installers.length; i++) { ?>
+                        <tr>
+                            <td><?= installers[i].name ?></td>
+                            <td><?= installers[i].email ?></td>
+                            <td><?= installers[i].calendarKey ?></td>
+                            <td><?= installers[i].crewSize ?></td>
+                            <td><?= installers[i].phone ?></td>
+                            <td><span class="status-badge status-<?= installers[i].status.toLowerCase() ?>"><?= installers[i].status ?></span></td>
+                            <td><?= installers[i].location ?></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="editInstaller('<?= installers[i].id ?>')">Edit</button>
+                                <button class="btn btn-sm btn-warning" onclick="toggleInstallerStatus('<?= installers[i].id ?>')">Toggle Status</button>
+                            </td>
+                        </tr>
+                    <? } ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Calendar Management Section -->
+        <div id="calendars-section" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2>📅 Calendar Management</h2>
+                <button class="btn btn-primary" onclick="showAddCalendarModal()">➕ Add Calendar</button>
+                <button class="btn btn-success" onclick="syncAllCalendars()">🔄 Sync All</button>
+            </div>
+
+            <? if (unconfiguredCalendars.length > 0) { ?>
+                <div class="alert alert-warning">
+                    <h4>⚠️ Unconfigured Calendars</h4>
+                    <p>The following TeamUp calendars are not yet configured in the system:</p>
+                    <ul>
+                        <? for (var i = 0; i < unconfiguredCalendars.length; i++) { ?>
+                            <li><?= unconfiguredCalendars[i] ?> - <button class="btn btn-sm btn-primary" onclick="configureCalendar('<?= unconfiguredCalendars[i] ?>')">Configure</button></li>
+                        <? } ?>
+                    </ul>
+                </div>
+            <? } ?>
+
+            <h3>📅 Configured Calendars</h3>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Calendar Name</th>
+                        <th>Calendar Key</th>
+                        <th>Assigned Installer</th>
+                        <th>Last Sync</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <? for (var i = 0; i < configuredCalendars.length; i++) { ?>
+                        <tr>
+                            <td><?= configuredCalendars[i].name ?></td>
+                            <td><?= configuredCalendars[i].key ?></td>
+                            <td><?= configuredCalendars[i].installerName ?></td>
+                            <td><?= formatDate(configuredCalendars[i].lastSync) ?></td>
+                            <td><span class="status-badge status-<?= configuredCalendars[i].status.toLowerCase() ?>"><?= configuredCalendars[i].status ?></span></td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="testCalendar('<?= configuredCalendars[i].key ?>')">Test</button>
+                                <button class="btn btn-sm btn-warning" onclick="resyncCalendar('<?= configuredCalendars[i].key ?>')">Resync</button>
+                            </td>
+                        </tr>
+                    <? } ?>
+                </tbody>
+            </table>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number"><?= totalCalendars ?></div>
+                    <div class="stat-label">Total Calendars</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= syncedCalendars ?></div>
+                    <div class="stat-label">Synced</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= lastSyncTime ?></div>
+                    <div class="stat-label">Last Sync</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Installer Modal -->
+    <div id="addInstallerModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2>Add Installer</h2>
+            <form onsubmit="addInstaller(event)">
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="installerName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" id="installerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label>TeamUp Calendar Key:</label>
+                    <input type="text" id="calendarKey" required>
+                </div>
+                <div class="form-group">
+                    <label>Crew Size:</label>
+                    <input type="number" id="crewSize" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Phone:</label>
+                    <input type="tel" id="installerPhone">
+                </div>
+                <div class="form-group">
+                    <label>Location:</label>
+                    <input type="text" id="installerLocation">
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success">Add Installer</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addInstallerModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Show/hide sections
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.dashboard-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            
+            // Show selected section
+            document.getElementById(section + '-section').style.display = 'block';
+        }
+
+        // Modal functions
+        function showAddInstallerModal() {
+            document.getElementById('addInstallerModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Form submissions
+        function addInstaller(event) {
+            event.preventDefault();
+            
+            const installer = {
+                name: document.getElementById('installerName').value,
+                email: document.getElementById('installerEmail').value,
+                calendarKey: document.getElementById('calendarKey').value,
+                crewSize: document.getElementById('crewSize').value,
+                phone: document.getElementById('installerPhone').value,
+                location: document.getElementById('installerLocation').value
+            };
+            
+            // API call to add installer
+            fetch('?api=addInstaller', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(installer)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('✅ Installer added successfully!');
+                    closeModal('addInstallerModal');
+                    location.reload();
+                } else {
+                    alert('❌ Error adding installer: ' + result.error);
+                }
+            });
+        }
+
+        // Action functions
+        function refreshServiceData() {
+            location.reload();
+        }
+
+        function refreshARData() {
+            location.reload();
+        }
+
+        function viewJobDetails(jobId) {
+            // Open job details in new window or modal
+            window.open(`?action=installer&jobId=${jobId}`, '_blank');
+        }
+
+        function assignJob(jobId) {
+            const newInstaller = prompt('Enter installer email:');
+            if (newInstaller) {
+                // API call to reassign job
+                fetch(`?api=assignJob&jobId=${jobId}&installer=${newInstaller}`)
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            alert('✅ Job reassigned successfully!');
+                            location.reload();
+                        } else {
+                            alert('❌ Error reassigning job: ' + result.error);
+                        }
+                    });
+            }
+        }
+
+        function resolveIssue(issueId) {
+            // API call to resolve service issue
+            fetch(`?api=resolveIssue&issueId=${issueId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('✅ Issue resolved successfully!');
+                        location.reload();
+                    } else {
+                        alert('❌ Error resolving issue: ' + result.error);
+                    }
+                });
+        }
+
+        function markAsPaid(arId) {
+            // API call to mark as paid
+            fetch(`?api=markAsPaid&arId=${arId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('✅ Marked as paid successfully!');
+                        location.reload();
+                    } else {
+                        alert('❌ Error marking as paid: ' + result.error);
+                    }
+                });
+        }
+
+        function syncAllCalendars() {
+            alert('🔄 Syncing all calendars...');
+            // API call to sync all calendars
+            fetch('?api=syncAllCalendars')
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert(`✅ Synced ${result.calendarsSynced} calendars successfully!`);
+                        location.reload();
+                    } else {
+                        alert('❌ Error syncing calendars: ' + result.error);
+                    }
+                });
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

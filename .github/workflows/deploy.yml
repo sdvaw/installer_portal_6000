@@ -1,0 +1,43 @@
+name: Deploy to Google Apps Script
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Deploy to Google Apps Script
+      env:
+        CLASP_ID: ${{ secrets.CLASP_ID }}
+      run: |
+        # Create .clasp.json with script ID from secrets
+        echo '{"scriptId":"'$CLASP_ID'","rootDir":".","filePushOrder":["Code.gs"]}' > .clasp.json
+        
+        # Login to Google Apps Script
+        echo "${{ secrets.CLASP_CREDENTIALS }}" > .clasprc.json
+        
+        # Push code to Google Apps Script
+        npx clasp push --force
+        
+        # Deploy if on main branch
+        if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
+          npx clasp deploy --description "Auto-deploy from GitHub ${{ github.sha }}"
+        fi

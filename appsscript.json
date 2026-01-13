@@ -1,14 +1,7 @@
 {
   "timeZone": "America/New_York",
-  "dependencies": {},
+  "dependencies": {
+  },
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8",
-  "oauthScopes": [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/script.external_request"
-  ],
-  "urlFetchWhitelist": [
-    "https://script.google.com/macros/s/*",
-    "https://script.googleusercontent.com/*"
-  ]
+  "runtimeVersion": "V8"
 }

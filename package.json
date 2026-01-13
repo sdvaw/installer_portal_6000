@@ -1,0 +1,33 @@
+{
+  "name": "installer-portal",
+  "version": "2.0.0",
+  "description": "Production-ready Installer Portal with TeamUp integration and Google Sheets database",
+  "main": "Code.gs",
+  "scripts": {
+    "login": "clasp login",
+    "logout": "clasp logout",
+    "create": "clasp create --title \"Installer Portal System\"",
+    "push": "clasp push",
+    "pull": "clasp pull",
+    "open": "clasp open",
+    "deploy": "npm run push && clasp deploy",
+    "logs": "clasp logs",
+    "status": "clasp status",
+    "setup": "npm run login && npm run create && npm run push"
+  },
+  "keywords": [
+    "installer",
+    "teamup",
+    "google-apps-script",
+    "job-management",
+    "service-management"
+  ],
+  "author": "Installer Portal System",
+  "license": "MIT",
+  "devDependencies": {
+    "@google/clasp": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
