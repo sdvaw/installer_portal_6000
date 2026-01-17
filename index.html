@@ -10,19 +10,48 @@
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
     <style>
+        /* Mobile-first design */
         .mobile-first { font-size: 16px; }
         @media (max-width: 640px) {
             .mobile-first { font-size: 18px; }
-            .job-card { padding: 12px; }
-            .btn { padding: 12px 16px; font-size: 16px; }
+            .job-card { padding: 16px; }
+            .btn { padding: 16px 20px; font-size: 18px; min-height: 48px; }
+            .job-title { font-size: 20px; }
+            .job-info { font-size: 16px; }
+            .header { padding: 12px 16px; }
+            .main-content { padding: 16px; }
         }
         .job-card { transition: all 0.3s ease; }
         .job-card:active { transform: scale(0.98); }
         .camera-btn { 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             transition: all 0.3s ease;
+            min-height: 48px;
+            font-size: 16px;
         }
         .camera-btn:active { transform: scale(0.95); }
+        /* Mobile button layout */
+        .job-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .job-actions button {
+            padding: 12px 8px;
+            font-size: 14px;
+            min-height: 44px;
+        }
+        @media (max-width: 640px) {
+            .job-actions {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            .job-actions button {
+                font-size: 16px;
+                padding: 14px 12px;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 mobile-first">
@@ -390,31 +419,31 @@
                         </span>
                     </div>
                     ${job.notes ? `<div class="text-sm text-gray-500 mt-2"><i class="fas fa-sticky-note mr-1"></i>${job.notes}</div>` : ''}
-                    <div class="flex space-x-2 mt-3">
+                    <div class="job-actions">
                         ${job.status === 'scheduled' ? `
-                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
-                                <i class="fas fa-play mr-1"></i>Start Work
+                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                🚀 Start Work
                             </button>
                         ` : ''}
                         ${job.status === 'in-progress' ? `
-                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
-                                <i class="fas fa-check mr-1"></i>Complete
+                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                ✅ Complete
                             </button>
                         ` : ''}
-                        <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700">
-                            <i class="fas fa-info-circle mr-1"></i>Details
+                        <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            📋 Details
                         </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
-                            <i class="fas fa-camera mr-1"></i>Before
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            📸 Before
                         </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
-                            <i class="fas fa-camera mr-1"></i>After
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            📸 After
                         </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">
-                            <i class="fas fa-exclamation-triangle mr-1"></i>Defect
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="bg-red-600 text-white rounded-lg hover:bg-red-700">
+                            ⚠️ Defect
                         </button>
-                        <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="px-3 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700">
-                            <i class="fas fa-bug mr-1"></i>Issue
+                        <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                            🚨 Issue
                         </button>
                     </div>
                 </div>
