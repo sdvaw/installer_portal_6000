@@ -1006,19 +1006,10 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Actions</label>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="getDirections('${job.address}')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
-                                Directions
+                                🗺️ Directions
                             </button>
-                            <button onclick="capturePhotoForJob('${job.id}', 'before')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
-                                Before Photo
-                            </button>
-                            <button onclick="capturePhotoForJob('${job.id}', 'after')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
-                                After Photo
-                            </button>
-                            <button onclick="capturePhotoForJob('${job.id}', 'defect')" class="px-3 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700">
-                                Defect Photo
-                            </button>
-                            <button onclick="reportIssueForJob('${job.id}')" class="px-3 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700 col-span-2">
-                                Report Issue
+                            <button onclick="reportIssueForJob('${job.id}')" class="px-3 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700">
+                                🚨 Report Issue
                             </button>
                         </div>
                     </div>
