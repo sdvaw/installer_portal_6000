@@ -311,19 +311,11 @@
         // Initialize Firebase with error handling
         let auth, db, storage;
         
-        try {
-            firebase.initializeApp(firebaseConfig);
-            auth = firebase.auth();
-            db = firebase.firestore();
-            storage = firebase.storage();
-            console.log('Firebase initialized successfully');
-        } catch (error) {
-            console.log('Firebase initialization failed, using demo mode:', error);
-            // Set to null for demo mode
-            auth = null;
-            db = null;
-            storage = null;
-        }
+        // Force demo mode by not initializing Firebase
+        console.log('Forcing demo mode - Firebase not configured');
+        auth = null;
+        db = null;
+        storage = null;
 
         // State
         let currentWeekOffset = 0;
