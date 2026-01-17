@@ -205,9 +205,9 @@
     </div>
 
     <!-- Photo Manager Modal -->
-    <div id="photoModal" class="modal-overlay hidden">
+    <div id="photoModal" class="modal-overlay hidden" style="z-index: 999999;">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
+            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content" style="z-index: 1000000;">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900">Photo Manager</h3>
                     <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
@@ -983,8 +983,8 @@
 
         function closePhotoModal() {
             document.getElementById('photoModal').classList.add('hidden');
-            currentPhotoJobId = null;
-            capturedPhotos = {};
+            // Don't reset capturedPhotos to keep progress
+            // Don't clear currentPhotoJobId to maintain context
         }
 
         function startJobWithPhotos(jobId) {
@@ -992,13 +992,10 @@
             capturedPhotos = {};
             console.log('Starting job with photos for:', jobId);
             
-            // Close job details first to prevent stacking issues
-            closeJobModal();
-            
-            // Use setTimeout to ensure job details is fully closed
+            // Don't close job details - keep it open for workflow
             setTimeout(() => {
                 openPhotoManager(jobId, 'start');
-            }, 200);
+            }, 100);
         }
         function showPortal() {
             document.getElementById('loading').classList.add('hidden');
