@@ -755,12 +755,18 @@
             
             // Validate required fields
             if (completionStatus === 'completed-ready-inspection-no-balance' && !balanceNote) {
-                alert('Balance note is required when no balance was collected.');
+                alert('Note is required when balance was not collected.');
                 return;
             }
             
             if (completionStatus === 'not-collected-issues' && !issueDetails) {
                 alert('Issue details are required when reporting installation problems.');
+                return;
+            }
+            
+            // Require note for any status that's not "Completed - Ready For Inspection (Collected)"
+            if (completionStatus !== 'completed-ready-inspection-balance' && !workNotes) {
+                alert('Work notes are required for this completion status.');
                 return;
             }
             
@@ -773,6 +779,12 @@
             });
             
             closeCompletionModal();
+            
+            // Reopen job details to show updated status
+            setTimeout(() => {
+                showJobDetails(currentCompletionJobId);
+            }, 200);
+            
             alert('Job completion submitted successfully!');
         }
 
@@ -1016,6 +1028,15 @@
         function openCompletionModal(jobId) {
             currentCompletionJobId = jobId;
             console.log('Opening completion modal for job:', jobId);
+            
+            // Check if required photos are captured
+            const requiredPhotosCount = getRequiredPhotosCount('inspection');
+            const requiredInspectionCount = getRequiredInspectionCount();
+            
+            if (requiredPhotosCount < requiredInspectionCount) {
+                alert(`Please capture all required inspection photos (${requiredPhotosCount}/${requiredInspectionCount}) before completing the job.`);
+                return;
+            }
             
             // Close job details first to prevent stacking issues
             closeJobModal();
