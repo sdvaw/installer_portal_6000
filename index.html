@@ -112,8 +112,9 @@
                             <div id="installerInfo" class="text-lg font-bold text-blue-900"></div>
                         </div>
                         <div class="text-right">
-                            <div class="text-sm text-blue-600 font-medium">Crew Assignment</div>
-                            <div id="crewInfo" class="text-lg font-bold text-blue-900"></div>
+                            <button onclick="openAvailabilityModal()" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                                📅 My Availability
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -238,7 +239,22 @@
         </div>
     </div>
 
-    <!-- Issue Report Modal -->
+    <!-- Availability Modal -->
+    <div id="availabilityModal" class="modal-overlay hidden" style="z-index: 999999;">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-4xl w-full p-6 modal-content" style="z-index: 1000000;">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">My Availability</h3>
+                    <button onclick="closeAvailabilityModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
+                        ×
+                    </button>
+                </div>
+                <div id="availabilityCalendar">
+                    <!-- Calendar will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="issueModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
@@ -358,6 +374,9 @@
                 crews: ['Crew A', 'Crew B'],
                 active: true
             };
+            
+            // Load installer availability
+            await loadInstallerAvailability();
             
             // Create demo jobs (realistic data)
             jobs = [
@@ -846,7 +865,199 @@
             }
         });
 
-        // Photo Manager Functions
+        // Availability Functions
+        let installerAvailability = {}; // Store blocked dates per installer
+        let currentAvailabilityMonth = new Date();
+
+        function openAvailabilityModal() {
+            const modal = document.getElementById('availabilityModal');
+            renderAvailabilityCalendar();
+            modal.classList.remove('hidden');
+        }
+
+        function closeAvailabilityModal() {
+            document.getElementById('availabilityModal').classList.add('hidden');
+        }
+
+        function renderAvailabilityCalendar() {
+            const calendarDiv = document.getElementById('availabilityCalendar');
+            const year = currentAvailabilityMonth.getFullYear();
+            const month = currentAvailabilityMonth.getMonth();
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            // Get installer's blocked dates
+            const installerId = installerData?.uid || 'demo-user-123';
+            const blockedDates = installerAvailability[installerId] || [];
+            
+            let calendarHTML = `
+                <div class="mb-4">
+                    <div class="flex justify-between items-center">
+                        <button onclick="previousMonth()" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                            ← Previous
+                        </button>
+                        <h4 class="text-lg font-semibold text-gray-900">
+                            ${firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </h4>
+                        <button onclick="nextMonth()" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+                            Next →
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Sun</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Mon</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Tue</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Wed</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Thu</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Fri</div>
+                    <div class="text-center text-xs font-medium text-gray-600 py-2">Sat</div>
+                </div>
+                
+                <div class="grid grid-cols-7 gap-1">
+            `;
+            
+            // Add empty cells for days before month starts
+            for (let i = 0; i < startingDayOfWeek; i++) {
+                calendarHTML += '<div class="p-2"></div>';
+            }
+            
+            // Add days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isBlocked = blockedDates.includes(dateStr);
+                const isPast = new Date(year, month, day) < new Date().setHours(0, 0, 0, 0);
+                
+                let bgColor = 'bg-white hover:bg-gray-50';
+                let textColor = 'text-gray-900';
+                let cursor = 'cursor-pointer';
+                
+                if (isPast) {
+                    bgColor = 'bg-gray-100';
+                    textColor = 'text-gray-400';
+                    cursor = 'cursor-not-allowed';
+                } else if (isBlocked) {
+                    bgColor = 'bg-red-100 hover:bg-red-200';
+                    textColor = 'text-red-700';
+                } else {
+                    bgColor = 'bg-green-100 hover:bg-green-200';
+                    textColor = 'text-green-700';
+                }
+                
+                calendarHTML += `
+                    <div onclick="${!isPast ? `toggleDateAvailability('${dateStr}')` : ''}" 
+                         class="p-2 text-center border rounded ${bgColor} ${textColor} ${cursor} text-sm font-medium">
+                        ${day}
+                        ${isBlocked ? '<div class="text-xs">🚫</div>' : !isPast ? '<div class="text-xs">✓</div>' : ''}
+                    </div>
+                `;
+            }
+            
+            calendarHTML += '</div>';
+            
+            // Add legend
+            calendarHTML += `
+                <div class="mt-4 flex justify-center space-x-4 text-xs">
+                    <div class="flex items-center space-x-1">
+                        <div class="w-4 h-4 bg-green-100 border rounded"></div>
+                        <span>Available</span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <div class="w-4 h-4 bg-red-100 border rounded"></div>
+                        <span>Blocked</span>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        <div class="w-4 h-4 bg-gray-100 border rounded"></div>
+                        <span>Past</span>
+                    </div>
+                </div>
+            `;
+            
+            calendarDiv.innerHTML = calendarHTML;
+        }
+
+        function previousMonth() {
+            currentAvailabilityMonth.setMonth(currentAvailabilityMonth.getMonth() - 1);
+            renderAvailabilityCalendar();
+        }
+
+        function nextMonth() {
+            currentAvailabilityMonth.setMonth(currentAvailabilityMonth.getMonth() + 1);
+            renderAvailabilityCalendar();
+        }
+
+        function toggleDateAvailability(dateStr) {
+            const installerId = installerData?.uid || 'demo-user-123';
+            
+            if (!installerAvailability[installerId]) {
+                installerAvailability[installerId] = [];
+            }
+            
+            const blockedDates = installerAvailability[installerId];
+            const index = blockedDates.indexOf(dateStr);
+            
+            if (index > -1) {
+                // Unblock the date
+                blockedDates.splice(index, 1);
+            } else {
+                // Block the date
+                blockedDates.push(dateStr);
+            }
+            
+            // Save to Firebase
+            saveInstallerAvailability();
+            
+            // Refresh calendar
+            renderAvailabilityCalendar();
+        }
+
+        async function saveInstallerAvailability() {
+            try {
+                const installerId = installerData?.uid || 'demo-user-123';
+                
+                if (db) {
+                    // Save to Firebase
+                    await db.collection('installerAvailability').doc(installerId).set({
+                        blockedDates: installerAvailability[installerId] || [],
+                        updatedAt: new Date(),
+                        installerId: installerId
+                    });
+                    console.log('Availability saved to Firebase');
+                } else {
+                    // Demo mode - just log it
+                    console.log('Availability saved locally:', installerAvailability[installerId]);
+                }
+            } catch (error) {
+                console.error('Failed to save availability:', error);
+            }
+        }
+
+        async function loadInstallerAvailability() {
+            try {
+                const installerId = installerData?.uid || 'demo-user-123';
+                
+                if (db) {
+                    // Load from Firebase
+                    const doc = await db.collection('installerAvailability').doc(installerId).get();
+                    if (doc.exists) {
+                        installerAvailability[installerId] = doc.data().blockedDates || [];
+                        console.log('Availability loaded from Firebase:', installerAvailability[installerId]);
+                    }
+                } else {
+                    // Demo mode - use empty array
+                    installerAvailability[installerId] = [];
+                    console.log('Demo mode - no availability data');
+                }
+            } catch (error) {
+                console.error('Failed to load availability:', error);
+                installerAvailability[installerId] = [];
+            }
+        }
         let currentPhotoJobId = null;
         let requiredStartPhotos = ['front_elevation', 'sign_photo'];
         let requiredInspectionPhotos = ['before', 'bucking', 'screws_hanging', 'tape_over_screws', 'final_window', 'window_label', 'fasteners_set'];
