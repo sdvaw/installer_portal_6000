@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installer Portal - Firebase System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+    <style>
+        .mobile-first { font-size: 16px; }
+        @media (max-width: 640px) {
+            .mobile-first { font-size: 18px; }
+            .job-card { padding: 12px; }
+            .btn { padding: 12px 16px; font-size: 16px; }
+        }
+        .job-card { transition: all 0.3s ease; }
+        .job-card:active { transform: scale(0.98); }
+        .camera-btn { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        .camera-btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body class="bg-gray-100 mobile-first">
+    <div id="app" class="min-h-screen">
+        <!-- Loading State -->
+        <div id="loading" class="flex items-center justify-center min-h-screen bg-blue-600">
+            <div class="text-center text-white">
+                <div class="text-4xl mb-4">🔧</div>
+                <div class="text-xl">Loading Installer Portal...</div>
+                <div class="text-sm opacity-75 mt-2">Connecting to Firebase...</div>
+            </div>
+        </div>
+
+        <!-- Main Portal (Hidden Initially) -->
+        <div id="portal" class="hidden">
+            <!-- Header -->
+            <header class="bg-white shadow-sm sticky top-0 z-50">
+                <div class="max-w-4xl mx-auto px-4 py-3">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center">
+                            <div class="text-2xl mr-3">🔧</div>
+                            <div>
+                                <h1 class="text-lg font-bold text-gray-900">Installer Portal</h1>
+                                <div class="text-xs text-gray-600">Firebase Operations System</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span id="installerName" class="text-sm font-medium text-gray-700"></span>
+                            <button onclick="logout()" class="text-red-600 hover:text-red-800">
+                                <i class="fas fa-sign-out-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="max-w-4xl mx-auto px-4 py-6">
+                <!-- Installer Info -->
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-sm text-blue-600 font-medium">Current Installer</div>
+                            <div id="installerInfo" class="text-lg font-bold text-blue-900"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm text-blue-600 font-medium">Crew Assignment</div>
+                            <div id="crewInfo" class="text-lg font-bold text-blue-900"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jobs Section -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-900">📅 My Jobs</h2>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="previousWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                                ←
+                            </button>
+                            <span id="weekRange" class="text-sm font-medium text-gray-600"></span>
+                            <button onclick="nextWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                                →
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Jobs List -->
+                    <div id="jobsList" class="space-y-4">
+                        <!-- Jobs will be populated here -->
+                    </div>
+
+                    <!-- No Jobs Message -->
+                    <div id="noJobs" class="hidden bg-white rounded-lg p-8 text-center">
+                        <div class="text-4xl mb-4">📋</div>
+                        <div class="text-xl font-semibold text-gray-700 mb-2">No Jobs Scheduled</div>
+                        <div class="text-gray-600">You have no jobs assigned for this period.</div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <button onclick="capturePhoto('before')" class="camera-btn text-white p-4 rounded-lg">
+                        <div class="text-2xl mb-2">📸</div>
+                        <div class="text-sm font-medium">Before</div>
+                    </button>
+                    <button onclick="capturePhoto('after')" class="camera-btn text-white p-4 rounded-lg">
+                        <div class="text-2xl mb-2">📸</div>
+                        <div class="text-sm font-medium">After</div>
+                    </button>
+                    <button onclick="capturePhoto('defect')" class="camera-btn text-white p-4 rounded-lg">
+                        <div class="text-2xl mb-2">⚠️</div>
+                        <div class="text-sm font-medium">Defect</div>
+                    </button>
+                    <button onclick="reportIssue()" class="bg-orange-500 text-white p-4 rounded-lg hover:bg-orange-600">
+                        <div class="text-2xl mb-2">🚨</div>
+                        <div class="text-sm font-medium">Issue</div>
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Job Details Modal -->
+    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Job Details</h3>
+                    <button onclick="closeJobModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="modalContent">
+                    <!-- Job details will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Report Modal -->
+    <div id="issueModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Report Issue</h3>
+                    <button onclick="closeIssueModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form onsubmit="submitIssue(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Job</label>
+                        <select id="issueJobId" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Select Job...</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                        <select id="issueCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="manufacturer">Manufacturer Defect</option>
+                            <option value="installer">Installer Mistake</option>
+                            <option value="material">Missing Material</option>
+                            <option value="damage">Damage Discovered</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                        <textarea id="issueDescription" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
+                        <input type="file" id="issuePhotos" multiple accept="image/*" class="w-full">
+                    </div>
+                    <button type="submit" class="w-full bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700">
+                        Submit Issue
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - REPLACE WITH YOUR ACTUAL CONFIG
+        const firebaseConfig = {
+            apiKey: "YOUR_ACTUAL_API_KEY",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // State
+        let currentWeekOffset = 0;
+        let installerData = null;
+        let jobs = [];
+        let jobsUnsubscribe = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('Installer Portal - Firebase System');
+            
+            // Check authentication
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    await loadInstallerData(user);
+                    await loadJobs();
+                    showPortal();
+                } else {
+                    // For demo, auto-login
+                    await demoLogin();
+                }
+            });
+        });
+
+        // Demo login (replace with real auth)
+        async function demoLogin() {
+            // Use demo mode when Firebase config is not set
+            console.log('Using demo mode - Firebase config not set');
+            
+            const demoUser = {
+                uid: 'demo-user-123',
+                email: 'john@company.com',
+                displayName: 'John Smith'
+            };
+            
+            // Create demo data without Firebase
+            installerData = {
+                uid: demoUser.uid,
+                name: demoUser.displayName || 'John Smith',
+                email: demoUser.email,
+                crews: ['Crew A', 'Crew B'],
+                active: true
+            };
+            
+            // Create demo jobs
+            jobs = [
+                {
+                    id: 'JOB001',
+                    title: 'Window Installation - Downtown Office',
+                    customer: 'ABC Corporation',
+                    address: '123 Main St, Suite 100',
+                    scheduledDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+                    status: 'scheduled',
+                    crew: 'Crew A',
+                    notes: 'Customer requires parking validation'
+                },
+                {
+                    id: 'JOB002',
+                    title: 'Door Replacement - North Side',
+                    customer: 'Jane Doe',
+                    address: '456 Oak Avenue',
+                    scheduledDate: new Date(Date.now() + 6 * 60 * 60 * 1000),
+                    status: 'in-progress',
+                    crew: 'Crew B',
+                    notes: 'Remove old door frame'
+                }
+            ];
+            
+            // Update UI
+            document.getElementById('installerName').textContent = installerData.name;
+            document.getElementById('installerInfo').textContent = installerData.name;
+            document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
+            
+            renderJobs();
+            updateWeekRange();
+            showPortal();
+        }
+
+        // Load installer data from Firestore
+        async function loadInstallerData(user) {
+            try {
+                // Get installer document
+                const installerDoc = await db.collection('installers').doc(user.uid).get();
+                
+                if (installerDoc.exists) {
+                    installerData = installerDoc.data();
+                } else {
+                    // Create demo installer
+                    installerData = {
+                        uid: user.uid,
+                        name: user.displayName || 'John Smith',
+                        email: user.email,
+                        crews: ['Crew A', 'Crew B'],
+                        active: true
+                    };
+                    
+                    // Save to Firestore
+                    await db.collection('installers').doc(user.uid).set(installerData);
+                }
+
+                // Update UI
+                document.getElementById('installerName').textContent = installerData.name;
+                document.getElementById('installerInfo').textContent = installerData.name;
+                document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
+                
+                console.log('Installer data loaded:', installerData);
+            } catch (error) {
+                console.error('Failed to load installer data:', error);
+                showError('Failed to load installer data');
+            }
+        }
+
+        // Load jobs from Firestore with real-time updates
+        async function loadJobs() {
+            try {
+                // Unsubscribe previous listener
+                if (jobsUnsubscribe) {
+                    jobsUnsubscribe();
+                }
+
+                // Query jobs for this installer
+                const jobsQuery = db.collection('jobs')
+                    .where('installerId', '==', installerData.uid)
+                    .where('scheduledDate', '>=', new Date(Date.now() - (14 * 24 * 60 * 60 * 1000)))
+                    .where('scheduledDate', '<=', new Date(Date.now() + (14 * 24 * 60 * 60 * 1000)))
+                    .orderBy('scheduledDate');
+
+                // Real-time listener
+                jobsUnsubscribe = jobsQuery.onSnapshot((snapshot) => {
+                    jobs = [];
+                    snapshot.forEach((doc) => {
+                        jobs.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderJobs();
+                    updateWeekRange();
+                });
+
+                console.log('Jobs listener established');
+            } catch (error) {
+                console.error('Failed to load jobs:', error);
+                showError('Failed to load jobs');
+            }
+        }
+
+        // Render jobs
+        function renderJobs() {
+            const jobsList = document.getElementById('jobsList');
+            const noJobs = document.getElementById('noJobs');
+
+            if (jobs.length === 0) {
+                jobsList.classList.add('hidden');
+                noJobs.classList.remove('hidden');
+                return;
+            }
+
+            jobsList.classList.remove('hidden');
+            noJobs.classList.add('hidden');
+
+            jobsList.innerHTML = jobs.map(job => `
+                <div class="job-card bg-white rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md" onclick="showJobDetails('${job.id}')">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 text-lg">${job.title}</h3>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <div><i class="fas fa-user mr-1"></i>${job.customer}</div>
+                                <div><i class="fas fa-map-marker-alt mr-1"></i>${job.address}</div>
+                                <div><i class="fas fa-clock mr-1"></i>${new Date(job.scheduledDate).toLocaleString()}</div>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-medium rounded-full ${
+                            job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                            job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                        }">
+                            ${job.status.replace('-', ' ').toUpperCase()}
+                        </span>
+                    </div>
+                    ${job.notes ? `<div class="text-sm text-gray-500 mt-2"><i class="fas fa-sticky-note mr-1"></i>${job.notes}</div>` : ''}
+                    <div class="flex space-x-2 mt-3">
+                        ${job.status === 'scheduled' ? `
+                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700">
+                                <i class="fas fa-play mr-1"></i>Start Work
+                            </button>
+                        ` : ''}
+                        ${job.status === 'in-progress' ? `
+                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">
+                                <i class="fas fa-check mr-1"></i>Complete
+                            </button>
+                        ` : ''}
+                        <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700">
+                            <i class="fas fa-info-circle mr-1"></i>Details
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Update job status in Firestore
+        async function updateJobStatus(jobId, newStatus) {
+            try {
+                const jobRef = db.collection('jobs').doc(jobId);
+                
+                await jobRef.update({
+                    status: newStatus,
+                    statusUpdatedAt: new Date(),
+                    statusUpdatedBy: installerData.uid
+                });
+
+                console.log(`Job ${jobId} status updated to: ${newStatus}`);
+            } catch (error) {
+                console.error('Failed to update job status:', error);
+                showError('Failed to update job status');
+            }
+        }
+
+        // Camera capture (mobile-first)
+        function capturePhoto(type) {
+            console.log('Capturing photo:', type);
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            
+            // Force camera on mobile devices
+            if (navigator.userAgent.includes('Mobile') || navigator.userAgent.includes('Android') || navigator.userAgent.includes('iPhone')) {
+                input.capture = 'environment'; // Use rear camera
+                input.setAttribute('capture', 'environment');
+            }
+            
+            input.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    console.log(`Captured ${type} photo:`, file.name);
+                    await uploadPhotoToFirebase(file, type);
+                }
+            };
+            
+            input.click();
+        }
+
+        // Upload photo to Firebase Storage
+        async function uploadPhotoToFirebase(file, type) {
+            try {
+                const jobId = getCurrentJobId();
+                const fileName = `${jobId}/${type}_${Date.now()}_${file.name}`;
+                
+                console.log(`Uploading ${type} photo:`, {
+                    fileName: fileName,
+                    fileSize: file.size,
+                    fileType: file.type
+                });
+                
+                // Demo mode - simulate upload
+                if (firebaseConfig.apiKey === "YOUR_ACTUAL_API_KEY") {
+                    // Demo mode
+                    alert(`${type} photo captured successfully!\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(1)} KB\n\n(Demo mode - not actually uploaded)`);
+                    return;
+                }
+                
+                // Real Firebase upload
+                const storageRef = storage.ref();
+                const photoRef = storageRef.child(`job-photos/${fileName}`);
+                
+                // Upload file
+                const snapshot = await photoRef.put(file);
+                const downloadURL = await snapshot.ref.getDownloadURL();
+                
+                // Save photo metadata to Firestore
+                const photoData = {
+                    type: type,
+                    fileName: fileName,
+                    downloadURL: downloadURL,
+                    fileSize: file.size,
+                    capturedAt: new Date().toISOString(),
+                    jobId: jobId,
+                    installerId: installerData.uid,
+                    installerName: installerData.name,
+                    metadata: {
+                        device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+                        location: 'job_site',
+                        category: type === 'defect' ? 'issue' : 'documentation'
+                    }
+                };
+                
+                await db.collection('photos').add(photoData);
+                
+                console.log('Photo uploaded successfully:', photoData);
+                alert(`${type} photo uploaded successfully!`);
+                
+            } catch (error) {
+                console.error('Failed to upload photo:', error);
+                showError('Failed to upload photo');
+            }
+        }
+
+        // Get current job ID (context)
+        function getCurrentJobId() {
+            // In real app, this would come from current job context
+            return jobs.length > 0 ? jobs[0].id : 'CURRENT_JOB';
+        }
+
+        // Report issue to Firestore
+        async function submitIssue(event) {
+            event.preventDefault();
+            
+            try {
+                const issueData = {
+                    jobId: document.getElementById('issueJobId').value,
+                    category: document.getElementById('issueCategory').value,
+                    description: document.getElementById('issueDescription').value,
+                    reportedAt: new Date(),
+                    installerId: installerData.uid,
+                    installerName: installerData.name,
+                    status: 'open',
+                    photos: []
+                };
+                
+                // Handle photo uploads
+                const photoFiles = document.getElementById('issuePhotos').files;
+                for (let i = 0; i < photoFiles.length; i++) {
+                    const file = photoFiles[i];
+                    const fileName = `issues/${issueData.jobId}_${Date.now()}_${file.name}`;
+                    
+                    const storageRef = storage.ref();
+                    const photoRef = storageRef.child(fileName);
+                    
+                    await photoRef.put(file);
+                    const downloadURL = await photoRef.getDownloadURL();
+                    
+                    issueData.photos.push({
+                        fileName: fileName,
+                        downloadURL: downloadURL,
+                        fileSize: file.size
+                    });
+                }
+                
+                // Save issue to Firestore
+                await db.collection('issues').add(issueData);
+                
+                console.log('Issue reported:', issueData);
+                alert('Issue reported successfully');
+                closeIssueModal();
+                
+            } catch (error) {
+                console.error('Failed to submit issue:', error);
+                showError('Failed to submit issue');
+            }
+        }
+
+        // UI Functions
+        function showPortal() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('portal').classList.remove('hidden');
+        }
+
+        function showJobDetails(jobId) {
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+
+            const modal = document.getElementById('jobModal');
+            const content = document.getElementById('modalContent');
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Title</label>
+                        <div class="mt-1 text-gray-900">${job.title}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Customer</label>
+                        <div class="mt-1 text-gray-900">${job.customer}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Address</label>
+                        <div class="mt-1 text-gray-900">${job.address}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Scheduled</label>
+                        <div class="mt-1 text-gray-900">${new Date(job.scheduledDate).toLocaleString()}</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Status</label>
+                        <div class="mt-1">
+                            <span class="px-3 py-1 text-xs font-medium rounded-full ${
+                                job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }">
+                                ${job.status.replace('-', ' ').toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                    ${job.notes ? `
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Notes</label>
+                        <div class="mt-1 text-gray-900">${job.notes}</div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeJobModal() {
+            document.getElementById('jobModal').classList.add('hidden');
+        }
+
+        function reportIssue() {
+            const modal = document.getElementById('issueModal');
+            const jobIdSelect = document.getElementById('issueJobId');
+            
+            // Populate job options
+            jobIdSelect.innerHTML = '<option value="">Select Job...</option>' + 
+                jobs.map(job => `<option value="${job.id}">${job.title}</option>`).join('');
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeIssueModal() {
+            document.getElementById('issueModal').classList.add('hidden');
+            // Reset form
+            document.getElementById('issueJobId').value = '';
+            document.getElementById('issueCategory').value = 'manufacturer';
+            document.getElementById('issueDescription').value = '';
+            document.getElementById('issuePhotos').value = '';
+        }
+
+        function previousWeek() {
+            currentWeekOffset--;
+            loadJobs();
+        }
+
+        function nextWeek() {
+            currentWeekOffset++;
+            loadJobs();
+        }
+
+        function updateWeekRange() {
+            const today = new Date();
+            const weekStart = new Date(today.getTime() + (currentWeekOffset * 7 * 24 * 60 * 60 * 1000));
+            const weekEnd = new Date(weekStart.getTime() + (6 * 24 * 60 * 60 * 1000));
+            
+            document.getElementById('weekRange').textContent = 
+                `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
+        }
+
+        function showError(message) {
+            alert(`Error: ${message}`);
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                auth.signOut();
+            }
+        }
+    </script>
+</body>
+</html>
