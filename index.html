@@ -844,8 +844,14 @@
 
         function openCompletionModal(jobId) {
             currentCompletionJobId = jobId;
-            const modal = document.getElementById('completionModal');
-            modal.classList.remove('hidden');
+            // Close job details first to prevent stacking issues
+            closeJobModal();
+            
+            // Use setTimeout to ensure job details is fully closed
+            setTimeout(() => {
+                const modal = document.getElementById('completionModal');
+                modal.classList.remove('hidden');
+            }, 100);
         }
 
         function openPhotoManager(jobId) {
