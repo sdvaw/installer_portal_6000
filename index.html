@@ -838,6 +838,7 @@
         function startJobWithPhotos(jobId) {
             currentPhotoJobId = jobId;
             capturedPhotos = {};
+            closeJobModal(); // Close job details first
             openPhotoManager(jobId);
         }
 
