@@ -851,6 +851,7 @@
         let requiredStartPhotos = ['front_elevation', 'sign_photo'];
         let requiredInspectionPhotos = ['before', 'bucking', 'screws_hanging', 'tape_over_screws', 'final_window', 'window_label', 'fasteners_set'];
         let capturedPhotos = {};
+        let jobUnits = {}; // Store window/door counts per job
 
         function getPhotoCount(jobId) {
             // In real app, this would query Firestore
@@ -864,10 +865,19 @@
             const modalContent = document.getElementById('photoModalContent');
             
             const job = jobs.find(j => j.id === jobId);
-            const requiredPhotos = phase === 'start' ? requiredStartPhotos : requiredInspectionPhotos;
+            
+            // Initialize job units if not exists
+            if (!jobUnits[jobId]) {
+                jobUnits[jobId] = {
+                    windows: 3, // Default - should come from job data
+                    doors: 1    // Default - should come from job data
+                };
+            }
+            
+            const units = jobUnits[jobId];
             
             const photoLabels = {
-                'front_elevation': '📸 Front Elevation of House',
+                'front_elevation': '📸 Front Elevation',
                 'sign_photo': '📋 Sign Picture',
                 'before': '📸 Before Picture',
                 'bucking': '📸 Bucking Picture',
@@ -882,29 +892,40 @@
                 <div class="space-y-4">
                     <div>
                         <h4 class="font-semibold text-gray-900 mb-2">${job.title}</h4>
-                        <p class="text-sm text-gray-600">${phase === 'start' ? 'Required photos to start work:' : 'Inspection photos required:'}</p>
+                        <p class="text-sm text-gray-600 mb-4">${phase === 'start' ? 'Required photos to start work:' : 'Inspection photos required:'}</p>
+                        
+                        ${phase === 'inspection' ? `
+                            <div class="bg-blue-50 p-3 rounded-lg mb-4">
+                                <p class="text-sm font-medium text-blue-900">Job Units:</p>
+                                <p class="text-sm text-blue-700">Windows: ${units.windows} (Numbered 1-${units.windows})</p>
+                                <p class="text-sm text-blue-700">Doors: ${units.doors} (Lettered A-${String.fromCharCode(65 + units.doors - 1)})</p>
+                            </div>
+                        ` : ''}
                     </div>
                     
                     <div class="space-y-3">
-                        ${requiredPhotos.map(photoType => {
-                            const isCaptured = capturedPhotos[photoType];
-                            const isOptional = photoType === 'tape_over_screws';
-                            
-                            return `
-                                <div class="flex items-center justify-between p-3 border rounded-lg ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-300'}">
-                                    <div class="flex items-center space-x-3">
-                                        <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'}">
-                                            ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
-                                        </span>
-                                        <span class="text-sm font-medium">${photoLabels[photoType]}</span>
-                                        ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
+                        ${phase === 'start' ? `
+                            <!-- Start photos - one set for entire job -->
+                            ${requiredStartPhotos.map(photoType => {
+                                const isCaptured = capturedPhotos[photoType];
+                                return `
+                                    <div class="flex items-center justify-between p-3 border rounded-lg ${isCaptured ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="${isCaptured ? 'text-green-600' : 'text-gray-600'}">
+                                                ${isCaptured ? '✅' : '⭕'}
+                                            </span>
+                                            <span class="text-sm font-medium">${photoLabels[photoType]}</span>
+                                        </div>
+                                        <button onclick="capturePhoto('${photoType}')" class="px-3 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-sm rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
+                                            ${isCaptured ? 'Retake' : 'Capture'}
+                                        </button>
                                     </div>
-                                    <button onclick="capturePhoto('${photoType}')" class="px-3 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-sm rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
-                                        ${isCaptured ? 'Retake' : 'Capture'}
-                                    </button>
-                                </div>
-                            `;
-                        }).join('')}
+                                `;
+                            }).join('')}
+                        ` : `
+                            <!-- Inspection photos - per unit -->
+                            ${generateUnitPhotoGrid(units, photoLabels)}
+                        `}
                     </div>
                     
                     <div class="pt-4 border-t">
@@ -931,6 +952,77 @@
             `;
             
             modal.classList.remove('hidden');
+        }
+
+        function generateUnitPhotoGrid(units, photoLabels) {
+            let html = '';
+            
+            // Generate windows (numbered)
+            for (let i = 1; i <= units.windows; i++) {
+                html += `
+                    <div class="bg-gray-50 p-3 rounded-lg mb-3">
+                        <h5 class="font-medium text-gray-900 mb-2">🪟 Window ${i}</h5>
+                        <div class="space-y-2">
+                            ${requiredInspectionPhotos.map(photoType => {
+                                const photoKey = `window_${i}_${photoType}`;
+                                const isCaptured = capturedPhotos[photoKey];
+                                const isOptional = photoType === 'tape_over_screws';
+                                
+                                return `
+                                    <div class="flex items-center justify-between p-2 border rounded ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-300'}">
+                                        <div class="flex items-center space-x-2">
+                                            <input type="checkbox" ${isCaptured ? 'checked' : ''} onchange="togglePhotoOverride('${photoKey}')" class="mr-2">
+                                            <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'} text-sm">
+                                                ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
+                                            </span>
+                                            <span class="text-sm">${photoLabels[photoType]}</span>
+                                            ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
+                                        </div>
+                                        <button onclick="captureUnitPhoto('window', ${i}, '${photoType}')" class="px-2 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-xs rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
+                                            ${isCaptured ? 'Retake' : 'Capture'}
+                                        </button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Generate doors (lettered)
+            for (let i = 0; i < units.doors; i++) {
+                const letter = String.fromCharCode(65 + i); // A, B, C...
+                html += `
+                    <div class="bg-blue-50 p-3 rounded-lg mb-3">
+                        <h5 class="font-medium text-gray-900 mb-2">🚪 Door ${letter}</h5>
+                        <div class="space-y-2">
+                            ${requiredInspectionPhotos.map(photoType => {
+                                const photoKey = `door_${letter}_${photoType}`;
+                                const isCaptured = capturedPhotos[photoKey];
+                                const isOptional = photoType === 'tape_over_screws';
+                                
+                                return `
+                                    <div class="flex items-center justify-between p-2 border rounded ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-300'}">
+                                        <div class="flex items-center space-x-2">
+                                            <input type="checkbox" ${isCaptured ? 'checked' : ''} onchange="togglePhotoOverride('${photoKey}')" class="mr-2">
+                                            <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'} text-sm">
+                                                ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
+                                            </span>
+                                            <span class="text-sm">${photoLabels[photoType]}</span>
+                                            ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
+                                        </div>
+                                        <button onclick="captureUnitPhoto('door', '${letter}', '${photoType}')" class="px-2 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-xs rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
+                                            ${isCaptured ? 'Retake' : 'Capture'}
+                                        </button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            return html;
         }
 
         function getRequiredPhotosCount(phase) {
@@ -1006,6 +1098,62 @@
             };
             
             input.click();
+        }
+
+        function captureUnitPhoto(unitType, unitIdentifier, photoType) {
+            const photoKey = `${unitType}_${unitIdentifier}_${photoType}`;
+            console.log('Capturing unit photo:', photoKey);
+            
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            
+            // Force camera on mobile devices
+            if (navigator.userAgent.includes('Mobile') || navigator.userAgent.includes('Android') || navigator.userAgent.includes('iPhone')) {
+                input.capture = 'environment';
+                input.setAttribute('capture', 'environment');
+            }
+            
+            input.onchange = async function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    console.log(`Captured ${photoKey} photo:`, file.name);
+                    
+                    // Mark as captured
+                    capturedPhotos[photoKey] = {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        capturedAt: new Date().toISOString(),
+                        unitType: unitType,
+                        unitIdentifier: unitIdentifier,
+                        photoType: photoType
+                    };
+                    
+                    // Upload to Firebase
+                    await uploadPhotoToFirebase(file, photoKey, currentPhotoJobId);
+                    
+                    // Refresh photo manager
+                    openPhotoManager(currentPhotoJobId, 'inspection');
+                }
+            };
+            
+            input.click();
+        }
+
+        function togglePhotoOverride(photoKey) {
+            console.log('Toggling override for:', photoKey);
+            if (capturedPhotos[photoKey]) {
+                delete capturedPhotos[photoKey];
+            } else {
+                // Mark as overridden (not required)
+                capturedPhotos[photoKey] = {
+                    overridden: true,
+                    capturedAt: new Date().toISOString()
+                };
+            }
+            
+            // Refresh photo manager
+            openPhotoManager(currentPhotoJobId, 'inspection');
         }
 
         function closePhotoModal() {
