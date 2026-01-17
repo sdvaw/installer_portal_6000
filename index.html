@@ -869,8 +869,8 @@
             // Initialize job units if not exists
             if (!jobUnits[jobId]) {
                 jobUnits[jobId] = {
-                    windows: 3, // Default - should come from job data
-                    doors: 1    // Default - should come from job data
+                    windows: 3, // Default - should come from Teamup sync data
+                    doors: 1    // Default - should come from Teamup sync data
                 };
             }
             
@@ -900,6 +900,19 @@
                                 <p class="text-sm text-blue-700">Windows: ${units.windows} (Numbered 1-${units.windows})</p>
                                 <p class="text-sm text-blue-700">Doors: ${units.doors} (Lettered A-${String.fromCharCode(65 + units.doors - 1)})</p>
                             </div>
+                            
+                            <!-- Mobile-friendly unit selector -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Unit:</label>
+                                <select id="unitSelector" onchange="updateSelectedUnit()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="">Choose a window or door...</option>
+                                    ${generateUnitOptions(units)}
+                                </select>
+                            </div>
+                            
+                            <div id="selectedUnitPhotos" class="space-y-3">
+                                <p class="text-sm text-gray-500 text-center py-4">Select a unit to see required photos</p>
+                            </div>
                         ` : ''}
                     </div>
                     
@@ -922,10 +935,7 @@
                                     </div>
                                 `;
                             }).join('')}
-                        ` : `
-                            <!-- Inspection photos - per unit -->
-                            ${generateUnitPhotoGrid(units, photoLabels)}
-                        `}
+                        ` : ''}
                     </div>
                     
                     <div class="pt-4 border-t">
@@ -954,75 +964,73 @@
             modal.classList.remove('hidden');
         }
 
-        function generateUnitPhotoGrid(units, photoLabels) {
-            let html = '';
+        function generateUnitOptions(units) {
+            let options = '';
             
-            // Generate windows (numbered)
+            // Add windows (numbered)
             for (let i = 1; i <= units.windows; i++) {
-                html += `
-                    <div class="bg-gray-50 p-3 rounded-lg mb-3">
-                        <h5 class="font-medium text-gray-900 mb-2">🪟 Window ${i}</h5>
-                        <div class="space-y-2">
-                            ${requiredInspectionPhotos.map(photoType => {
-                                const photoKey = `window_${i}_${photoType}`;
-                                const isCaptured = capturedPhotos[photoKey];
-                                const isOptional = photoType === 'tape_over_screws';
-                                
-                                return `
-                                    <div class="flex items-center justify-between p-2 border rounded ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-300'}">
-                                        <div class="flex items-center space-x-2">
-                                            <input type="checkbox" ${isCaptured ? 'checked' : ''} onchange="togglePhotoOverride('${photoKey}')" class="mr-2">
-                                            <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'} text-sm">
-                                                ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
-                                            </span>
-                                            <span class="text-sm">${photoLabels[photoType]}</span>
-                                            ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
-                                        </div>
-                                        <button onclick="captureUnitPhoto('window', ${i}, '${photoType}')" class="px-2 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-xs rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
-                                            ${isCaptured ? 'Retake' : 'Capture'}
-                                        </button>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
+                options += `<option value="window_${i}">🪟 Window ${i}</option>`;
             }
             
-            // Generate doors (lettered)
+            // Add doors (lettered)
             for (let i = 0; i < units.doors; i++) {
                 const letter = String.fromCharCode(65 + i); // A, B, C...
-                html += `
-                    <div class="bg-blue-50 p-3 rounded-lg mb-3">
-                        <h5 class="font-medium text-gray-900 mb-2">🚪 Door ${letter}</h5>
-                        <div class="space-y-2">
-                            ${requiredInspectionPhotos.map(photoType => {
-                                const photoKey = `door_${letter}_${photoType}`;
-                                const isCaptured = capturedPhotos[photoKey];
-                                const isOptional = photoType === 'tape_over_screws';
-                                
-                                return `
-                                    <div class="flex items-center justify-between p-2 border rounded ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-300'}">
-                                        <div class="flex items-center space-x-2">
-                                            <input type="checkbox" ${isCaptured ? 'checked' : ''} onchange="togglePhotoOverride('${photoKey}')" class="mr-2">
-                                            <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'} text-sm">
-                                                ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
-                                            </span>
-                                            <span class="text-sm">${photoLabels[photoType]}</span>
-                                            ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
-                                        </div>
-                                        <button onclick="captureUnitPhoto('door', '${letter}', '${photoType}')" class="px-2 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-xs rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
-                                            ${isCaptured ? 'Retake' : 'Capture'}
-                                        </button>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
+                options += `<option value="door_${letter}">🚪 Door ${letter}</option>`;
             }
             
-            return html;
+            return options;
+        }
+
+        function updateSelectedUnit() {
+            const selector = document.getElementById('unitSelector');
+            const photosDiv = document.getElementById('selectedUnitPhotos');
+            
+            if (!selector.value) {
+                photosDiv.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Select a unit to see required photos</p>';
+                return;
+            }
+            
+            const [unitType, unitIdentifier] = selector.value.split('_');
+            const unitLabel = unitType === 'window' ? `🪟 Window ${unitIdentifier}` : `🚪 Door ${unitIdentifier}`;
+            
+            const photoLabels = {
+                'before': '📸 Before Picture',
+                'bucking': '📸 Bucking Picture',
+                'screws_hanging': '📸 Screws Hanging Out of Holes',
+                'tape_over_screws': '📸 Tape Over Screws (Optional)',
+                'final_window': '📸 Final Window/Door Picture',
+                'window_label': '📸 Window/Door Label Picture',
+                'fasteners_set': '📸 All Fasteners Set in Place'
+            };
+            
+            photosDiv.innerHTML = `
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <h5 class="font-medium text-gray-900 mb-3">${unitLabel}</h5>
+                    <div class="space-y-2">
+                        ${requiredInspectionPhotos.map(photoType => {
+                            const photoKey = `${unitType}_${unitIdentifier}_${photoType}`;
+                            const isCaptured = capturedPhotos[photoKey];
+                            const isOptional = photoType === 'tape_over_screws';
+                            
+                            return `
+                                <div class="flex items-center justify-between p-3 border rounded-lg ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-white border-gray-300'}">
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" ${isCaptured ? 'checked' : ''} onchange="togglePhotoOverride('${photoKey}')" class="mr-2">
+                                        <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'} text-sm">
+                                            ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
+                                        </span>
+                                        <span class="text-sm font-medium">${photoLabels[photoType]}</span>
+                                        ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
+                                    </div>
+                                    <button onclick="captureUnitPhoto('${unitType}', '${unitIdentifier}', '${photoType}')" class="px-3 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-sm rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
+                                        ${isCaptured ? 'Retake' : 'Capture'}
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
         }
 
         function getRequiredPhotosCount(phase) {
