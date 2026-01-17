@@ -1039,22 +1039,28 @@
 
         async function loadInstallerAvailability() {
             try {
-                const installerId = installerData?.uid || 'demo-user-123';
-                
-                if (db) {
-                    // Load from Firebase
-                    const doc = await db.collection('installerAvailability').doc(installerId).get();
-                    if (doc.exists) {
-                        installerAvailability[installerId] = doc.data().blockedDates || [];
-                        console.log('Availability loaded from Firebase:', installerAvailability[installerId]);
-                    }
-                } else {
-                    // Demo mode - use empty array
+                // Don't try to load from Firebase in demo mode
+                if (!db) {
+                    const installerId = installerData?.uid || 'demo-user-123';
                     installerAvailability[installerId] = [];
                     console.log('Demo mode - no availability data');
+                    return;
+                }
+                
+                const installerId = installerData?.uid || 'demo-user-123';
+                
+                // Load from Firebase
+                const doc = await db.collection('installerAvailability').doc(installerId).get();
+                if (doc.exists) {
+                    installerAvailability[installerId] = doc.data().blockedDates || [];
+                    console.log('Availability loaded from Firebase:', installerAvailability[installerId]);
+                } else {
+                    installerAvailability[installerId] = [];
+                    console.log('No availability data found, using empty array');
                 }
             } catch (error) {
                 console.error('Failed to load availability:', error);
+                const installerId = installerData?.uid || 'demo-user-123';
                 installerAvailability[installerId] = [];
             }
         }
