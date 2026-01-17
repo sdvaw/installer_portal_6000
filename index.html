@@ -1021,6 +1021,8 @@
             const job = jobs.find(j => j.id === jobId);
             if (!job) return;
             
+            console.log('showJobDetails called for job:', jobId, 'current status:', job.status);
+            
             const modal = document.getElementById('jobModal');
             const modalContent = document.getElementById('modalContent');
             
