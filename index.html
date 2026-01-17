@@ -149,6 +149,47 @@
         </div>
     </div>
 
+    <!-- Job Completion Modal -->
+    <div id="completionModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Complete Job</h3>
+                    <button onclick="closeCompletionModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
+                        ×
+                    </button>
+                </div>
+                <form onsubmit="submitJobCompletion(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Completion Status</label>
+                        <select id="completionStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required>
+                            <option value="">Select completion status...</option>
+                            <option value="completed-ready-inspection-balance-collected">Completed - Ready For Inspection (Balance Collected)</option>
+                            <option value="completed-ready-inspection-no-balance">Completed - Ready For Inspection (No Balance Collected)</option>
+                            <option value="not-complete-multiday">Not Complete MultiDay</option>
+                            <option value="not-collected-issues">Not Collected - Issues With Install</option>
+                        </select>
+                    </div>
+                    <div id="balanceNoteSection" class="hidden mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Balance Note (Required)</label>
+                        <textarea id="balanceNote" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></textarea>
+                    </div>
+                    <div id="issuesSection" class="hidden mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Issue Details</label>
+                        <textarea id="issueDetails" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Describe the installation issues..."></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Work Notes (Optional)</label>
+                        <textarea id="workNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Any additional notes about the work completed..."></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                        Submit Completion
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Photo Manager Modal -->
     <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -666,6 +707,109 @@
             }
         }
 
+        // Job Completion Functions
+        let currentCompletionJobId = null;
+
+        function completeJobWithStatus(jobId) {
+            currentCompletionJobId = jobId;
+            const modal = document.getElementById('completionModal');
+            modal.classList.remove('hidden');
+        }
+
+        function submitJobCompletion(event) {
+            event.preventDefault();
+            
+            const completionStatus = document.getElementById('completionStatus').value;
+            const balanceNote = document.getElementById('balanceNote').value;
+            const issueDetails = document.getElementById('issueDetails').value;
+            const workNotes = document.getElementById('workNotes').value;
+            
+            if (!completionStatus) {
+                alert('Please select a completion status.');
+                return;
+            }
+            
+            // Validate required fields
+            if (completionStatus === 'completed-ready-inspection-no-balance' && !balanceNote) {
+                alert('Balance note is required when no balance was collected.');
+                return;
+            }
+            
+            if (completionStatus === 'not-collected-issues' && !issueDetails) {
+                alert('Issue details are required when reporting installation problems.');
+                return;
+            }
+            
+            // Update job status with completion details
+            updateJobStatusWithCompletion(currentCompletionJobId, completionStatus, {
+                balanceNote: balanceNote,
+                issueDetails: issueDetails,
+                workNotes: workNotes,
+                completedAt: new Date().toISOString()
+            });
+            
+            closeCompletionModal();
+            alert('Job completion submitted successfully!');
+        }
+
+        async function updateJobStatusWithCompletion(jobId, completionStatus, details) {
+            try {
+                const jobRef = db.collection('jobs').doc(jobId);
+                
+                await jobRef.update({
+                    status: completionStatus,
+                    statusUpdatedAt: new Date(),
+                    statusUpdatedBy: installerData.uid,
+                    completionDetails: details
+                });
+
+                console.log(`Job ${jobId} completed with status: ${completionStatus}`);
+            } catch (error) {
+                console.error('Failed to update job status:', error);
+                showError('Failed to update job status');
+            }
+        }
+
+        function closeCompletionModal() {
+            document.getElementById('completionModal').classList.add('hidden');
+            // Reset form
+            document.getElementById('completionStatus').value = '';
+            document.getElementById('balanceNote').value = '';
+            document.getElementById('issueDetails').value = '';
+            document.getElementById('workNotes').value = '';
+            document.getElementById('balanceNoteSection').classList.add('hidden');
+            document.getElementById('issuesSection').classList.add('hidden');
+            currentCompletionJobId = null;
+        }
+
+        // Handle completion status change
+        document.addEventListener('DOMContentLoaded', function() {
+            const completionStatus = document.getElementById('completionStatus');
+            if (completionStatus) {
+                completionStatus.addEventListener('change', function() {
+                    const balanceNoteSection = document.getElementById('balanceNoteSection');
+                    const issuesSection = document.getElementById('issuesSection');
+                    const balanceNote = document.getElementById('balanceNote');
+                    const issueDetails = document.getElementById('issueDetails');
+                    
+                    // Reset sections
+                    balanceNoteSection.classList.add('hidden');
+                    issuesSection.classList.add('hidden');
+                    balanceNote.required = false;
+                    issueDetails.required = false;
+                    
+                    // Show relevant sections
+                    if (this.value === 'completed-ready-inspection-no-balance') {
+                        balanceNoteSection.classList.remove('hidden');
+                        balanceNote.required = true;
+                    } else if (this.value === 'not-collected-issues') {
+                        issuesSection.classList.remove('hidden');
+                        issueDetails.required = true;
+                    }
+                });
+            }
+        });
+
         // Photo Manager Functions
         let currentPhotoJobId = null;
         let requiredPhotos = ['front_elevation', 'sign_photo'];
@@ -874,7 +1018,10 @@
 
                     <!-- Close -->
                     <div class="pt-4 border-t">
-                        <button onclick="closeJobModal()" class="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                        <button onclick="completeJobWithStatus('${job.id}')" class="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Complete Job
+                        </button>
+                        <button onclick="closeJobModal()" class="w-full mt-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
                             Close
                         </button>
                     </div>
