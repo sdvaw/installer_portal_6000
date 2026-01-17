@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installer Portal - Production System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="container mx-auto p-4 max-w-7xl">
+        <!-- Loading State -->
+        <div id="loading" class="flex items-center justify-center min-h-screen">
+            <div class="text-center">
+                <div class="text-4xl mb-4">🔧</div>
+                <div class="text-xl font-semibold text-gray-700">Loading Installer Portal...</div>
+                <div class="text-sm text-gray-500 mt-2">Initializing secure connection...</div>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="loginScreen" class="hidden">
+            <div class="min-h-screen flex items-center justify-center">
+                <div class="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
+                    <div class="text-center mb-8">
+                        <div class="text-4xl mb-2">🔧</div>
+                        <h1 class="text-2xl font-bold text-gray-800">Installer Portal</h1>
+                        <p class="text-gray-600 text-sm mt-2">Enterprise Job Management System</p>
+                    </div>
+                    
+                    <form id="loginForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" id="email" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                   placeholder="installer@company.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                            <input type="password" id="password" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                   placeholder="••••••••">
+                        </div>
+                        <button type="submit" 
+                                class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                            Sign In
+                        </button>
+                    </form>
+                    
+                    <div class="mt-6 text-center">
+                        <button onclick="useDemoMode()" 
+                                class="text-sm text-gray-600 hover:text-gray-800 underline">
+                            Use Demo Mode
+                        </button>
+                    </div>
+                    
+                    <div id="loginError" class="hidden mt-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Application -->
+        <div id="mainApp" class="hidden">
+            <!-- Header -->
+            <header class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="text-2xl">🔧</div>
+                        <div>
+                            <h1 class="text-xl font-bold text-gray-800">Installer Portal</h1>
+                            <p class="text-sm text-gray-600">Job Management System</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <div class="text-sm font-medium text-gray-700" id="userName">Installer Name</div>
+                            <div class="text-xs text-gray-500" id="userEmail">email@company.com</div>
+                        </div>
+                        <button onclick="logout()" 
+                                class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold text-blue-600" id="totalJobs">0</div>
+                            <div class="text-sm text-gray-600">Total Jobs</div>
+                        </div>
+                        <div class="text-2xl">📋</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold text-green-600" id="completedJobs">0</div>
+                            <div class="text-sm text-gray-600">Completed</div>
+                        </div>
+                        <div class="text-2xl">✅</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold text-orange-600" id="inProgressJobs">0</div>
+                            <div class="text-sm text-gray-600">In Progress</div>
+                        </div>
+                        <div class="text-2xl">🔨</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-2xl font-bold text-purple-600" id="scheduledJobs">0</div>
+                            <div class="text-sm text-gray-600">Scheduled</div>
+                        </div>
+                        <div class="text-2xl">📅</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Calendar Section -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-lg font-semibold text-gray-800">Weekly Schedule</h2>
+                            <div class="flex space-x-2">
+                                <button onclick="previousWeek()" 
+                                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                                    ←
+                                </button>
+                                <button onclick="nextWeek()" 
+                                        class="px-3 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                                    →
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="weekRange" class="text-center text-sm font-medium text-gray-600 mb-4"></div>
+                        
+                        <!-- Calendar Grid -->
+                        <div class="grid grid-cols-7 gap-1 mb-2">
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Sun</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Mon</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Tue</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Wed</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Thu</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Fri</div>
+                            <div class="text-center text-xs font-medium text-gray-500 py-2">Sat</div>
+                        </div>
+                        
+                        <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+                            <!-- Calendar will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="space-y-4">
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+                        <div class="space-y-3">
+                            <button onclick="uploadPhoto()" 
+                                    class="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2">
+                                <span>📸</span>
+                                <span>Upload Photos</span>
+                            </button>
+                            <button onclick="reportIssue()" 
+                                    class="w-full bg-orange-600 text-white py-3 px-4 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center space-x-2">
+                                <span>⚠️</span>
+                                <span>Report Issue</span>
+                            </button>
+                            <button onclick="updateStatus()" 
+                                    class="w-full bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2">
+                                <span>✅</span>
+                                <span>Update Status</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Jobs -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Jobs</h2>
+                        <div id="recentJobs" class="space-y-3">
+                            <!-- Recent jobs will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job List -->
+            <div class="mt-6 bg-white rounded-lg shadow-sm p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-semibold text-gray-800">All Jobs</h2>
+                    <div class="flex space-x-2">
+                        <input type="text" id="jobSearch" placeholder="Search jobs..." 
+                               class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <button onclick="searchJobs()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Search
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="jobList" class="space-y-4">
+                    <!-- Jobs will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration - Replace with your actual config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDemoKey",
+            authDomain: "installer-portal-demo.firebaseapp.com",
+            projectId: "installer-portal-demo",
+            storageBucket: "installer-portal-demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        // Global State
+        let currentUser = null;
+        let allJobs = [];
+        let filteredJobs = [];
+        let currentWeekOffset = 0;
+
+        // Demo Data
+        const demoJobs = [
+            {
+                id: 'JOB001',
+                title: 'Window Installation - Downtown Office',
+                status: 'Scheduled',
+                customerName: 'ABC Corporation',
+                address: '123 Main St, Suite 100',
+                city: 'Test City',
+                state: 'TX',
+                zip: '75001',
+                scheduledDate: new Date(),
+                estimatedDuration: 4,
+                notes: 'Customer requires parking validation',
+                photos: [],
+                issues: []
+            },
+            {
+                id: 'JOB002',
+                title: 'Door Replacement - North Side',
+                status: 'In Progress',
+                customerName: 'Jane Doe',
+                address: '456 Oak Avenue',
+                city: 'Test City',
+                state: 'TX',
+                zip: '75002',
+                scheduledDate: new Date(Date.now() - 86400000),
+                estimatedDuration: 2,
+                notes: 'Remove old door frame',
+                photos: ['photo1.jpg'],
+                issues: []
+            },
+            {
+                id: 'JOB003',
+                title: 'Kitchen Renovation - East End',
+                status: 'Completed',
+                customerName: 'Bob Johnson',
+                address: '789 Pine Street',
+                city: 'Test City',
+                state: 'TX',
+                zip: '75003',
+                scheduledDate: new Date(Date.now() - 172800000),
+                estimatedDuration: 8,
+                notes: 'Full kitchen remodel',
+                photos: ['photo1.jpg', 'photo2.jpg'],
+                issues: []
+            },
+            {
+                id: 'JOB004',
+                title: 'Bathroom Update - West Side',
+                status: 'Scheduled',
+                customerName: 'Sarah Smith',
+                address: '321 Elm Street',
+                city: 'Test City',
+                state: 'TX',
+                zip: '75004',
+                scheduledDate: new Date(Date.now() + 172800000),
+                estimatedDuration: 6,
+                notes: 'Tile work and fixtures',
+                photos: [],
+                issues: []
+            }
+        ];
+
+        // Initialize Application
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Installer Portal v2.0 - Production System');
+            
+            // Check authentication state
+            auth.onAuthStateChanged(function(user) {
+                if (user) {
+                    currentUser = user;
+                    showMainApp();
+                    loadJobs();
+                } else {
+                    showLoginScreen();
+                }
+            });
+
+            // Setup login form
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                login();
+            });
+        });
+
+        // UI Functions
+        function showLoginScreen() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('mainApp').classList.add('hidden');
+        }
+
+        function showMainApp() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.displayName || 'Installer';
+                document.getElementById('userEmail').textContent = currentUser.email;
+            }
+            
+            renderWeek();
+        }
+
+        // Authentication Functions
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            // Demo mode - accept any credentials
+            if (email && password) {
+                currentUser = {
+                    email: email,
+                    displayName: email.split('@')[0]
+                };
+                showMainApp();
+                loadJobs();
+            } else {
+                errorDiv.textContent = 'Please enter email and password';
+                errorDiv.classList.remove('hidden');
+            }
+        }
+
+        function useDemoMode() {
+            currentUser = {
+                email: 'demo@installer.com',
+                displayName: 'Demo Installer'
+            };
+            showMainApp();
+            loadJobs();
+        }
+
+        function logout() {
+            auth.signOut();
+            currentUser = null;
+            showLoginScreen();
+        }
+
+        // Data Functions
+        function loadJobs() {
+            // In production, this would load from Firestore
+            allJobs = [...demoJobs];
+            filteredJobs = [...allJobs];
+            renderJobs();
+            renderCalendar();
+            updateStats();
+            renderRecentJobs();
+        }
+
+        // Rendering Functions
+        function renderJobs() {
+            const jobList = document.getElementById('jobList');
+            
+            if (filteredJobs.length === 0) {
+                jobList.innerHTML = '<div class="text-center py-8 text-gray-500">No jobs found</div>';
+                return;
+            }
+
+            jobList.innerHTML = filteredJobs.map(job => `
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-lg text-gray-800">${job.title}</h3>
+                            <div class="text-sm text-gray-600 mt-1">
+                                <span class="font-medium">${job.customerName}</span> • ${job.address}, ${job.city}
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-medium rounded-full ${getStatusClass(job.status)}">
+                            ${job.status}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
+                        <div>
+                            <span class="font-medium">Date:</span><br>
+                            ${new Date(job.scheduledDate).toLocaleDateString()}
+                        </div>
+                        <div>
+                            <span class="font-medium">Duration:</span><br>
+                            ${job.estimatedDuration} hours
+                        </div>
+                        <div>
+                            <span class="font-medium">Photos:</span><br>
+                            ${job.photos.length} uploaded
+                        </div>
+                        <div>
+                            <span class="font-medium">Issues:</span><br>
+                            ${job.issues.length} reported
+                        </div>
+                    </div>
+                    
+                    ${job.notes ? `<div class="text-sm text-gray-600 mb-3"><strong>Notes:</strong> ${job.notes}</div>` : ''}
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="updateJobStatus('${job.id}', 'In Progress')" 
+                                class="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors">
+                            Start Work
+                        </button>
+                        <button onclick="uploadJobPhoto('${job.id}')" 
+                                class="px-3 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 transition-colors">
+                            Add Photo
+                        </button>
+                        <button onclick="reportJobIssue('${job.id}')" 
+                                class="px-3 py-1 bg-orange-600 text-white rounded text-sm hover:bg-orange-700 transition-colors">
+                            Report Issue
+                        </button>
+                        <button onclick="viewJobDetails('${job.id}')" 
+                                class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors">
+                            Details
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderCalendar() {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() + (currentWeekOffset * 7));
+            
+            let calendarHTML = '';
+            
+            for (let day = 0; day < 7; day++) {
+                const currentDate = new Date(weekStart);
+                currentDate.setDate(weekStart.getDate() + day);
+                
+                const dayJobs = filteredJobs.filter(job => {
+                    const jobDate = new Date(job.scheduledDate);
+                    return jobDate.toDateString() === currentDate.toDateString();
+                });
+                
+                const isToday = currentDate.toDateString() === today.toDateString();
+                const dayClass = isToday ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200';
+                
+                calendarHTML += `
+                    <div class="min-h-20 ${dayClass} border rounded p-2">
+                        <div class="text-xs font-medium mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'}">
+                            ${currentDate.toLocaleDateString('en-US', {weekday: 'short', month: 'short', day: 'numeric'})}
+                        </div>
+                        ${dayJobs.map(job => `
+                            <div class="bg-blue-600 text-white p-1 rounded mb-1 cursor-pointer hover:bg-blue-700 text-xs"
+                                 onclick="viewJobDetails('${job.id}')">
+                                ${job.title.substring(0, 15)}${job.title.length > 15 ? '...' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+            
+            calendarGrid.innerHTML = calendarHTML;
+        }
+
+        function renderWeek() {
+            const today = new Date();
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() + (currentWeekOffset * 7));
+            
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            document.getElementById('weekRange').textContent = 
+                `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
+        }
+
+        function updateStats() {
+            const stats = {
+                total: allJobs.length,
+                completed: allJobs.filter(j => j.status === 'Completed').length,
+                inProgress: allJobs.filter(j => j.status === 'In Progress').length,
+                scheduled: allJobs.filter(j => j.status === 'Scheduled').length
+            };
+            
+            document.getElementById('totalJobs').textContent = stats.total;
+            document.getElementById('completedJobs').textContent = stats.completed;
+            document.getElementById('inProgressJobs').textContent = stats.inProgress;
+            document.getElementById('scheduledJobs').textContent = stats.scheduled;
+        }
+
+        function renderRecentJobs() {
+            const recentJobsDiv = document.getElementById('recentJobs');
+            const recentJobs = allJobs.slice(0, 3);
+            
+            recentJobsDiv.innerHTML = recentJobs.map(job => `
+                <div class="border-l-4 border-blue-500 pl-3 py-2">
+                    <div class="font-medium text-sm text-gray-800">${job.title}</div>
+                    <div class="text-xs text-gray-600">${job.customerName}</div>
+                    <div class="text-xs text-gray-500">${new Date(job.scheduledDate).toLocaleDateString()}</div>
+                </div>
+            `).join('');
+        }
+
+        // Helper Functions
+        function getStatusClass(status) {
+            switch(status) {
+                case 'Scheduled': return 'bg-blue-100 text-blue-800';
+                case 'In Progress': return 'bg-green-100 text-green-800';
+                case 'Completed': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Navigation Functions
+        function previousWeek() {
+            currentWeekOffset--;
+            renderWeek();
+            renderCalendar();
+        }
+
+        function nextWeek() {
+            currentWeekOffset++;
+            renderWeek();
+            renderCalendar();
+        }
+
+        // Search Functions
+        function searchJobs() {
+            const searchTerm = document.getElementById('jobSearch').value.toLowerCase();
+            
+            if (!searchTerm) {
+                filteredJobs = [...allJobs];
+            } else {
+                filteredJobs = allJobs.filter(job => 
+                    job.title.toLowerCase().includes(searchTerm) ||
+                    job.customerName.toLowerCase().includes(searchTerm) ||
+                    job.address.toLowerCase().includes(searchTerm) ||
+                    job.city.toLowerCase().includes(searchTerm) ||
+                    job.id.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            renderJobs();
+            renderCalendar();
+        }
+
+        // Action Functions
+        function uploadPhoto() {
+            alert('Photo upload feature ready for Firebase Storage integration');
+        }
+
+        function reportIssue() {
+            alert('Issue reporting feature ready for integration');
+        }
+
+        function updateStatus() {
+            alert('Status update feature ready for integration');
+        }
+
+        function updateJobStatus(jobId, newStatus) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (job) {
+                job.status = newStatus;
+                loadJobs(); // Refresh all views
+            }
+        }
+
+        function uploadJobPhoto(jobId) {
+            alert(`Photo upload for job ${jobId} ready for Firebase Storage`);
+        }
+
+        function reportJobIssue(jobId) {
+            alert(`Issue reporting for job ${jobId} ready for integration`);
+        }
+
+        function viewJobDetails(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (job) {
+                alert(`Job Details:\n\nTitle: ${job.title}\nCustomer: ${job.customerName}\nLocation: ${job.address}\nStatus: ${job.status}\nDate: ${new Date(job.scheduledDate).toLocaleString()}\n\nFull details would include photos, notes, and issue reports.`);
+            }
+        }
+    </script>
+</body>
+</html>
