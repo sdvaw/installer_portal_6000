@@ -326,14 +326,18 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
+            console.log('DOM Content Loaded - starting initialization...');
             
             // Check if Firebase is available
             if (!db || !auth) {
                 console.log('Firebase not available, using demo mode');
+                console.log('Calling demoLogin...');
                 await demoLogin();
+                console.log('demoLogin completed');
                 return;
             }
             
+            console.log('Firebase is available, checking auth...');
             // Check authentication
             auth.onAuthStateChanged(async (user) => {
                 if (user) {
@@ -349,6 +353,8 @@
 
         // Demo login (replace with real auth)
         async function demoLogin() {
+            console.log('=== STARTING DEMO LOGIN ===');
+            
             // Use demo mode when Firebase config is not set
             console.log('Using demo mode - Firebase config not set');
             
@@ -367,8 +373,12 @@
                 active: true
             };
             
+            console.log('Installer data created:', installerData);
+            
             // Load installer availability
+            console.log('Loading installer availability...');
             await loadInstallerAvailability();
+            console.log('Availability loaded');
             
             // Create demo jobs (realistic data)
             jobs = [
@@ -404,14 +414,21 @@
                 }
             ];
             
+            console.log('Demo jobs created:', jobs);
+            
             // Update UI
+            console.log('Updating UI elements...');
             document.getElementById('installerName').textContent = installerData.name;
             document.getElementById('installerInfo').textContent = installerData.name;
             document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
             
+            console.log('Rendering week view...');
             renderWeekView();
             updateWeekRange();
+            
+            console.log('=== SHOWING PORTAL ===');
             showPortal();
+            console.log('=== DEMO LOGIN COMPLETED ===');
         }
 
         // Load installer data from Firestore
