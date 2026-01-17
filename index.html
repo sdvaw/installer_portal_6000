@@ -573,15 +573,25 @@
         // Update job status in Firestore
         async function updateJobStatus(jobId, newStatus) {
             try {
-                const jobRef = db.collection('jobs').doc(jobId);
+                // Update local demo data first
+                const job = jobs.find(j => j.id === jobId);
+                if (job) {
+                    job.status = newStatus;
+                    console.log(`Local job ${jobId} status updated to: ${newStatus}`);
+                }
                 
-                await jobRef.update({
-                    status: newStatus,
-                    statusUpdatedAt: new Date(),
-                    statusUpdatedBy: installerData.uid
-                });
+                // Try to update in Firestore if available
+                if (db) {
+                    const jobRef = db.collection('jobs').doc(jobId);
+                    
+                    await jobRef.update({
+                        status: newStatus,
+                        statusUpdatedAt: new Date(),
+                        statusUpdatedBy: installerData.uid
+                    });
 
-                console.log(`Job ${jobId} status updated to: ${newStatus}`);
+                    console.log(`Firestore job ${jobId} status updated to: ${newStatus}`);
+                }
             } catch (error) {
                 console.error('Failed to update job status:', error);
                 showError('Failed to update job status');
