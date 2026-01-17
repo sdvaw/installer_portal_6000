@@ -838,8 +838,15 @@
         function startJobWithPhotos(jobId) {
             currentPhotoJobId = jobId;
             capturedPhotos = {};
-            // Don't close job details - keep it open for easier workflow
-            openPhotoManager(jobId);
+            console.log('Starting job with photos for:', jobId);
+            
+            // Close job details first to prevent stacking issues
+            closeJobModal();
+            
+            // Use setTimeout to ensure job details is fully closed
+            setTimeout(() => {
+                openPhotoManager(jobId);
+            }, 200);
         }
 
         function openCompletionModal(jobId) {
