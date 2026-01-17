@@ -197,11 +197,22 @@
             appId: "YOUR_APP_ID"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const storage = firebase.storage();
+        // Initialize Firebase with error handling
+        let auth, db, storage;
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+            storage = firebase.storage();
+            console.log('Firebase initialized successfully');
+        } catch (error) {
+            console.log('Firebase initialization failed, using demo mode:', error);
+            // Set to null for demo mode
+            auth = null;
+            db = null;
+            storage = null;
+        }
 
         // State
         let currentWeekOffset = 0;
@@ -212,6 +223,13 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
+            
+            // Check if Firebase is available
+            if (!db || !auth) {
+                console.log('Firebase not available, using demo mode');
+                await demoLogin();
+                return;
+            }
             
             // Check authentication
             auth.onAuthStateChanged(async (user) => {
