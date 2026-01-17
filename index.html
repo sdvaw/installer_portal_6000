@@ -52,6 +52,20 @@
                 padding: 14px 12px;
             }
         }
+        /* Modal z-index fixes */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+        }
+        .modal-content {
+            position: relative;
+            z-index: 10000;
+        }
     </style>
 </head>
 <body class="bg-gray-100 mobile-first">
@@ -150,9 +164,9 @@
     </div>
 
     <!-- Job Completion Modal -->
-    <div id="completionModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div id="completionModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900">Complete Job</h3>
                     <button onclick="closeCompletionModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
@@ -191,9 +205,9 @@
     </div>
 
     <!-- Photo Manager Modal -->
-    <div id="photoModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div id="photoModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900">Photo Manager</h3>
                     <button onclick="closePhotoModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
@@ -208,9 +222,9 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div id="jobModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900">Job Details</h3>
                     <button onclick="closeJobModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
@@ -225,9 +239,9 @@
     </div>
 
     <!-- Issue Report Modal -->
-    <div id="issueModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div id="issueModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900">Report Issue</h3>
                     <button onclick="closeIssueModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
