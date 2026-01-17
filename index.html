@@ -844,14 +844,19 @@
 
         function openCompletionModal(jobId) {
             currentCompletionJobId = jobId;
+            console.log('Opening completion modal for job:', jobId);
+            
             // Close job details first to prevent stacking issues
             closeJobModal();
             
             // Use setTimeout to ensure job details is fully closed
             setTimeout(() => {
                 const modal = document.getElementById('completionModal');
+                console.log('Completion modal element:', modal);
+                console.log('Completion modal classes:', modal.className);
                 modal.classList.remove('hidden');
-            }, 100);
+                console.log('Completion modal should now be visible');
+            }, 200);
         }
 
         function openPhotoManager(jobId) {
