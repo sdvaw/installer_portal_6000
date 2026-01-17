@@ -104,35 +104,45 @@
                     </div>
                 </div>
 
-                <!-- Jobs Section -->
+                <!-- Weekly Calendar View -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-900">📅 My Jobs</h2>
+                        <h2 class="text-xl font-bold text-gray-900">📅 Weekly Schedule</h2>
                         <div class="flex items-center space-x-2">
                             <button onclick="previousWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                                ←
+                                ← Previous
                             </button>
                             <span id="weekRange" class="text-sm font-medium text-gray-600"></span>
                             <button onclick="nextWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                                →
+                                Next →
                             </button>
                         </div>
                     </div>
 
-                    <!-- Jobs List -->
-                    <div id="jobsList" class="space-y-4">
-                        <!-- Jobs will be populated here -->
-                    </div>
-
-                    <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden bg-white rounded-lg p-8 text-center">
-                        <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-gray-700 mb-2">No Jobs Scheduled</div>
-                        <div class="text-gray-600">You have no jobs assigned for this period.</div>
+                    <!-- Calendar Grid -->
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="grid grid-cols-7 gap-2 mb-4">
+                            <div class="text-center text-sm font-medium text-gray-600">Sun</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Mon</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Tue</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Wed</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Thu</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Fri</div>
+                            <div class="text-center text-sm font-medium text-gray-600">Sat</div>
+                        </div>
+                        <div id="calendarGrid" class="grid grid-cols-7 gap-2">
+                            <!-- Calendar days will be populated here -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Quick Actions - REMOVED (moved to job cards) -->
+                <!-- Selected Day Jobs -->
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-gray-900 mb-4">📋 Jobs for <span id="selectedDate"></span></h2>
+                    <div id="dayJobs" class="space-y-4">
+                        <!-- Jobs for selected day will be populated here -->
+                    </div>
+                </div>
             </main>
         </div>
     </div>
@@ -314,7 +324,8 @@
             document.getElementById('installerInfo').textContent = installerData.name;
             document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
             
-            renderJobs();
+            renderCalendar();
+            selectDay(new Date()); // Select today by default
             updateWeekRange();
             showPortal();
         }
@@ -374,7 +385,8 @@
                     snapshot.forEach((doc) => {
                         jobs.push({ id: doc.id, ...doc.data() });
                     });
-                    renderJobs();
+                    renderCalendar();
+                    selectDay(new Date()); // Refresh selected day
                     updateWeekRange();
                 });
 
@@ -385,69 +397,131 @@
             }
         }
 
-        // Render jobs
-        function renderJobs() {
-            const jobsList = document.getElementById('jobsList');
-            const noJobs = document.getElementById('noJobs');
-
-            if (jobs.length === 0) {
-                jobsList.classList.add('hidden');
-                noJobs.classList.remove('hidden');
-                return;
-            }
-
-            jobsList.classList.remove('hidden');
-            noJobs.classList.add('hidden');
-
-            jobsList.innerHTML = jobs.map(job => `
-                <div class="job-card bg-white rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md" onclick="showJobDetails('${job.id}')">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex-1">
-                            <h3 class="font-semibold text-gray-900 text-lg">${job.title}</h3>
-                            <div class="text-sm text-gray-600 mt-1">
-                                <div><i class="fas fa-user mr-1"></i>${job.customer}</div>
-                                <div><i class="fas fa-map-marker-alt mr-1"></i>${job.address}</div>
-                                <div><i class="fas fa-clock mr-1"></i>${new Date(job.scheduledDate).toLocaleString()}</div>
+        // Render calendar with jobs
+        function renderCalendar() {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const today = new Date();
+            const weekStart = new Date(today.getTime() + (currentWeekOffset * 7 * 24 * 60 * 60 * 1000));
+            
+            // Clear calendar
+            calendarGrid.innerHTML = '';
+            
+            // Generate 7 days
+            for (let i = 0; i < 7; i++) {
+                const currentDate = new Date(weekStart.getTime() + (i * 24 * 60 * 60 * 1000));
+                const dayJobs = jobs.filter(job => {
+                    const jobDate = new Date(job.scheduledDate);
+                    return jobDate.toDateString() === currentDate.toDateString();
+                });
+                
+                const isToday = currentDate.toDateString() === today.toDateString();
+                const dayElement = document.createElement('div');
+                dayElement.className = `border rounded-lg p-2 min-h-24 cursor-pointer transition-all ${
+                    isToday ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'
+                }`;
+                dayElement.onclick = () => selectDay(currentDate);
+                
+                dayElement.innerHTML = `
+                    <div class="text-center">
+                        <div class="text-sm font-medium ${isToday ? 'text-blue-800' : 'text-gray-900'}">${currentDate.getDate()}</div>
+                        <div class="text-xs text-gray-500">${currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+                        ${dayJobs.length > 0 ? `
+                            <div class="mt-1 space-y-1">
+                                ${dayJobs.slice(0, 2).map(job => `
+                                    <div class="text-xs bg-blue-600 text-white rounded px-1 py-0.5 truncate">
+                                        ${job.id}
+                                    </div>
+                                `).join('')}
+                                ${dayJobs.length > 2 ? `
+                                    <div class="text-xs text-gray-500">+${dayJobs.length - 2} more</div>
+                                ` : ''}
                             </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                calendarGrid.appendChild(dayElement);
+            }
+        }
+
+        // Select a day and show jobs
+        function selectDay(date) {
+            const dayJobs = jobs.filter(job => {
+                const jobDate = new Date(job.scheduledDate);
+                return jobDate.toDateString() === date.toDateString();
+            });
+            
+            document.getElementById('selectedDate').textContent = date.toLocaleDateString();
+            
+            const dayJobsContainer = document.getElementById('dayJobs');
+            if (dayJobs.length === 0) {
+                dayJobsContainer.innerHTML = `
+                    <div class="bg-white rounded-lg p-8 text-center">
+                        <div class="text-4xl mb-4">📋</div>
+                        <div class="text-xl font-semibold text-gray-700 mb-2">No Jobs</div>
+                        <div class="text-gray-600">No jobs scheduled for this day.</div>
+                    </div>
+                `;
+            } else {
+                dayJobsContainer.innerHTML = dayJobs.map(job => `
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-gray-900 text-lg">${job.title}</h3>
+                                <div class="text-sm text-gray-600 mt-1">
+                                    <div><i class="fas fa-user mr-1"></i>${job.customer}</div>
+                                    <div><i class="fas fa-map-marker-alt mr-1"></i>${job.address}</div>
+                                    <div><i class="fas fa-clock mr-1"></i>${new Date(job.scheduledDate).toLocaleString()}</div>
+                                </div>
+                            </div>
+                            <span class="px-3 py-1 text-xs font-medium rounded-full ${
+                                job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                            }">
+                                ${job.status.replace('-', ' ').toUpperCase()}
+                            </span>
                         </div>
-                        <span class="px-3 py-1 text-xs font-medium rounded-full ${
-                            job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
-                            job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                        }">
-                            ${job.status.replace('-', ' ').toUpperCase()}
-                        </span>
-                    </div>
-                    ${job.notes ? `<div class="text-sm text-gray-500 mt-2"><i class="fas fa-sticky-note mr-1"></i>${job.notes}</div>` : ''}
-                    <div class="job-actions">
-                        ${job.status === 'scheduled' ? `
-                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                🚀 Start Work
+                        ${job.notes ? `<div class="text-sm text-gray-500 mt-2"><i class="fas fa-sticky-note mr-1"></i>${job.notes}</div>` : ''}
+                        <div class="job-actions">
+                            ${job.status === 'scheduled' ? `
+                                <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    🚀 Start Work
+                                </button>
+                            ` : ''}
+                            ${job.status === 'in-progress' ? `
+                                <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    ✅ Complete
+                                </button>
+                            ` : ''}
+                            <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                📋 Details
                             </button>
-                        ` : ''}
-                        ${job.status === 'in-progress' ? `
-                            <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                ✅ Complete
+                            <button onclick="event.stopPropagation(); getDirections('${job.address}')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                🗺️ Directions
                             </button>
-                        ` : ''}
-                        <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                            📋 Details
-                        </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            📸 Before
-                        </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            📸 After
-                        </button>
-                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="bg-red-600 text-white rounded-lg hover:bg-red-700">
-                            ⚠️ Defect
-                        </button>
-                        <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="bg-orange-600 text-white rounded-lg hover:bg-orange-700">
-                            🚨 Issue
-                        </button>
+                            <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                📸 Before
+                            </button>
+                            <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                📸 After
+                            </button>
+                            <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                ⚠️ Defect
+                            </button>
+                            <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                                🚨 Issue
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
+        }
+
+        // Get directions to job
+        function getDirections(address) {
+            const encodedAddress = encodeURIComponent(address);
+            window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
         }
 
         // Update job status in Firestore
@@ -683,12 +757,16 @@
 
         function previousWeek() {
             currentWeekOffset--;
-            loadJobs();
+            renderCalendar();
+            selectDay(new Date());
+            updateWeekRange();
         }
 
         function nextWeek() {
             currentWeekOffset++;
-            loadJobs();
+            renderCalendar();
+            selectDay(new Date());
+            updateWeekRange();
         }
 
         function updateWeekRange() {
