@@ -931,7 +931,12 @@
             updateJobStatus(currentPhotoJobId, 'in-progress');
             closePhotoModal();
             
-            alert('All required start photos captured! Job started successfully.');
+            // Update the job details modal to reflect new status
+            setTimeout(() => {
+                showJobDetails(currentPhotoJobId);
+            }, 100);
+            
+            alert('All required start photos captured! Job status updated to In-Progress.');
         }
 
         function completeInspectionPhotos() {
@@ -1029,12 +1034,12 @@
                         <div class="flex space-x-2">
                             ${job.status === 'scheduled' ? `
                                 <button onclick="startJobWithPhotos('${job.id}')" class="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700">
-                                    🚀 Start Work
+                                    🚀 Start Job
                                 </button>
                             ` : ''}
                             ${job.status === 'in-progress' ? `
                                 <button onclick="openCompletionModal('${job.id}')" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
-                                    🔄 Change Status
+                                    ✅ Complete Job
                                 </button>
                             ` : ''}
                         </div>
