@@ -826,75 +826,56 @@
 
         // Photo Manager Functions
         let currentPhotoJobId = null;
-        let requiredPhotos = ['front_elevation', 'sign_photo'];
+        let requiredStartPhotos = ['front_elevation', 'sign_photo'];
+        let requiredInspectionPhotos = ['before', 'bucking', 'screws_hanging', 'tape_over_screws', 'final_window', 'window_label', 'fasteners_set'];
         let capturedPhotos = {};
 
         function getPhotoCount(jobId) {
             // In real app, this would query Firestore
-            // For demo, return 0
-            return 0;
+            // For demo, return total captured photos
+            return Object.keys(capturedPhotos).length;
         }
 
-        function startJobWithPhotos(jobId) {
-            currentPhotoJobId = jobId;
-            capturedPhotos = {};
-            console.log('Starting job with photos for:', jobId);
-            
-            // Close job details first to prevent stacking issues
-            closeJobModal();
-            
-            // Use setTimeout to ensure job details is fully closed
-            setTimeout(() => {
-                openPhotoManager(jobId);
-            }, 200);
-        }
-
-        function openCompletionModal(jobId) {
-            currentCompletionJobId = jobId;
-            console.log('Opening completion modal for job:', jobId);
-            
-            // Close job details first to prevent stacking issues
-            closeJobModal();
-            
-            // Use setTimeout to ensure job details is fully closed
-            setTimeout(() => {
-                const modal = document.getElementById('completionModal');
-                console.log('Completion modal element:', modal);
-                console.log('Completion modal classes:', modal.className);
-                modal.classList.remove('hidden');
-                console.log('Completion modal should now be visible');
-            }, 200);
-        }
-
-        function openPhotoManager(jobId) {
+        function openPhotoManager(jobId, phase = 'inspection') {
             currentPhotoJobId = jobId;
             const modal = document.getElementById('photoModal');
             const modalContent = document.getElementById('photoModalContent');
             
             const job = jobs.find(j => j.id === jobId);
+            const requiredPhotos = phase === 'start' ? requiredStartPhotos : requiredInspectionPhotos;
+            
+            const photoLabels = {
+                'front_elevation': '📸 Front Elevation of House',
+                'sign_photo': '📋 Sign Picture',
+                'before': '📸 Before Picture',
+                'bucking': '📸 Bucking Picture',
+                'screws_hanging': '📸 Screws Hanging Out of Holes',
+                'tape_over_screws': '📸 Tape Over Screws (Optional)',
+                'final_window': '📸 Final Window/Door Picture',
+                'window_label': '📸 Window/Door Label Picture',
+                'fasteners_set': '📸 All Fasteners Set in Place'
+            };
             
             modalContent.innerHTML = `
                 <div class="space-y-4">
                     <div>
                         <h4 class="font-semibold text-gray-900 mb-2">${job.title}</h4>
-                        <p class="text-sm text-gray-600">Required photos to start work:</p>
+                        <p class="text-sm text-gray-600">${phase === 'start' ? 'Required photos to start work:' : 'Inspection photos required:'}</p>
                     </div>
                     
                     <div class="space-y-3">
                         ${requiredPhotos.map(photoType => {
-                            const labels = {
-                                'front_elevation': '📸 Front Elevation of House',
-                                'sign_photo': '📋 Sign Picture'
-                            };
                             const isCaptured = capturedPhotos[photoType];
+                            const isOptional = photoType === 'tape_over_screws';
                             
                             return `
-                                <div class="flex items-center justify-between p-3 border rounded-lg ${isCaptured ? 'bg-green-50 border-green-500' : 'bg-gray-50 border-gray-300'}">
+                                <div class="flex items-center justify-between p-3 border rounded-lg ${isCaptured ? 'bg-green-50 border-green-500' : isOptional ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-300'}">
                                     <div class="flex items-center space-x-3">
-                                        <span class="${isCaptured ? 'text-green-600' : 'text-gray-600'}">
-                                            ${isCaptured ? '✅' : '⭕'}
+                                        <span class="${isCaptured ? 'text-green-600' : isOptional ? 'text-yellow-600' : 'text-gray-600'}">
+                                            ${isCaptured ? '✅' : isOptional ? '⭕' : '⭕'}
                                         </span>
-                                        <span class="text-sm font-medium">${labels[photoType]}</span>
+                                        <span class="text-sm font-medium">${photoLabels[photoType]}</span>
+                                        ${isOptional ? '<span class="text-xs text-yellow-600">(Optional)</span>' : ''}
                                     </div>
                                     <button onclick="capturePhoto('${photoType}')" class="px-3 py-1 ${isCaptured ? 'bg-gray-300 text-gray-600' : 'bg-blue-600 text-white'} text-sm rounded hover:${isCaptured ? 'bg-gray-400' : 'bg-blue-700'}">
                                         ${isCaptured ? 'Retake' : 'Capture'}
@@ -905,12 +886,21 @@
                     </div>
                     
                     <div class="pt-4 border-t">
-                        <button onclick="completePhotoSetup()" class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ${Object.keys(capturedPhotos).length < requiredPhotos.length ? 'opacity-50 cursor-not-allowed' : ''}" 
-                                ${Object.keys(capturedPhotos).length < requiredPhotos.length ? 'disabled' : ''}>
-                            ${Object.keys(capturedPhotos).length < requiredPhotos.length ? 
-                                `Complete Photos (${Object.keys(capturedPhotos).length}/${requiredPhotos.length})` : 
-                                '✅ Start Work'}
-                        </button>
+                        ${phase === 'start' ? `
+                            <button onclick="completeStartPhotos()" class="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ${getRequiredPhotosCount('start') < requiredStartPhotos.length ? 'opacity-50 cursor-not-allowed' : ''}" 
+                                    ${getRequiredPhotosCount('start') < requiredStartPhotos.length ? 'disabled' : ''}>
+                                ${getRequiredPhotosCount('start') < requiredStartPhotos.length ? 
+                                    `Complete Start Photos (${getRequiredPhotosCount('start')}/${requiredStartPhotos.length})` : 
+                                    '✅ Start Work'}
+                            </button>
+                        ` : `
+                            <button onclick="completeInspectionPhotos()" class="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${getRequiredPhotosCount('inspection') < getRequiredInspectionCount() ? 'opacity-50 cursor-not-allowed' : ''}" 
+                                    ${getRequiredPhotosCount('inspection') < getRequiredInspectionCount() ? 'disabled' : ''}>
+                                ${getRequiredPhotosCount('inspection') < getRequiredInspectionCount() ? 
+                                    `Complete Inspection Photos (${getRequiredPhotosCount('inspection')}/${getRequiredInspectionCount()})` : 
+                                    '✅ Complete Inspection'}
+                            </button>
+                        `}
                         <button onclick="closePhotoModal()" class="w-full mt-2 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
                             Cancel
                         </button>
@@ -919,6 +909,39 @@
             `;
             
             modal.classList.remove('hidden');
+        }
+
+        function getRequiredPhotosCount(phase) {
+            const requiredPhotos = phase === 'start' ? requiredStartPhotos : requiredInspectionPhotos;
+            return requiredPhotos.filter(photoType => capturedPhotos[photoType]).length;
+        }
+
+        function getRequiredInspectionCount() {
+            // Count only non-optional inspection photos
+            return requiredInspectionPhotos.filter(photoType => photoType !== 'tape_over_screws').length;
+        }
+
+        function completeStartPhotos() {
+            if (getRequiredPhotosCount('start') < requiredStartPhotos.length) {
+                alert('Please capture all required start photos before starting work.');
+                return;
+            }
+            
+            // Update job status to in-progress
+            updateJobStatus(currentPhotoJobId, 'in-progress');
+            closePhotoModal();
+            
+            alert('All required start photos captured! Job started successfully.');
+        }
+
+        function completeInspectionPhotos() {
+            if (getRequiredPhotosCount('inspection') < getRequiredInspectionCount()) {
+                alert('Please capture all required inspection photos.');
+                return;
+            }
+            
+            closePhotoModal();
+            alert('Inspection photos completed successfully!');
         }
 
         function capturePhoto(photoType) {
@@ -950,30 +973,32 @@
                     await uploadPhotoToFirebase(file, photoType, currentPhotoJobId);
                     
                     // Refresh photo manager
-                    openPhotoManager(currentPhotoJobId);
+                    const phase = requiredStartPhotos.includes(photoType) ? 'start' : 'inspection';
+                    openPhotoManager(currentPhotoJobId, phase);
                 }
             };
             
             input.click();
         }
 
-        function completePhotoSetup() {
-            if (Object.keys(capturedPhotos).length < requiredPhotos.length) {
-                alert('Please capture all required photos before starting work.');
-                return;
-            }
-            
-            // Update job status to in-progress
-            updateJobStatus(currentPhotoJobId, 'in-progress');
-            closePhotoModal();
-            
-            alert('All required photos captured! Job started successfully.');
-        }
-
         function closePhotoModal() {
             document.getElementById('photoModal').classList.add('hidden');
             currentPhotoJobId = null;
             capturedPhotos = {};
+        }
+
+        function startJobWithPhotos(jobId) {
+            currentPhotoJobId = jobId;
+            capturedPhotos = {};
+            console.log('Starting job with photos for:', jobId);
+            
+            // Close job details first to prevent stacking issues
+            closeJobModal();
+            
+            // Use setTimeout to ensure job details is fully closed
+            setTimeout(() => {
+                openPhotoManager(jobId, 'start');
+            }, 200);
         }
         function showPortal() {
             document.getElementById('loading').classList.add('hidden');
