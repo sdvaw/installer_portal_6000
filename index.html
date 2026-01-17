@@ -103,25 +103,7 @@
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <button onclick="capturePhoto('before')" class="camera-btn text-white p-4 rounded-lg">
-                        <div class="text-2xl mb-2">📸</div>
-                        <div class="text-sm font-medium">Before</div>
-                    </button>
-                    <button onclick="capturePhoto('after')" class="camera-btn text-white p-4 rounded-lg">
-                        <div class="text-2xl mb-2">📸</div>
-                        <div class="text-sm font-medium">After</div>
-                    </button>
-                    <button onclick="capturePhoto('defect')" class="camera-btn text-white p-4 rounded-lg">
-                        <div class="text-2xl mb-2">⚠️</div>
-                        <div class="text-sm font-medium">Defect</div>
-                    </button>
-                    <button onclick="reportIssue()" class="bg-orange-500 text-white p-4 rounded-lg hover:bg-orange-600">
-                        <div class="text-2xl mb-2">🚨</div>
-                        <div class="text-sm font-medium">Issue</div>
-                    </button>
-                </div>
+                <!-- Quick Actions - REMOVED (moved to job cards) -->
             </main>
         </div>
     </div>
@@ -264,27 +246,37 @@
                 active: true
             };
             
-            // Create demo jobs
+            // Create demo jobs (realistic data)
             jobs = [
                 {
                     id: 'JOB001',
-                    title: 'Window Installation - Downtown Office',
-                    customer: 'ABC Corporation',
-                    address: '123 Main St, Suite 100',
+                    title: 'Window Installation - Living Room',
+                    customer: 'John Smith',
+                    address: '123 Main Street, Springfield',
                     scheduledDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
                     status: 'scheduled',
                     crew: 'Crew A',
-                    notes: 'Customer requires parking validation'
+                    notes: 'Install new double-hung windows'
                 },
                 {
                     id: 'JOB002',
-                    title: 'Door Replacement - North Side',
-                    customer: 'Jane Doe',
-                    address: '456 Oak Avenue',
+                    title: 'Door Replacement - Front Entry',
+                    customer: 'Mary Johnson',
+                    address: '456 Oak Avenue, Springfield',
                     scheduledDate: new Date(Date.now() + 6 * 60 * 60 * 1000),
                     status: 'in-progress',
                     crew: 'Crew B',
-                    notes: 'Remove old door frame'
+                    notes: 'Remove old door frame, install new entry door'
+                },
+                {
+                    id: 'JOB003',
+                    title: 'Window Repair - Bedroom',
+                    customer: 'Robert Davis',
+                    address: '789 Pine Street, Springfield',
+                    scheduledDate: new Date(Date.now() - 4 * 60 * 60 * 1000),
+                    status: 'completed',
+                    crew: 'Crew A',
+                    notes: 'Fix broken window seal'
                 }
             ];
             
@@ -412,6 +404,18 @@
                         <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700">
                             <i class="fas fa-info-circle mr-1"></i>Details
                         </button>
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-camera mr-1"></i>Before
+                        </button>
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700">
+                            <i class="fas fa-camera mr-1"></i>After
+                        </button>
+                        <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Defect
+                        </button>
+                        <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="px-3 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700">
+                            <i class="fas fa-bug mr-1"></i>Issue
+                        </button>
                     </div>
                 </div>
             `).join('');
@@ -435,9 +439,9 @@
             }
         }
 
-        // Camera capture (mobile-first)
-        function capturePhoto(type) {
-            console.log('Capturing photo:', type);
+        // Camera capture for specific job (mobile-first)
+        function capturePhotoForJob(jobId, type) {
+            console.log('Capturing photo for job:', jobId, 'type:', type);
             
             const input = document.createElement('input');
             input.type = 'file';
@@ -452,8 +456,8 @@
             input.onchange = async function(e) {
                 const file = e.target.files[0];
                 if (file) {
-                    console.log(`Captured ${type} photo:`, file.name);
-                    await uploadPhotoToFirebase(file, type);
+                    console.log(`Captured ${type} photo for job ${jobId}:`, file.name);
+                    await uploadPhotoToFirebase(file, type, jobId);
                 }
             };
             
@@ -461,9 +465,8 @@
         }
 
         // Upload photo to Firebase Storage
-        async function uploadPhotoToFirebase(file, type) {
+        async function uploadPhotoToFirebase(file, type, jobId) {
             try {
-                const jobId = getCurrentJobId();
                 const fileName = `${jobId}/${type}_${Date.now()}_${file.name}`;
                 
                 console.log(`Uploading ${type} photo:`, {
@@ -475,7 +478,7 @@
                 // Demo mode - simulate upload
                 if (firebaseConfig.apiKey === "YOUR_ACTUAL_API_KEY") {
                     // Demo mode
-                    alert(`${type} photo captured successfully!\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(1)} KB\n\n(Demo mode - not actually uploaded)`);
+                    alert(`${type} photo captured successfully for job ${jobId}!\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(1)} KB\n\n(Demo mode - not actually uploaded)`);
                     return;
                 }
                 
@@ -507,7 +510,7 @@
                 await db.collection('photos').add(photoData);
                 
                 console.log('Photo uploaded successfully:', photoData);
-                alert(`${type} photo uploaded successfully!`);
+                alert(`${type} photo uploaded successfully for job ${jobId}!`);
                 
             } catch (error) {
                 console.error('Failed to upload photo:', error);
@@ -628,13 +631,14 @@
             document.getElementById('jobModal').classList.add('hidden');
         }
 
-        function reportIssue() {
+        // Report issue for specific job
+        function reportIssueForJob(jobId) {
             const modal = document.getElementById('issueModal');
             const jobIdSelect = document.getElementById('issueJobId');
             
-            // Populate job options
-            jobIdSelect.innerHTML = '<option value="">Select Job...</option>' + 
-                jobs.map(job => `<option value="${job.id}">${job.title}</option>`).join('');
+            // Set the specific job
+            jobIdSelect.innerHTML = `<option value="${jobId}">${jobs.find(j => j.id === jobId)?.title || jobId}</option>`;
+            jobIdSelect.value = jobId;
             
             modal.classList.remove('hidden');
         }
