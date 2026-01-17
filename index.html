@@ -136,19 +136,13 @@
                             </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Jobs List -->
-                <div class="mb-6">
-                    <div id="jobsList" class="space-y-3">
-                        <!-- Jobs will be populated here -->
-                    </div>
-
-                    <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden bg-white rounded-lg p-8 text-center">
-                        <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-gray-700 mb-2">No Jobs Found</div>
-                        <div class="text-gray-600">Try adjusting your search or week range.</div>
+                    <!-- Search Results (hidden by default) -->
+                    <div id="searchResults" class="hidden mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">Search Results</h3>
+                        <div id="searchResultsList" class="space-y-3">
+                            <!-- Search results will be populated here -->
+                        </div>
                     </div>
                 </div>
             </main>
@@ -333,7 +327,6 @@
             document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
             
             renderWeekView();
-            renderJobsList(jobs);
             updateWeekRange();
             showPortal();
         }
@@ -394,7 +387,6 @@
                         jobs.push({ id: doc.id, ...doc.data() });
                     });
                     renderWeekView();
-                    renderJobsList(jobs);
                     updateWeekRange();
                 });
 
@@ -424,18 +416,23 @@
                 
                 const isToday = currentDate.toDateString() === today.toDateString();
                 const dayElement = document.createElement('div');
-                dayElement.className = `flex-shrink-0 border rounded-lg p-3 min-w-20 cursor-pointer transition-all ${
+                dayElement.className = `flex-shrink-0 border rounded-lg p-3 min-w-32 cursor-pointer transition-all ${
                     isToday ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'
                 }`;
-                dayElement.onclick = () => filterByDay(currentDate);
                 
                 dayElement.innerHTML = `
                     <div class="text-center">
                         <div class="text-xs font-medium ${isToday ? 'text-blue-800' : 'text-gray-600'}">${currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</div>
                         <div class="text-lg font-bold ${isToday ? 'text-blue-800' : 'text-gray-900'}">${currentDate.getDate()}</div>
                         ${dayJobs.length > 0 ? `
-                            <div class="text-xs text-blue-600 font-medium">${dayJobs.length} jobs</div>
-                        ` : ''}
+                            <div class="mt-2 space-y-1">
+                                ${dayJobs.map(job => `
+                                    <div onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700 cursor-pointer truncate">
+                                        ${job.id} - ${job.customer}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<div class="text-xs text-gray-400">No jobs</div>'}
                     </div>
                 `;
                 
@@ -443,21 +440,14 @@
             }
         }
 
-        // Filter jobs by selected day
-        function filterByDay(date) {
-            const dayJobs = jobs.filter(job => {
-                const jobDate = new Date(job.scheduledDate);
-                return jobDate.toDateString() === date.toDateString();
-            });
-            renderJobsList(dayJobs);
-        }
-
         // Search jobs
         function searchJobs() {
             const searchTerm = document.getElementById('jobSearch').value.toLowerCase();
+            const searchResults = document.getElementById('searchResults');
+            const searchResultsList = document.getElementById('searchResultsList');
             
             if (!searchTerm) {
-                renderJobsList(jobs);
+                searchResults.classList.add('hidden');
                 return;
             }
             
@@ -468,41 +458,27 @@
                 job.id.toLowerCase().includes(searchTerm)
             );
             
-            renderJobsList(filteredJobs);
-        }
-
-        // Render jobs list (compact)
-        function renderJobsList(jobsToRender) {
-            const jobsList = document.getElementById('jobsList');
-            const noJobs = document.getElementById('noJobs');
-
-            if (jobsToRender.length === 0) {
-                jobsList.classList.add('hidden');
-                noJobs.classList.remove('hidden');
-                return;
-            }
-
-            jobsList.classList.remove('hidden');
-            noJobs.classList.add('hidden');
-
-            jobsList.innerHTML = jobsToRender.map(job => `
-                <div class="bg-white rounded-lg shadow-sm p-3 border-l-4 ${
-                    job.status === 'scheduled' ? 'border-blue-500' :
-                    job.status === 'in-progress' ? 'border-green-500' :
-                    'border-gray-500'
-                }">
-                    <div class="flex justify-between items-center">
-                        <div class="flex-1">
-                            <div class="flex items-center space-x-2">
+            searchResults.classList.remove('hidden');
+            
+            if (filteredJobs.length === 0) {
+                searchResultsList.innerHTML = `
+                    <div class="bg-white rounded-lg p-4 text-center text-gray-500">
+                        No jobs found for "${searchTerm}"
+                    </div>
+                `;
+            } else {
+                searchResultsList.innerHTML = filteredJobs.map(job => `
+                    <div onclick="showJobDetails('${job.id}')" class="bg-white rounded-lg shadow-sm p-3 border-l-4 cursor-pointer hover:shadow-md ${
+                        job.status === 'scheduled' ? 'border-blue-500' :
+                        job.status === 'in-progress' ? 'border-green-500' :
+                        'border-gray-500'
+                    }">
+                        <div class="flex justify-between items-center">
+                            <div>
                                 <span class="font-semibold text-gray-900">${job.id}</span>
-                                <span class="text-sm text-gray-600">${job.customer}</span>
-                                <span class="text-xs text-gray-500">${job.address}</span>
+                                <span class="text-sm text-gray-600 ml-2">${job.customer}</span>
+                                <div class="text-xs text-gray-500">${job.address}</div>
                             </div>
-                            <div class="text-xs text-gray-500 mt-1">
-                                ${new Date(job.scheduledDate).toLocaleDateString()} at ${new Date(job.scheduledDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-2">
                             <span class="px-2 py-1 text-xs font-medium rounded-full ${
                                 job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
                                 job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
@@ -510,13 +486,10 @@
                             }">
                                 ${job.status.replace('-', ' ').toUpperCase()}
                             </span>
-                            <button onclick="showJobDetails('${job.id}')" class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
-                                Details
-                            </button>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
         }
 
         // Get directions to job
@@ -759,14 +732,12 @@
         function previousWeek() {
             currentWeekOffset--;
             renderWeekView();
-            renderJobsList(jobs);
             updateWeekRange();
         }
 
         function nextWeek() {
             currentWeekOffset++;
             renderWeekView();
-            renderJobsList(jobs);
             updateWeekRange();
         }
 
