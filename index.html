@@ -1705,211 +1705,48 @@ function renderInstallerCards() {
                         </div>
                     </div>
                 </div>
+            `).join('');
+        }
+
+        // Copy installer login link function
+        function copyInstallerLink(installerId, name, email, password) {
+            console.log('📋 Copy link function called');
+            console.log('📋 Installer:', name);
+            console.log('📋 Email:', email);
+            console.log('📋 Password:', password);
             
-            const installer = installers.find(i => i.id === installerId);
-            if (!installer) {
-                alert('Installer not found!');
-                return;
-            }
-
-            if (!installer.email && !installer.phone) {
-                alert('Installer has no email or phone number!');
-                return;
-            }
-
-            console.log('📧 Installer details:', {
-                name: installer.name,
-                email: installer.email,
-                phone: installer.phone
+            const loginLink = window.location.origin + '/installer-login?installer=' + email;
+            
+            // Copy link to clipboard
+            navigator.clipboard.writeText(loginLink).then(() => {
+                // Show success message with all details
+                const message = `✅ Login Link Copied!\n\nINSTALLER: ${name}\nEMAIL: ${email}\nPASSWORD: ${password}\n\nLINK: ${loginLink}\n\nSend this link to the installer with their login details!`;
+                alert(message);
+                console.log('📋 Link copied to clipboard:', loginLink);
+            }).catch(err => {
+                console.error('❌ Failed to copy link:', err);
+                // Fallback: show link in alert
+                alert(`📋 Copy this link manually:\n\n${loginLink}\n\nInstaller: ${name}\nEmail: ${email}\nPassword: ${password}`);
             });
+        }
 
-            // Choose delivery method with better UI
-            let deliveryMethod;
-            if (installer.email && installer.phone) {
-                deliveryMethod = prompt(`Choose delivery method for ${installer.name}:\n\n1 = EMAIL\n2 = SMS\n3 = BOTH\n\nType 1, 2, or 3:`);
-            } else if (installer.email) {
-                deliveryMethod = '1'; // Email only
-                console.log('📧 Email only - auto-selected');
-            } else {
-                deliveryMethod = '2'; // SMS only
-                console.log('📱 SMS only - auto-selected');
-            }
-
-            console.log('📦 Selected delivery method:', deliveryMethod);
-
-            let sendEmail = false;
-            let sendSMS = false;
-
-            switch (deliveryMethod) {
-                case '1':
-                    sendEmail = true;
-                    break;
-                case '2':
-                    sendSMS = true;
-                    break;
-                case '3':
-                    sendEmail = true;
-                    sendSMS = true;
-                    break;
-                default:
-                    alert('Invalid choice. Please try again.');
-                    return;
-            }
-
-            const isTest = false; // ALWAYS SEND REAL EMAILS - NO MORE TEST MODE
-            console.log('📧 Test mode:', isTest ? 'YES' : 'NO (REAL)');
+        // Toggle installer status
+        function toggleInstallerStatus(installerId) {
+            const installer = installers.find(i => i.id === installerId);
+            if (!installer) return;
             
-            try {
-                // Generate unique login link
-                const loginLink = generateInstallerLoginLink(installer);
-                console.log('🔗 Generated login link:', loginLink);
-                
-                // Update invite status in Firebase
-                const inviteData = {
-                    inviteStatus: 'SENT',
-                    lastInviteSent: new Date().toISOString(),
-                    inviteCount: (installer.inviteCount || 0) + 1,
-                    loginLink: loginLink,
-                    inviteHistory: [
-                        ...(installer.inviteHistory || []),
-                        {
-                            sentAt: new Date().toISOString(),
-                            email: installer.email,
-                            phone: installer.phone,
-                            type: isTest ? 'TEST' : 'REAL',
-                            status: 'SENT',
-                            deliveryMethod: deliveryMethod === '3' ? 'BOTH' : (deliveryMethod === '1' ? 'EMAIL' : 'SMS'),
-                            loginLink: loginLink
-                        }
-                    ]
-                };
-
-                console.log('💾 Updating Firebase with invite data...');
-                // Update installer document
-                await db.collection('installers').doc(installerId).update(inviteData);
-                
-                // Update local data
-                Object.assign(installer, inviteData);
-                renderInstallerCards();
-
-                console.log('📤 Starting to send invites...');
-                // Send the invites IMMEDIATELY without delays
-                const results = [];
-                
-                if (sendEmail && installer.email) {
-                    console.log('📧 Preparing email for:', installer.email);
-                    
-                    // OPEN EMAIL CLIENT IMMEDIATELY
-                    const subject = encodeURIComponent('Your Installer Portal Access');
-                    const installerPassword = installer.phone || 'installer123';
-                    const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nLOGIN DETAILS:\n- Email: ${installer.email}\n- Password: ${installerPassword}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIMPORTANT: Your password is your phone number or "installer123"\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
-                    
-                    const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
-                    
-                    console.log('📧 Opening email client with mailto link:', mailtoLink);
-                    
-                    // Open email client immediately
-                    window.open(mailtoLink, '_blank');
-                    
-                    results.push('✅ Email client opened with pre-filled message');
-                }
-                
-                if (sendSMS && installer.phone) {
-                    console.log('📱 Sending SMS to:', installer.phone);
-                    const smsResult = await sendSMSInvite(installer, loginLink, isTest);
-                    results.push(`SMS: ${smsResult.success ? '✅ Sent' : '❌ Failed'}`);
-                }
-                
-                // Show immediate success message
-                const successMessage = `📧 Invite Sent!\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}\n\n${sendEmail ? '✅ Email client opened - just click SEND!' : ''}`;
-                console.log('✅ Success:', successMessage);
-                alert(successMessage);
-
-            } catch (error) {
-                console.error('❌ Error sending invite:', error);
-                alert(`❌ Error sending invite: ${error.message}`);
-            }
-        }
-
-        // Generate unique installer login link
-        function generateInstallerLoginLink(installer) {
-            const baseUrl = window.location.origin;
-            const token = btoa(`${installer.id}:${installer.email}:${Date.now()}`);
-            return `${baseUrl}/installer-login?token=${token}&installer=${installer.id}`;
-        }
-
-        // Send email invite (DIRECT EMAIL - works immediately!)
-        async function sendEmailInvite(installer, loginLink, isTest) {
-            try {
-                if (isTest) {
-                    // Test mode - just log and simulate success
-                    console.log('📧 TEST EMAIL would send to:', installer.email);
-                    console.log('📧 Login link:', loginLink);
-                    return { success: true, status: 'TEST_SENT', message: 'Test email simulated' };
-                }
-
-                // Create email content
-                const subject = encodeURIComponent('Your Installer Portal Access');
-                const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nYour details:\n- Email: ${installer.email}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
-                
-                const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
-                
-                console.log('📧 Opening email client for:', installer.email);
-                console.log('📧 Mailto link:', mailtoLink);
-                
-                // Open email client immediately
-                window.open(mailtoLink, '_blank');
-                
-                return { 
-                    success: true, 
-                    status: 'EMAIL_CLIENT_OPENED', 
-                    message: 'Email client opened with pre-filled message',
-                    email: installer.email,
-                    loginLink: loginLink
-                };
-
-            } catch (error) {
-                console.error('❌ Email error:', error);
-                return { success: false, status: 'FAILED', error: error.message };
-            }
-        }
-
-        // Send SMS invite (real implementation)
-        async function sendSMSInvite(installer, loginLink, isTest) {
-            try {
-                if (isTest) {
-                    // Test mode - just log and simulate success
-                    console.log('📱 TEST SMS would send to:', installer.phone);
-                    console.log('📱 Login link:', loginLink);
-                    return { success: true, status: 'TEST_SENT', message: 'Test SMS simulated' };
-                }
-
-                // Real SMS using Twilio or similar service
-                const smsData = {
-                    to: installer.phone,
-                    body: `Installer Portal Access: ${installer.name}, click here to log in: ${loginLink}\n\nReply STOP to unsubscribe`
-                };
-
-                // For now, simulate SMS sending (replace with actual Twilio integration)
-                console.log('📱 Sending REAL SMS to:', installer.phone);
-                console.log('📱 SMS data:', smsData);
-                
-                // Simulate API call
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        // Simulate 90% success rate for real SMS
-                        const success = Math.random() > 0.1;
-                        resolve({
-                            success: success,
-                            status: success ? 'SENT' : 'FAILED',
-                            message: success ? 'SMS sent successfully' : 'SMS service unavailable'
-                        });
-                    }, 1500);
-                });
-
-            } catch (error) {
-                console.error('❌ SMS error:', error);
-                return { success: false, status: 'FAILED', error: error.message };
+            const newStatus = installer.status === 'active' ? 'inactive' : 'active';
+            
+            if (db) {
+                db.collection('installers').doc(installerId).update({ status: newStatus })
+                    .then(() => {
+                        installer.status = newStatus;
+                        renderInstallerCards();
+                    })
+                    .catch(error => {
+                        console.error('❌ Failed to update status:', error);
+                        alert('Failed to update status');
+                    });
             }
         }
 
