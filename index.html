@@ -432,33 +432,6 @@
         let currentUser = null;
         let userRole = null; // 'installer' or 'admin'
 
-        // Login form handler
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const userType = document.getElementById('userType').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            console.log(`Login attempt: ${userType} - ${email}`);
-            
-            // Demo mode - accept any credentials
-            currentUser = {
-                uid: userType === 'admin' ? 'admin-123' : 'demo-user-123',
-                email: email,
-                displayName: userType === 'admin' ? 'Admin User' : 'John Smith',
-                role: userType
-            };
-            
-            userRole = userType;
-            
-            if (userType === 'admin') {
-                await adminLogin();
-            } else {
-                await installerLogin();
-            }
-        });
-
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
@@ -467,6 +440,36 @@
             // Show login screen first
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('loginScreen').classList.remove('hidden');
+            
+            // Setup login form handler
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const userType = document.getElementById('userType').value;
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    
+                    console.log(`Login attempt: ${userType} - ${email}`);
+                    
+                    // Demo mode - accept any credentials
+                    currentUser = {
+                        uid: userType === 'admin' ? 'admin-123' : 'demo-user-123',
+                        email: email,
+                        displayName: userType === 'admin' ? 'Admin User' : 'John Smith',
+                        role: userType
+                    };
+                    
+                    userRole = userType;
+                    
+                    if (userType === 'admin') {
+                        await adminLogin();
+                    } else {
+                        await installerLogin();
+                    }
+                });
+            }
             
             // Check if Firebase is available (for future use)
             if (!db || !auth) {
