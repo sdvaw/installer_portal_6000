@@ -351,7 +351,9 @@
             // Setup admin login form
             const adminLoginForm = document.getElementById('adminLoginForm');
             if (adminLoginForm) {
+                console.log('Admin login form found, adding event listener...');
                 adminLoginForm.addEventListener('submit', async function(e) {
+                    console.log('Admin form submitted!');
                     e.preventDefault();
                     
                     const email = document.getElementById('adminEmail').value;
@@ -368,8 +370,18 @@
                     };
                     
                     userRole = 'admin';
-                    await adminLogin();
+                    
+                    console.log('Calling adminLogin function...');
+                    try {
+                        await adminLogin();
+                        console.log('adminLogin completed successfully');
+                    } catch (error) {
+                        console.error('adminLogin failed:', error);
+                        alert('Login failed: ' + error.message);
+                    }
                 });
+            } else {
+                console.error('Admin login form not found!');
             }
         }
 
