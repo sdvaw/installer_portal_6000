@@ -231,6 +231,14 @@
         let installerData = null;
         let jobs = [];
         let jobsUnsubscribe = null;
+        
+        // TeamUp Configuration
+        let teamupConfig = {
+            apiKey: null,
+            calendarId: null,
+            syncInterval: 5, // minutes
+            lastSync: null
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
@@ -755,16 +763,16 @@
         // Load demo installers
         function loadDemoInstallers() {
             if (db) {
-                // Load from Firebase
-                console.log('🔥 Loading installers from Firebase...');
-                db.collection('installers').onSnapshot((snapshot) => {
+                // Load from Firebase (not real-time - just once)
+                console.log('📥 Loading installers from Firebase...');
+                db.collection('installers').get().then((snapshot) => {
                     installers = [];
                     snapshot.forEach((doc) => {
                         installers.push({ id: doc.id, ...doc.data() });
                     });
                     console.log('✅ Installers loaded from Firebase:', installers.length);
                     renderInstallersTable();
-                }, (error) => {
+                }).catch((error) => {
                     console.error('❌ Error loading installers:', error);
                     // Fallback to demo data
                     loadDemoInstallersFallback();
@@ -1327,19 +1335,115 @@
             }
         }
 
-        // Load demo jobs
+        // TeamUp Integration Functions
+        function syncWithTeamUp() {
+            if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
+                console.log('⚠️ TeamUp not configured - skipping sync');
+                return;
+            }
+            
+            console.log('🔄 Syncing with TeamUp...');
+            
+            // TeamUp API call to get events
+            fetch(`https://api.teamup.com/${teamupConfig.calendarId}/events`, {
+                headers: {
+                    'Teamup-Token': teamupConfig.apiKey
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('✅ TeamUp data received:', data.events?.length || 0, 'events');
+                processTeamUpEvents(data.events || []);
+                teamupConfig.lastSync = new Date();
+            })
+            .catch(error => {
+                console.error('❌ TeamUp sync failed:', error);
+            });
+        }
+
+        function processTeamUpEvents(events) {
+            // Convert TeamUp events to job format
+            const teamUpJobs = events.map(event => ({
+                id: event.id,
+                title: event.title,
+                customer: extractCustomerFromTitle(event.title),
+                phone: event.location?.phone || '',
+                email: event.location?.notes || '',
+                address: event.location?.address || '',
+                scheduledDate: new Date(event.start_dt),
+                assignedInstaller: event.who?.[0]?.name || null,
+                status: mapTeamUpStatus(event.status),
+                notes: event.notes || '',
+                estimatedDuration: formatDuration(event.end_dt - event.start_dt),
+                priority: mapTeamUpPriority(event.title),
+                source: 'teamup'
+            }));
+            
+            // Save to Firebase
+            if (db) {
+                teamUpJobs.forEach(job => {
+                    db.collection('jobs').doc(job.id).set(job, { merge: true });
+                });
+                console.log('✅ Saved', teamUpJobs.length, 'TeamUp jobs to Firebase');
+            }
+        }
+
+        function extractCustomerFromTitle(title) {
+            // Extract customer name from title (customize based on your format)
+            const match = title.match(/^([^-\n]+)/);
+            return match ? match[1].trim() : title;
+        }
+
+        function mapTeamUpStatus(teamUpStatus) {
+            const statusMap = {
+                'confirmed': 'scheduled',
+                'tentative': 'scheduled',
+                'canceled': 'cancelled',
+                'completed': 'completed'
+            };
+            return statusMap[teamUpStatus] || 'scheduled';
+        }
+
+        function mapTeamUpPriority(title) {
+            if (title.toLowerCase().includes('urgent') || title.toLowerCase().includes('priority')) {
+                return 'high';
+            }
+            return 'normal';
+        }
+
+        function formatDuration(milliseconds) {
+            const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+            const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+            return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        }
+
+        function startTeamUpSync() {
+            if (teamupConfig.apiKey && teamupConfig.calendarId) {
+                // Initial sync
+                syncWithTeamUp();
+                
+                // Set up recurring sync
+                setInterval(() => {
+                    syncWithTeamUp();
+                }, teamupConfig.syncInterval * 60 * 1000);
+                
+                console.log(`🔄 TeamUp sync started - every ${teamupConfig.syncInterval} minutes`);
+            }
+        }
+
+        // Load jobs from Firebase (not TeamUp)
         function loadDemoJobs() {
             if (db) {
-                // Load from Firebase
-                console.log('🔥 Loading jobs from Firebase...');
-                db.collection('jobs').onSnapshot((snapshot) => {
+                // Load from Firebase (not real-time - just once)
+                console.log('📥 Loading jobs from Firebase...');
+                db.collection('jobs').get().then((snapshot) => {
                     adminJobs = [];
                     snapshot.forEach((doc) => {
                         adminJobs.push({ id: doc.id, ...doc.data() });
                     });
                     console.log('✅ Jobs loaded from Firebase:', adminJobs.length);
                     renderJobsTable();
-                }, (error) => {
+                }).catch((error) => {
                     console.error('❌ Error loading jobs:', error);
                     // Fallback to demo data
                     loadDemoJobsFallback();
