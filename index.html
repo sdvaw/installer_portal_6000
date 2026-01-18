@@ -625,6 +625,14 @@
                                 </button>
                             </div>
                             
+                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+                                <h3 class="font-semibold text-gray-900 mb-2">📅 Calendar View</h3>
+                                <p class="text-sm text-gray-600 mb-3">View all installer schedules and calendars</p>
+                                <button onclick="showAdminCalendarView()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                                    View Calendars
+                                </button>
+                            </div>
+                            
                             <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-orange-500">
                                 <h3 class="font-semibold text-gray-900 mb-2">👥 New Installer Provisioning</h3>
                                 <p class="text-sm text-gray-600 mb-3">Create accounts for installers found in TeamUp</p>
@@ -784,7 +792,216 @@
             }
         }
 
-        // Installer Management Functions
+        // Show admin calendar view
+        async function showAdminCalendarView() {
+            console.log('Loading admin calendar view...');
+            
+            const mainElement = document.querySelector('main');
+            if (mainElement) {
+                mainElement.innerHTML = `
+                    <!-- Calendar View Header -->
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">📅 Admin Calendar View</h2>
+                            <p class="text-gray-600">View all installer schedules and TeamUp calendars</p>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button onclick="refreshAdminCalendar()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                🔄 Refresh
+                            </button>
+                            <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                ← Back to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Calendar Controls -->
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">View Mode</label>
+                                <select id="calendarViewMode" onchange="renderAdminCalendar()" 
+                                        class="mt-1 px-3 py-2 border border-gray-300 rounded-md">
+                                    <option value="all">All Calendars</option>
+                                    <option value="subcalendars">Sub-Calendars Only</option>
+                                    <option value="events">Events Only</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Date Range</label>
+                                <select id="dateRange" onchange="renderAdminCalendar()" 
+                                        class="mt-1 px-3 py-2 border border-gray-300 rounded-md">
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                    <option value="quarter">This Quarter</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Calendar Content -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- TeamUp Calendars -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">📅 TeamUp Calendars</h3>
+                            <div id="adminCalendarsList" class="space-y-3">
+                                <div class="text-sm text-gray-500">Loading calendars...</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent Events -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">📋 Recent Events</h3>
+                            <div id="adminEventsList" class="space-y-3">
+                                <div class="text-sm text-gray-500">Loading events...</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load calendar data
+                await loadAdminCalendarData();
+            }
+        }
+
+        // Load admin calendar data
+        async function loadAdminCalendarData() {
+            console.log('📅 Loading admin calendar data...');
+            
+            if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
+                document.getElementById('adminCalendarsList').innerHTML = `
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p class="text-yellow-800">⚠️ TeamUp not configured. Please configure TeamUp settings first.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const viewMode = document.getElementById('calendarViewMode')?.value || 'all';
+            const dateRange = document.getElementById('dateRange')?.value || 'week';
+            
+            try {
+                // Load calendars/subcalendars
+                if (viewMode === 'all' || viewMode === 'subcalendars') {
+                    const calendarsResponse = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/subcalendars`, {
+                        headers: { 'Teamup-Token': teamupConfig.apiKey }
+                    });
+                    
+                    if (calendarsResponse.ok) {
+                        const calendarsData = await calendarsResponse.json();
+                        const calendars = calendarsData.subcalendars || [];
+                        
+                        const calendarsHtml = calendars.map(calendar => `
+                            <div class="border border-gray-200 rounded-lg p-4 ${calendar.active ? 'bg-green-50' : 'bg-gray-50'}">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900">${calendar.name}</h4>
+                                        <p class="text-sm text-gray-600">ID: ${calendar.id}</p>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-1 text-xs rounded ${calendar.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                            ${calendar.active ? 'ACTIVE' : 'INACTIVE'}
+                                        </span>
+                                        <div class="w-4 h-4 rounded" style="background-color: ${calendar.color || '#3B82F6'}"></div>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    ${calendar.notes || 'No description available'}
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        document.getElementById('adminCalendarsList').innerHTML = calendarsHtml;
+                        console.log(`📅 Loaded ${calendars.length} calendars`);
+                    }
+                }
+                
+                // Load events
+                if (viewMode === 'all' || viewMode === 'events') {
+                    const dateRangeParams = getDateRangeParams(dateRange);
+                    const eventsResponse = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/events${dateRangeParams}`, {
+                        headers: { 'Teamup-Token': teamupConfig.apiKey }
+                    });
+                    
+                    if (eventsResponse.ok) {
+                        const eventsData = await eventsResponse.json();
+                        const events = eventsData.events || [];
+                        
+                        const eventsHtml = events.slice(0, 10).map(event => `
+                            <div class="border border-gray-200 rounded-lg p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex-1">
+                                        <h4 class="font-semibold text-gray-900">${event.title}</h4>
+                                        <p class="text-sm text-gray-600">${new Date(event.start_dt).toLocaleDateString()}</p>
+                                    </div>
+                                    <span class="px-2 py-1 text-xs rounded ${getEventStatusColor(event.status)}">
+                                        ${event.status?.toUpperCase() || 'SCHEDULED'}
+                                    </span>
+                                </div>
+                                <div class="text-sm text-gray-600">
+                                    <p><strong>Who:</strong> ${event.who?.map(w => w.name).join(', ') || 'Unassigned'}</p>
+                                    <p><strong>Where:</strong> ${event.location?.name || 'No location'}</p>
+                                    ${event.notes ? `<p><strong>Notes:</strong> ${event.notes}</p>` : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        document.getElementById('adminEventsList').innerHTML = eventsHtml;
+                        console.log(`📅 Loaded ${events.length} events`);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to load calendar data:', error);
+                document.getElementById('adminCalendarsList').innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-red-800">❌ Failed to load calendar data: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Get date range parameters for TeamUp API
+        function getDateRangeParams(range) {
+            const now = new Date();
+            const startDate = new Date(now);
+            const endDate = new Date(now);
+            
+            switch (range) {
+                case 'week':
+                    startDate.setDate(now.getDate() - now.getDay()); // Start of week
+                    endDate.setDate(startDate.getDate() + 6); // End of week
+                    break;
+                case 'month':
+                    startDate.setDate(1); // Start of month
+                    endDate.setMonth(now.getMonth() + 1, 0); // Start of next month
+                    break;
+                case 'quarter':
+                    const currentMonth = now.getMonth();
+                    const quarterStart = Math.floor(currentMonth / 3) * 3;
+                    startDate.setMonth(quarterStart, 1); // Start of quarter
+                    endDate.setMonth(quarterStart + 3, 0); // Start of next quarter
+                    break;
+            }
+            
+            return `?start_dt=${startDate.toISOString().split('T')[0]}&end_dt=${endDate.toISOString().split('T')[0]}`;
+        }
+
+        // Get event status color
+        function getEventStatusColor(status) {
+            switch (status) {
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'cancelled': return 'bg-red-100 text-red-800';
+                case 'in_progress': return 'bg-blue-100 text-blue-800';
+                default: return 'bg-yellow-100 text-yellow-800';
+            }
+        }
+
+        // Refresh admin calendar
+        async function refreshAdminCalendar() {
+            console.log('🔄 Refreshing admin calendar...');
+            await loadAdminCalendarData();
+        }
         let installers = [];
         let editingInstaller = null;
 
