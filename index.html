@@ -556,6 +556,66 @@
             weekView.innerHTML = weekHTML;
         }
 
+        // Show day details when clicking on a day
+        function showDayDetails(dateStr) {
+            const dayJobs = jobs.filter(job => {
+                const jobDate = new Date(job.scheduledDate).toISOString().split('T')[0];
+                return jobDate === dateStr;
+            });
+            
+            const searchResults = document.getElementById('searchResults');
+            const searchResultsList = document.getElementById('searchResultsList');
+            
+            searchResults.classList.remove('hidden');
+            
+            const selectedDate = new Date(dateStr);
+            const dateLabel = selectedDate.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            
+            if (dayJobs.length === 0) {
+                searchResultsList.innerHTML = `
+                    <div class="bg-white rounded-lg p-4 text-center text-gray-500">
+                        <h3 class="font-semibold text-gray-900 mb-2">${dateLabel}</h3>
+                        <p>No jobs scheduled for this date</p>
+                    </div>
+                `;
+            } else {
+                searchResultsList.innerHTML = `
+                    <div class="bg-white rounded-lg p-4">
+                        <h3 class="font-semibold text-gray-900 mb-3">${dateLabel}</h3>
+                        <div class="space-y-2">
+                            ${dayJobs.map(job => `
+                                <div onclick="showJobDetails('${job.id}')" class="bg-gray-50 rounded-lg shadow-sm p-3 border-l-4 cursor-pointer hover:shadow-md ${
+                                    job.status === 'scheduled' ? 'border-blue-500' :
+                                    job.status === 'in-progress' ? 'border-green-500' :
+                                    'border-gray-500'
+                                }">
+                                    <div class="flex justify-between items-center">
+                                        <div>
+                                            <span class="font-semibold text-gray-900">${job.id}</span>
+                                            <span class="text-sm text-gray-600 ml-2">${job.customer}</span>
+                                            <div class="text-xs text-gray-500">${job.address}</div>
+                                        </div>
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full ${
+                                            job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                            job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }">
+                                            ${job.status.replace('-', ' ').toUpperCase()}
+                                        </span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
         // Search jobs
         function searchJobs() {
             const searchTerm = document.getElementById('jobSearch').value.toLowerCase();
