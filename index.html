@@ -52,35 +52,226 @@
                 padding: 14px 12px;
             }
         }
+        
+        /* Glassmorphism Styles */
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 15px;
+            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.3);
+        }
+
+        .glass-button {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px 0 rgba(31, 38, 135, 0.2);
+        }
+
+        .glass-button-primary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .glass-button-primary:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8));
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        .text-glass {
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-glass-muted {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .glass-stat {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .glass-stat:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-2px);
+        }
+
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.4);
+        }
+
+        .glass-modal-overlay {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); }
+        }
+
+        .glow-animation {
+            animation: glow 4s ease-in-out infinite;
+        }
+
+        /* Override default styles */
+        .text-white {
+            color: white;
+        }
+
+        .text-gray-900 {
+            color: rgba(255, 255, 255, 0.95);
+        }
+
+        .text-gray-600 {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .text-gray-500 {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
     </style>
 </head>
-<body class="bg-gray-100 mobile-first">
+<body class="mobile-first">
     <div id="app" class="min-h-screen">
         <!-- Loading State -->
-        <div id="loading" class="flex items-center justify-center min-h-screen bg-blue-600">
-            <div class="text-center text-white">
-                <div class="text-4xl mb-4">🔧</div>
-                <div class="text-xl">Loading Installer Portal...</div>
-                <div class="text-sm opacity-75 mt-2">Connecting to Firebase...</div>
+        <div id="loading" class="flex items-center justify-center min-h-screen glass-modal-overlay">
+            <div class="glass-panel p-8 max-w-md mx-4 float-animation">
+                <div class="text-center text-white">
+                    <div class="text-4xl mb-4 glow-animation">🔧</div>
+                    <div class="text-xl text-glass font-bold">Loading Installer Portal...</div>
+                    <div class="text-sm text-glass-muted mt-2">Connecting to Firebase...</div>
+                </div>
             </div>
         </div>
 
         <!-- Main Portal (Hidden Initially) -->
         <div id="portal" class="hidden">
             <!-- Header -->
-            <header class="bg-white shadow-sm sticky top-0 z-50">
+            <header class="glass-header sticky top-0 z-50">
                 <div class="max-w-4xl mx-auto px-4 py-3">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <div class="text-2xl mr-3">🔧</div>
                             <div>
-                                <h1 class="text-lg font-bold text-gray-900">Installer Portal</h1>
-                                <div class="text-xs text-gray-600">Firebase Operations System</div>
+                                <h1 class="text-lg font-bold text-glass">Installer Portal</h1>
+                                <div class="text-xs text-glass-muted">Firebase Operations System</div>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <span id="installerName" class="text-sm font-medium text-gray-700"></span>
-                            <button onclick="logout()" class="text-red-600 hover:text-red-800">
+                            <span id="installerName" class="text-sm font-medium text-glass"></span>
+                            <button onclick="logout()" class="text-glass hover:text-white transition-colors">
                                 <i class="fas fa-sign-out-alt"></i>
                             </button>
                         </div>
@@ -91,15 +282,15 @@
             <!-- Main Content -->
             <main class="max-w-4xl mx-auto px-4 py-6">
                 <!-- Installer Info -->
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div class="glass-card p-4 mb-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-sm text-blue-600 font-medium">Current Installer</div>
-                            <div id="installerInfo" class="text-lg font-bold text-blue-900"></div>
+                            <div class="text-sm text-glass font-medium">Current Installer</div>
+                            <div id="installerInfo" class="text-lg font-bold text-glass"></div>
                         </div>
                         <div class="text-right">
-                            <div class="text-sm text-blue-600 font-medium">Crew Assignment</div>
-                            <div id="crewInfo" class="text-lg font-bold text-blue-900"></div>
+                            <div class="text-sm text-glass font-medium">Crew Assignment</div>
+                            <div id="crewInfo" class="text-lg font-bold text-glass"></div>
                         </div>
                     </div>
                 </div>
@@ -107,13 +298,13 @@
                 <!-- Jobs Section -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-900">📅 My Jobs</h2>
+                        <h2 class="text-xl font-bold text-glass">📅 My Jobs</h2>
                         <div class="flex items-center space-x-2">
-                            <button onclick="previousWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            <button onclick="previousWeek()" class="glass-button px-3 py-2">
                                 ←
                             </button>
-                            <span id="weekRange" class="text-sm font-medium text-gray-600"></span>
-                            <button onclick="nextWeek()" class="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
+                            <span id="weekRange" class="text-sm font-medium text-glass"></span>
+                            <button onclick="nextWeek()" class="glass-button px-3 py-2">
                                 →
                             </button>
                         </div>
@@ -125,10 +316,10 @@
                     </div>
 
                     <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden bg-white rounded-lg p-8 text-center">
+                    <div id="noJobs" class="hidden glass-card p-8 text-center">
                         <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-gray-700 mb-2">No Jobs Scheduled</div>
-                        <div class="text-gray-600">You have no jobs assigned for this period.</div>
+                        <div class="text-xl font-semibold text-glass mb-2">No Jobs Scheduled</div>
+                        <div class="text-glass-muted">You have no jobs assigned for this period.</div>
                     </div>
                 </div>
 
@@ -138,12 +329,12 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div id="jobModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div id="jobModal" class="fixed inset-0 glass-modal-overlay z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="glass-modal max-w-md w-full p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-900">Job Details</h3>
-                    <button onclick="closeJobModal()" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">
+                    <h3 class="text-lg font-bold text-glass">Job Details</h3>
+                    <button onclick="closeJobModal()" class="text-glass hover:text-white text-2xl font-bold transition-colors">
                         ×
                     </button>
                 </div>
@@ -580,20 +771,20 @@
             console.log('Setting admin dashboard HTML...');
             appElement.innerHTML = `
                 <!-- Admin Header -->
-                <div class="min-h-screen bg-gray-100">
-                    <header class="bg-white shadow-sm sticky top-0 z-50">
+                <div class="min-h-screen">
+                    <header class="glass-header sticky top-0 z-50">
                         <div class="max-w-4xl mx-auto px-4 py-3">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center">
                                     <div class="text-2xl mr-3">👑</div>
                                     <div>
-                                        <h1 class="text-lg font-bold text-gray-900">Admin Portal</h1>
-                                        <div class="text-xs text-gray-600">Installer Management System</div>
+                                        <h1 class="text-lg font-bold text-glass">Admin Portal</h1>
+                                        <div class="text-xs text-glass-muted">Installer Management System</div>
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-3">
-                                    <span class="text-sm font-medium text-gray-700">${installerData.name} (Admin)</span>
-                                    <button onclick="location.reload()" class="text-red-600 hover:text-red-800">
+                                    <span class="text-sm font-medium text-glass">${installerData.name} (Admin)</span>
+                                    <button onclick="location.reload()" class="text-glass hover:text-white transition-colors">
                                         <i class="fas fa-sign-out-alt"></i> Logout
                                     </button>
                                 </div>
@@ -603,40 +794,40 @@
 
                     <main class="max-w-4xl mx-auto px-4 py-6">
                         <div class="mb-6">
-                            <h2 class="text-2xl font-bold text-gray-900">👑 Admin Dashboard</h2>
-                            <p class="text-gray-600">Manage installers, jobs, and system settings</p>
+                            <h2 class="text-2xl font-bold text-glass">👑 Admin Dashboard</h2>
+                            <p class="text-glass-muted">Manage installers, jobs, and system settings</p>
                         </div>
                         
                         <!-- Admin Actions -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
-                                <h3 class="font-semibold text-gray-900 mb-2">👥 Installer Management</h3>
-                                <p class="text-sm text-gray-600 mb-3">Add, edit, and manage installer accounts</p>
-                                <button onclick="showInstallerManagement()" class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                            <div class="glass-card p-4 border-l-4 border-blue-500">
+                                <h3 class="font-semibold text-glass mb-2">👥 Installer Management</h3>
+                                <p class="text-sm text-glass-muted mb-3">Add, edit, and manage installer accounts</p>
+                                <button onclick="showInstallerManagement()" class="glass-button-primary">
                                     Manage Installers
                                 </button>
                             </div>
                             
-                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
-                                <h3 class="font-semibold text-gray-900 mb-2">🔧 System Settings</h3>
-                                <p class="text-sm text-gray-600 mb-3">Configure Teamup sync and system preferences</p>
-                                <button onclick="showSystemSettings()" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                            <div class="glass-card p-4 border-l-4 border-purple-500">
+                                <h3 class="font-semibold text-glass mb-2">🔧 System Settings</h3>
+                                <p class="text-sm text-glass-muted mb-3">Configure Teamup sync and system preferences</p>
+                                <button onclick="showSystemSettings()" class="glass-button-primary">
                                     Settings
                                 </button>
                             </div>
                             
-                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
-                                <h3 class="font-semibold text-gray-900 mb-2">📅 Calendar View</h3>
-                                <p class="text-sm text-gray-600 mb-3">View all installer schedules and calendars</p>
-                                <button onclick="showAdminCalendarView()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                            <div class="glass-card p-4 border-l-4 border-green-500">
+                                <h3 class="font-semibold text-glass mb-2">📅 Calendar View</h3>
+                                <p class="text-sm text-glass-muted mb-3">View all installer schedules and calendars</p>
+                                <button onclick="showAdminCalendarView()" class="glass-button-primary">
                                     View Calendars
                                 </button>
                             </div>
                             
-                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-orange-500">
-                                <h3 class="font-semibold text-gray-900 mb-2">👥 New Installer Provisioning</h3>
-                                <p class="text-sm text-gray-600 mb-3">Create accounts for installers found in TeamUp</p>
-                                <button onclick="showNewInstallerProvisioning()" class="px-3 py-2 bg-orange-600 text-white text-sm rounded hover:bg-orange-700">
+                            <div class="glass-card p-4 border-l-4 border-orange-500">
+                                <h3 class="font-semibold text-glass mb-2">👥 New Installer Provisioning</h3>
+                                <p class="text-sm text-glass-muted mb-3">Create accounts for installers found in TeamUp</p>
+                                <button onclick="showNewInstallerProvisioning()" class="glass-button-primary">
                                     Provision New Installers
                                 </button>
                             </div>
@@ -644,29 +835,29 @@
                         
                         <!-- Quick Stats -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="dashboardStats">
-                            <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-blue-600" id="totalInstallersCount">Loading...</div>
-                                <div class="text-sm text-gray-600">Total Installers</div>
+                            <div class="glass-stat">
+                                <div class="text-2xl font-bold text-glass" id="totalInstallersCount">Loading...</div>
+                                <div class="text-sm text-glass-muted">Total Installers</div>
                             </div>
-                            <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-green-600" id="activeInstallersCount">Loading...</div>
-                                <div class="text-sm text-gray-600">Active Installers</div>
+                            <div class="glass-stat">
+                                <div class="text-2xl font-bold text-glass" id="activeInstallersCount">Loading...</div>
+                                <div class="text-sm text-glass-muted">Active Installers</div>
                             </div>
-                            <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-orange-600" id="pendingProvisionCount">Loading...</div>
-                                <div class="text-sm text-gray-600">Need Provisioning</div>
+                            <div class="glass-stat">
+                                <div class="text-2xl font-bold text-glass" id="pendingProvisionCount">Loading...</div>
+                                <div class="text-sm text-glass-muted">Need Provisioning</div>
                             </div>
-                            <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-purple-600" id="lastSyncStatus">Loading...</div>
-                                <div class="text-sm text-gray-600">Last Sync Status</div>
+                            <div class="glass-stat">
+                                <div class="text-2xl font-bold text-glass" id="lastSyncStatus">Loading...</div>
+                                <div class="text-sm text-glass-muted">Last Sync Status</div>
                             </div>
                         </div>
                         
                         <!-- Recent Activity -->
-                        <div class="bg-white rounded-lg shadow-sm p-4">
-                            <h3 class="font-semibold text-gray-900 mb-3">📊 Recent Activity</h3>
+                        <div class="glass-card p-4">
+                            <h3 class="font-semibold text-glass mb-3">📊 Recent Activity</h3>
                             <div class="space-y-2" id="recentActivity">
-                                <div class="text-sm text-gray-500">Loading recent activity...</div>
+                                <div class="text-sm text-glass-muted">Loading recent activity...</div>
                             </div>
                         </div>
                     </main>
