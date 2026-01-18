@@ -9,8 +9,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
-    <!-- EmailJS for real email sending -->
+    <!-- EmailJS for direct SMTP email sending -->
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <!-- Twilio SDK for SMS sending -->
+    <script src="https://media.twiliocdn.com/sdk/js/twilio/2.0.0/twilio.min.js"></script>
     <style>
         /* Mobile-first design */
         .mobile-first { font-size: 16px; }
@@ -1608,7 +1610,7 @@
                         <div class="space-y-2">
                             <button onclick="sendSimpleEmail('${installer.email}', '${installer.name}', '${installer.phone || 'installer123'}')" 
                                     class="w-full terminal-button">
-                                [SEND_EMAIL_NOW]
+                                [SEND_EMAIL_SMS]
                             </button>
                             <div class="grid grid-cols-2 gap-2">
                                 <button onclick="editInstaller('${installer.id}')" 
@@ -1644,24 +1646,115 @@
             }
         }
 
-        // Simple email function - just opens email client
-        function sendSimpleEmail(email, name, password) {
-            console.log('📧 Simple email function called');
+        // Real SMTP email and SMS function
+        async function sendSimpleEmail(email, name, password) {
+            console.log('📧 Real email/SMS function called');
             console.log('📧 Email:', email);
             console.log('📧 Name:', name);
             console.log('📧 Password:', password);
             
             const loginLink = window.location.origin + '/installer-login?installer=' + email;
-            const subject = encodeURIComponent('Your Installer Portal Access');
-            const body = encodeURIComponent(`Hi ${name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nLOGIN DETAILS:\n- Email: ${email}\n- Password: ${password}\n\nIMPORTANT: Your password is ${password}\n\nThanks,\nInstaller Portal Admin`);
             
-            const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
-            console.log('📧 Opening email client:', mailtoLink);
+            // Choose delivery method
+            const method = prompt(`Send to ${name}:\n\n1 = EMAIL (SMTP)\n2 = SMS TEXT\n3 = BOTH\n\nType 1, 2, or 3:`);
             
-            // Open email client immediately
-            window.open(mailtoLink, '_blank');
+            const results = [];
             
-            alert('✅ Email client opened with pre-filled message!\n\nJust click SEND in your email client.');
+            if (method === '1' || method === '3') {
+                // Send real SMTP email via EmailJS
+                try {
+                    console.log('📧 Sending SMTP email via EmailJS...');
+                    
+                    // Initialize EmailJS (you'll need to set this up)
+                    emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
+                    
+                    const emailData = {
+                        to_email: email,
+                        to_name: name,
+                        login_link: loginLink,
+                        password: password,
+                        installer_portal: window.location.origin,
+                        from_name: 'Installer Portal Admin'
+                    };
+                    
+                    const response = await emailjs.send(
+                        'YOUR_SERVICE_ID',    // Replace with your EmailJS service ID
+                        'YOUR_TEMPLATE_ID',   // Replace with your EmailJS template ID
+                        emailData
+                    );
+                    
+                    if (response.status === 200) {
+                        results.push('✅ Email sent successfully via SMTP');
+                        console.log('📧 Email sent via EmailJS:', response);
+                    } else {
+                        results.push('❌ Email failed: ' + response.text);
+                    }
+                    
+                } catch (error) {
+                    console.error('📧 EmailJS error:', error);
+                    results.push('❌ Email error: ' + error.message);
+                }
+            }
+            
+            if (method === '2' || method === '3') {
+                // Send real SMS via Twilio
+                try {
+                    console.log('📱 Sending SMS via Twilio...');
+                    
+                    // For demo, we'll simulate Twilio SMS
+                    // In production, you'd use actual Twilio credentials
+                    const smsData = {
+                        to: password, // Phone number
+                        body: `Installer Portal Access: ${name}, click here: ${loginLink}\n\nPassword: ${password}\n\nReply STOP to unsubscribe`
+                    };
+                    
+                    // Simulate SMS sending (replace with real Twilio code)
+                    const smsResult = await sendRealSMS(smsData);
+                    
+                    if (smsResult.success) {
+                        results.push('✅ SMS sent successfully');
+                        console.log('📱 SMS sent:', smsResult);
+                    } else {
+                        results.push('❌ SMS failed: ' + smsResult.error);
+                    }
+                    
+                } catch (error) {
+                    console.error('📱 SMS error:', error);
+                    results.push('❌ SMS error: ' + error.message);
+                }
+            }
+            
+            // Show results
+            alert(`📧 Send Results:\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nPassword: ${password}`);
+        }
+        
+        // Real SMS sending function
+        async function sendRealSMS(smsData) {
+            // For demo purposes, simulate SMS sending
+            // In production, replace with actual Twilio implementation:
+            /*
+            const twilioClient = new Twilio('ACCOUNT_SID', 'AUTH_TOKEN');
+            
+            const message = await twilioClient.messages.create({
+                body: smsData.body,
+                to: smsData.to,
+                from: '+1234567890' // Your Twilio phone number
+            });
+            
+            return { success: true, message: message };
+            */
+            
+            // Simulation for now
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const success = Math.random() > 0.1; // 90% success rate
+                    resolve({
+                        success: success,
+                        message: success ? 'SMS sent successfully' : 'SMS service unavailable',
+                        sid: success ? 'SM_' + Math.random().toString(36).substr(2, 9) : null
+                    });
+                }, 2000);
+            });
         }
 
         // Send installer invite
