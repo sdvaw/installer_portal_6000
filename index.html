@@ -635,63 +635,152 @@
                         </div>
                         
                         <!-- Quick Stats -->
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="dashboardStats">
                             <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-blue-600">3</div>
+                                <div class="text-2xl font-bold text-blue-600" id="totalInstallersCount">Loading...</div>
                                 <div class="text-sm text-gray-600">Total Installers</div>
                             </div>
                             <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-green-600">2</div>
-                                <div class="text-sm text-gray-600">Available</div>
+                                <div class="text-2xl font-bold text-green-600" id="activeInstallersCount">Loading...</div>
+                                <div class="text-sm text-gray-600">Active Installers</div>
                             </div>
                             <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-orange-600">1</div>
-                                <div class="text-sm text-gray-600">On Job</div>
+                                <div class="text-2xl font-bold text-orange-600" id="pendingProvisionCount">Loading...</div>
+                                <div class="text-sm text-gray-600">Need Provisioning</div>
                             </div>
                             <div class="bg-white rounded-lg shadow-sm p-4">
-                                <div class="text-2xl font-bold text-purple-600">3</div>
-                                <div class="text-sm text-gray-600">Scheduled Jobs</div>
+                                <div class="text-2xl font-bold text-purple-600" id="lastSyncStatus">Loading...</div>
+                                <div class="text-sm text-gray-600">Last Sync Status</div>
                             </div>
                         </div>
                         
                         <!-- Recent Activity -->
                         <div class="bg-white rounded-lg shadow-sm p-4">
                             <h3 class="font-semibold text-gray-900 mb-3">📊 Recent Activity</h3>
-                            <div class="space-y-2">
-                                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                    <div>
-                                        <span class="font-medium">JOB001</span>
-                                        <span class="text-sm text-gray-600 ml-2">John Smith</span>
-                                    </div>
-                                    <div class="text-sm">
-                                        <span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">SCHEDULED</span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                    <div>
-                                        <span class="font-medium">JOB002</span>
-                                        <span class="text-sm text-gray-600 ml-2">Mary Johnson</span>
-                                    </div>
-                                    <div class="text-sm">
-                                        <span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">SCHEDULED</span>
-                                    </div>
-                                </div>
-                                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
-                                    <div>
-                                        <span class="font-medium">JOB003</span>
-                                        <span class="text-sm text-gray-600 ml-2">Robert Davis</span>
-                                    </div>
-                                    <div class="text-sm">
-                                        <span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">SCHEDULED</span>
-                                    </div>
-                                </div>
+                            <div class="space-y-2" id="recentActivity">
+                                <div class="text-sm text-gray-500">Loading recent activity...</div>
                             </div>
                         </div>
                     </main>
                 </div>
             `;
             
+            // Load real dashboard stats
+            loadDashboardStats();
+            
             console.log('Admin dashboard rendered successfully!');
+        }
+
+        // Load real dashboard statistics
+        async function loadDashboardStats() {
+            console.log('📊 Loading dashboard stats...');
+            
+            try {
+                // Load installers from Firebase
+                if (db) {
+                    const installersSnapshot = await db.collection('installers').get();
+                    const installersList = [];
+                    installersSnapshot.forEach(doc => {
+                        installersList.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    const totalInstallers = installersList.length;
+                    const activeInstallers = installersList.filter(i => i.status === 'active').length;
+                    
+                    // Update installer counts
+                    document.getElementById('totalInstallersCount').textContent = totalInstallers;
+                    document.getElementById('activeInstallersCount').textContent = activeInstallers;
+                    
+                    console.log(`📊 Installers: ${totalInstallers} total, ${activeInstallers} active`);
+                }
+                
+                // Check for new installers needing provisioning
+                if (teamupConfig.apiKey && teamupConfig.calendarId) {
+                    try {
+                        const response = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/subcalendars`, {
+                            headers: { 'Teamup-Token': teamupConfig.apiKey }
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            const teamUpInstallers = data.subcalendars || [];
+                            
+                            // Get existing installer names
+                            const existingInstallers = new Set();
+                            installersList.forEach(installer => {
+                                if (installer.name) existingInstallers.add(installer.name);
+                            });
+                            
+                            // Find installers needing provisioning
+                            const pendingProvision = teamUpInstallers.filter(installer => 
+                                installer.name && !existingInstallers.has(installer.name)
+                            );
+                            
+                            document.getElementById('pendingProvisionCount').textContent = pendingProvision.length;
+                            console.log(`📊 Pending provision: ${pendingProvision.length} installers`);
+                        }
+                    } catch (error) {
+                        console.error('❌ Failed to check provisioning status:', error);
+                        document.getElementById('pendingProvisionCount').textContent = 'Error';
+                    }
+                } else {
+                    document.getElementById('pendingProvisionCount').textContent = 'Not Configured';
+                }
+                
+                // Update sync status
+                const lastSync = localStorage.getItem('teamupLastSync');
+                if (lastSync) {
+                    const syncDate = new Date(lastSync);
+                    const now = new Date();
+                    const hoursAgo = Math.floor((now - syncDate) / (1000 * 60 * 60));
+                    
+                    if (hoursAgo < 1) {
+                        document.getElementById('lastSyncStatus').textContent = 'Just Now';
+                        document.getElementById('lastSyncStatus').className = 'text-2xl font-bold text-green-600';
+                    } else if (hoursAgo < 24) {
+                        document.getElementById('lastSyncStatus').textContent = `${hoursAgo}h ago`;
+                        document.getElementById('lastSyncStatus').className = 'text-2xl font-bold text-blue-600';
+                    } else {
+                        document.getElementById('lastSyncStatus').textContent = `${Math.floor(hoursAgo / 24)}d ago`;
+                        document.getElementById('lastSyncStatus').className = 'text-2xl font-bold text-orange-600';
+                    }
+                } else {
+                    document.getElementById('lastSyncStatus').textContent = 'Never';
+                    document.getElementById('lastSyncStatus').className = 'text-2xl font-bold text-red-600';
+                }
+                
+                // Load recent activity (jobs)
+                if (db) {
+                    const jobsSnapshot = await db.collection('jobs').orderBy('createdAt', 'desc').limit(5).get();
+                    const recentJobs = [];
+                    jobsSnapshot.forEach(doc => {
+                        recentJobs.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    const activityHtml = recentJobs.length > 0 ? recentJobs.map(job => `
+                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                            <div>
+                                <span class="font-medium">${job.title}</span>
+                                <span class="text-sm text-gray-600 ml-2">${job.customer}</span>
+                            </div>
+                            <div class="text-sm">
+                                <span class="px-2 py-1 rounded text-xs ${job.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
+                                    ${job.status.toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+                    `).join('') : '<div class="text-sm text-gray-500">No recent activity</div>';
+                    
+                    document.getElementById('recentActivity').innerHTML = activityHtml;
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to load dashboard stats:', error);
+                document.getElementById('totalInstallersCount').textContent = 'Error';
+                document.getElementById('activeInstallersCount').textContent = 'Error';
+                document.getElementById('pendingProvisionCount').textContent = 'Error';
+                document.getElementById('lastSyncStatus').textContent = 'Error';
+            }
         }
 
         // Installer Management Functions
