@@ -117,20 +117,6 @@
             flex-direction: column;
         }
 
-        /* Simple Flexbox Layout - Guaranteed to work */
-        .installer-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            width: 100%;
-        }
-
-        .installer-grid .terminal-card {
-            flex: 1 1 300px;
-            min-width: 300px;
-            max-width: 400px;
-        }
-
         .terminal-card::before {
             content: "";
             position: absolute;
@@ -1462,7 +1448,7 @@
                     </div>
                     
                     <!-- Installer Cards Grid -->
-                    <div id="installerCards" class="installer-grid">
+                    <div id="installerCards" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <!-- Installer cards will be populated here -->
                     </div>
                 `;
