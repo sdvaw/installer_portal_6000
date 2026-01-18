@@ -438,8 +438,15 @@
             console.log('DOM Content Loaded - starting initialization...');
             
             // Show login screen first
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('loginScreen').classList.remove('hidden');
+            const loadingElement = document.getElementById('loading');
+            const loginScreenElement = document.getElementById('loginScreen');
+            
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+            if (loginScreenElement) {
+                loginScreenElement.classList.remove('hidden');
+            }
             
             // Setup login form handler
             const loginForm = document.getElementById('loginForm');
@@ -486,8 +493,12 @@
                     showPortal();
                 } else {
                     // Show login screen
-                    document.getElementById('loading').classList.add('hidden');
-                    document.getElementById('loginScreen').classList.remove('hidden');
+                    if (loadingElement) {
+                        loadingElement.classList.add('hidden');
+                    }
+                    if (loginScreenElement) {
+                        loginScreenElement.classList.remove('hidden');
+                    }
                 }
             });
         });
