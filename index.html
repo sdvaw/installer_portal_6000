@@ -278,6 +278,7 @@
             </div>
         </div>
     </div>
+    <!-- Issue Report Modal -->
     <div id="issueModal" class="modal-overlay hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="bg-white rounded-lg max-w-md w-full p-6 modal-content">
@@ -294,27 +295,110 @@
                             <option value="">Select Job...</option>
                         </select>
                     </div>
+                    
+                    <!-- Unit Selection -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Unit Type</label>
+                            <select id="unitType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                <option value="">Select...</option>
+                                <option value="window">Window</option>
+                                <option value="door">Door</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Unit Designation</label>
+                            <input type="text" id="unitDesignation" placeholder="e.g., 1, 2, A, B" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        </div>
+                    </div>
+                    
+                    <!-- Window/Door Specifics -->
+                    <div id="windowDetails" class="hidden mb-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Window Type</label>
+                                <select id="windowType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="">Select...</option>
+                                    <option value="double-hung">Double Hung</option>
+                                    <option value="casement">Casement</option>
+                                    <option value="slider">Slider</option>
+                                    <option value="picture">Picture</option>
+                                    <option value="bay">Bay</option>
+                                    <option value="awning">Awning</option>
+                                    <option value="hopper">Hopper</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Size (W x H)</label>
+                                <input type="text" id="windowSize" placeholder="e.g., 36x48" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="doorDetails" class="hidden mb-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Door Type</label>
+                                <select id="doorType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                                    <option value="">Select...</option>
+                                    <option value="entry">Entry Door</option>
+                                    <option value="patio">Patio Door</option>
+                                    <option value="french">French Door</option>
+                                    <option value="sliding">Sliding Door</option>
+                                    <option value="storm">Storm Door</option>
+                                    <option value="garage">Garage Door</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Size (W x H)</label>
+                                <input type="text" id="doorSize" placeholder="e.g., 36x80" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                        <select id="issueCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                            <option value="manufacturer">Manufacturer Defect</option>
-                            <option value="installer">Installer Mistake</option>
-                            <option value="material">Missing Material</option>
-                            <option value="damage">Damage Discovered</option>
-                            <option value="other">Other</option>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Defect Category</label>
+                        <select id="defectCategory" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                            <option value="">Select defect type...</option>
+                            <option value="incorrect-measurement">Incorrect Measurement</option>
+                            <option value="incorrect-window-type">Incorrect Window Type</option>
+                            <option value="wrong-size">Wrong Size Ordered</option>
+                            <option value="manufacturer-defect">Manufacturer Defect</option>
+                            <option value="shipping-damage">Shipping Damage</option>
+                            <option value="installation-error">Installation Error</option>
+                            <option value="missing-hardware">Missing Hardware</option>
+                            <option value="glass-defect">Glass Defect</option>
+                            <option value="frame-damage">Frame Damage</option>
+                            <option value="color-mismatch">Color Mismatch</option>
+                            <option value="hardware-failure">Hardware Failure</option>
+                            <option value="weather-seal">Weather Seal Issue</option>
+                            <option value="other">Other (Specify)</option>
                         </select>
                     </div>
+                    
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                        <textarea id="issueDescription" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" required></textarea>
+                        <textarea id="issueDescription" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-lg" 
+                                  placeholder="Describe the issue in detail..."></textarea>
                     </div>
+                    
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Photos</label>
                         <input type="file" id="issuePhotos" multiple accept="image/*" class="w-full">
                     </div>
-                    <button type="submit" class="w-full bg-orange-600 text-white py-2 px-4 rounded-lg hover:bg-orange-700">
-                        Submit Issue
-                    </button>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <button type="button" onclick="closeIssueModal()" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                            Cancel
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                            Submit Issue
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -1044,6 +1128,24 @@
             return jobs.length > 0 ? jobs[0].id : 'CURRENT_JOB';
         }
 
+        // Issue form handlers
+        document.getElementById('unitType').addEventListener('change', function() {
+            const unitType = this.value;
+            const windowDetails = document.getElementById('windowDetails');
+            const doorDetails = document.getElementById('doorDetails');
+            
+            if (unitType === 'window') {
+                windowDetails.classList.remove('hidden');
+                doorDetails.classList.add('hidden');
+            } else if (unitType === 'door') {
+                doorDetails.classList.remove('hidden');
+                windowDetails.classList.add('hidden');
+            } else {
+                windowDetails.classList.add('hidden');
+                doorDetails.classList.add('hidden');
+            }
+        });
+
         // Report issue to Firestore
         async function submitIssue(event) {
             event.preventDefault();
@@ -1051,7 +1153,14 @@
             try {
                 const issueData = {
                     jobId: document.getElementById('issueJobId').value,
-                    category: document.getElementById('issueCategory').value,
+                    unitType: document.getElementById('unitType').value,
+                    unitDesignation: document.getElementById('unitDesignation').value,
+                    windowType: document.getElementById('windowType').value,
+                    doorType: document.getElementById('doorType').value,
+                    size: document.getElementById('unitType').value === 'window' ? 
+                           document.getElementById('windowSize').value : 
+                           document.getElementById('doorSize').value,
+                    defectCategory: document.getElementById('defectCategory').value,
                     description: document.getElementById('issueDescription').value,
                     reportedAt: new Date(),
                     installerId: installerData.uid,
@@ -1060,35 +1169,50 @@
                     photos: []
                 };
                 
+                console.log('Submitting issue:', issueData);
+                
                 // Handle photo uploads
                 const photoFiles = document.getElementById('issuePhotos').files;
                 for (let i = 0; i < photoFiles.length; i++) {
                     const file = photoFiles[i];
                     const fileName = `issues/${issueData.jobId}_${Date.now()}_${file.name}`;
                     
-                    const storageRef = storage.ref();
-                    const photoRef = storageRef.child(fileName);
-                    
-                    await photoRef.put(file);
-                    const downloadURL = await photoRef.getDownloadURL();
-                    
-                    issueData.photos.push({
-                        fileName: fileName,
-                        downloadURL: downloadURL,
-                        fileSize: file.size
-                    });
+                    if (storage) {
+                        // Real Firebase upload
+                        const storageRef = storage.ref();
+                        const photoRef = storageRef.child(fileName);
+                        
+                        await photoRef.put(file);
+                        const downloadURL = await photoRef.getDownloadURL();
+                        issueData.photos.push({
+                            fileName: fileName,
+                            downloadURL: downloadURL,
+                            fileSize: file.size
+                        });
+                    } else {
+                        // Demo mode
+                        issueData.photos.push({
+                            fileName: file.name,
+                            fileSize: file.size,
+                            demo: true
+                        });
+                    }
                 }
                 
-                // Save issue to Firestore
-                await db.collection('issues').add(issueData);
+                // Save to Firestore
+                if (db) {
+                    await db.collection('issues').add(issueData);
+                    console.log('Issue saved to Firestore');
+                } else {
+                    console.log('Issue saved locally (demo mode):', issueData);
+                }
                 
-                console.log('Issue reported:', issueData);
-                alert('Issue reported successfully');
+                alert('Issue reported successfully!');
                 closeIssueModal();
                 
             } catch (error) {
                 console.error('Failed to submit issue:', error);
-                showError('Failed to submit issue');
+                alert('Failed to report issue. Please try again.');
             }
         }
 
