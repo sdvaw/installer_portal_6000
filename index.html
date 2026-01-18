@@ -53,205 +53,337 @@
             }
         }
         
-        /* Glassmorphism Styles */
+        /* Retro Terminal Database Styles */
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #4facfe 100%);
-            background-attachment: fixed;
+            background: #000000;
+            background-image: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 0, 0.03),
+                    rgba(0, 255, 0, 0.03) 1px,
+                    transparent 1px,
+                    transparent 2px
+                );
             min-height: 100vh;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+            color: #00ff00;
+            text-shadow: 0 0 5px #00ff00;
         }
 
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        .terminal-panel {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            border-radius: 0;
+            box-shadow: 
+                0 0 10px rgba(0, 255, 0, 0.5),
+                inset 0 0 10px rgba(0, 255, 0, 0.1);
+            position: relative;
         }
 
-        .glass-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 15px;
-            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
-            transition: all 0.3s ease;
+        .terminal-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(0, 255, 0, 0.03) 2px,
+                    rgba(0, 255, 0, 0.03) 4px
+                );
+            pointer-events: none;
         }
 
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px 0 rgba(31, 38, 135, 0.3);
+        .terminal-card {
+            background: #0d0d0d;
+            border: 1px solid #00ff00;
+            border-radius: 0;
+            padding: 20px;
+            box-shadow: 
+                0 0 5px rgba(0, 255, 0, 0.3),
+                inset 0 0 5px rgba(0, 255, 0, 0.05);
+            transition: all 0.2s ease;
+            position: relative;
         }
 
-        .glass-button {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 12px;
-            color: white;
-            padding: 12px 24px;
-            font-weight: 600;
-            transition: all 0.3s ease;
+        .terminal-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0, 255, 0, 0.02) 1px,
+                    rgba(0, 255, 0, 0.02) 2px
+                );
+            pointer-events: none;
+        }
+
+        .terminal-card:hover {
+            border-color: #00ff00;
+            box-shadow: 
+                0 0 15px rgba(0, 255, 0, 0.5),
+                inset 0 0 10px rgba(0, 255, 0, 0.1);
+        }
+
+        .terminal-button {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
             cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
         }
 
-        .glass-button:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px 0 rgba(31, 38, 135, 0.2);
+        .terminal-button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.2), transparent);
+            transition: left 0.5s ease;
         }
 
-        .glass-button-primary {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.6), rgba(139, 92, 246, 0.6));
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .terminal-button:hover::before {
+            left: 100%;
         }
 
-        .glass-button-primary:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.8));
+        .terminal-button:hover {
+            background: #00ff00;
+            color: #000000;
+            box-shadow: 0 0 10px #00ff00;
         }
 
-        .glass-input {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            color: white;
-            padding: 12px 16px;
-            transition: all 0.3s ease;
+        .terminal-button:active {
+            transform: scale(0.98);
         }
 
-        .glass-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+        .terminal-input {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s ease;
         }
 
-        .glass-input:focus {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.4);
+        .terminal-input::placeholder {
+            color: rgba(0, 255, 0, 0.5);
+        }
+
+        .terminal-input:focus {
             outline: none;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
         }
 
-        .glass-header {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        .terminal-header {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            border-bottom: none;
+            position: relative;
         }
 
-        .text-glass {
-            color: rgba(255, 255, 255, 0.9);
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        .terminal-header::after {
+            content: "DATABASE SYSTEM v1.0";
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            font-size: 10px;
+            color: rgba(0, 255, 0, 0.7);
+            font-family: 'Courier New', monospace;
         }
 
-        .text-glass-muted {
-            color: rgba(255, 255, 255, 0.7);
+        .text-terminal {
+            color: #00ff00;
+            text-shadow: 0 0 3px #00ff00;
+            font-family: 'Courier New', monospace;
         }
 
-        .glass-stat {
-            background: rgba(255, 255, 255, 0.12);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 15px;
+        .text-terminal-muted {
+            color: rgba(0, 255, 0, 0.7);
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.5);
+        }
+
+        .terminal-stat {
+            background: #0d0d0d;
+            border: 1px solid #00ff00;
             padding: 20px;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            position: relative;
         }
 
-        .glass-stat:hover {
-            background: rgba(255, 255, 255, 0.18);
-            transform: translateY(-2px);
+        .terminal-stat::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 1px,
+                    rgba(0, 255, 0, 0.02) 1px,
+                    rgba(0, 255, 0, 0.02) 2px
+                );
+            pointer-events: none;
         }
 
-        .glass-modal {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 20px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.4);
+        .terminal-stat:hover {
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
         }
 
-        .glass-modal-overlay {
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+        .terminal-modal {
+            background: #0a0a0a;
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
         }
 
-        /* Animations */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+        .terminal-modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
         }
 
-        .float-animation {
-            animation: float 6s ease-in-out infinite;
+        /* Cursor blink effect */
+        @keyframes cursor-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
         }
 
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
-            50% { box-shadow: 0 0 30px rgba(255, 255, 255, 0.5); }
+        .cursor::after {
+            content: "_";
+            animation: cursor-blink 1s infinite;
+            color: #00ff00;
         }
 
-        .glow-animation {
-            animation: glow 4s ease-in-out infinite;
+        /* Scan line effect */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(to bottom, transparent, rgba(0, 255, 0, 0.3), transparent);
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+
+        /* Flicker effect */
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+
+        .flicker {
+            animation: flicker 0.15s infinite;
         }
 
         /* Override default styles */
         .text-white {
-            color: white;
+            color: #00ff00;
+            text-shadow: 0 0 3px #00ff00;
         }
 
         .text-gray-900 {
-            color: rgba(255, 255, 255, 0.95);
+            color: #00ff00;
+            text-shadow: 0 0 3px #00ff00;
         }
 
         .text-gray-600 {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(0, 255, 0, 0.8);
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.5);
         }
 
         .text-gray-500 {
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(0, 255, 0, 0.6);
+            text-shadow: 0 0 2px rgba(0, 255, 0, 0.3);
         }
 
         /* Custom scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 12px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
+            background: #00ff00;
+            border: 1px solid #00ff00;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+            background: #00ff00;
+            box-shadow: 0 0 5px #00ff00;
+        }
+
+        /* Select styling */
+        select {
+            background: #0a0a0a;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+
+        select option {
+            background: #0a0a0a;
+            color: #00ff00;
+        }
+
+        /* Table styling */
+        table {
+            border: 1px solid #00ff00;
+        }
+
+        th, td {
+            border: 1px solid rgba(0, 255, 0, 0.3);
+            padding: 8px 12px;
+        }
+
+        th {
+            background: rgba(0, 255, 0, 0.1);
+            text-transform: uppercase;
+            font-size: 12px;
         }
     </style>
 </head>
 <body class="mobile-first">
     <div id="app" class="min-h-screen">
         <!-- Loading State -->
-        <div id="loading" class="flex items-center justify-center min-h-screen glass-modal-overlay">
-            <div class="glass-panel p-8 max-w-md mx-4 float-animation">
-                <div class="text-center text-white">
-                    <div class="text-4xl mb-4 glow-animation">🔧</div>
-                    <div class="text-xl text-glass font-bold">Loading Installer Portal...</div>
-                    <div class="text-sm text-glass-muted mt-2">Connecting to Firebase...</div>
+        <div id="loading" class="flex items-center justify-center min-h-screen terminal-modal-overlay">
+            <div class="terminal-panel p-8 max-w-md mx-4">
+                <div class="scanline"></div>
+                <div class="text-center">
+                    <div class="text-4xl mb-4 flicker">🔧</div>
+                    <div class="text-xl text-terminal font-bold cursor">LOADING INSTALLER DATABASE...</div>
+                    <div class="text-sm text-terminal-muted mt-2">CONNECTING TO MAINFRAME...</div>
+                    <div class="text-xs text-terminal-muted mt-4">[████████████████████] 100%</div>
                 </div>
             </div>
         </div>
@@ -259,20 +391,21 @@
         <!-- Main Portal (Hidden Initially) -->
         <div id="portal" class="hidden">
             <!-- Header -->
-            <header class="glass-header sticky top-0 z-50">
+            <header class="terminal-header sticky top-0 z-50">
+                <div class="scanline"></div>
                 <div class="max-w-4xl mx-auto px-4 py-3">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <div class="text-2xl mr-3">🔧</div>
                             <div>
-                                <h1 class="text-lg font-bold text-glass">Installer Portal</h1>
-                                <div class="text-xs text-glass-muted">Firebase Operations System</div>
+                                <h1 class="text-lg font-bold text-terminal">INSTALLER_PORTAL.EXE</h1>
+                                <div class="text-xs text-terminal-muted">FIREBASE_OPERATIONS_SYSTEM</div>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <span id="installerName" class="text-sm font-medium text-glass"></span>
-                            <button onclick="logout()" class="text-glass hover:text-white transition-colors">
-                                <i class="fas fa-sign-out-alt"></i>
+                            <span id="installerName" class="text-sm font-medium text-terminal"></span>
+                            <button onclick="logout()" class="text-terminal hover:text-white transition-colors">
+                                [LOGOUT]
                             </button>
                         </div>
                     </div>
@@ -282,15 +415,16 @@
             <!-- Main Content -->
             <main class="max-w-4xl mx-auto px-4 py-6">
                 <!-- Installer Info -->
-                <div class="glass-card p-4 mb-6">
+                <div class="terminal-card p-4 mb-6">
+                    <div class="scanline"></div>
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-sm text-glass font-medium">Current Installer</div>
-                            <div id="installerInfo" class="text-lg font-bold text-glass"></div>
+                            <div class="text-sm text-terminal font-medium">> CURRENT_INSTALLER:</div>
+                            <div id="installerInfo" class="text-lg font-bold text-terminal"></div>
                         </div>
                         <div class="text-right">
-                            <div class="text-sm text-glass font-medium">Crew Assignment</div>
-                            <div id="crewInfo" class="text-lg font-bold text-glass"></div>
+                            <div class="text-sm text-terminal font-medium">> CREW_ASSIGNMENT:</div>
+                            <div id="crewInfo" class="text-lg font-bold text-terminal"></div>
                         </div>
                     </div>
                 </div>
@@ -298,14 +432,14 @@
                 <!-- Jobs Section -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-glass">📅 My Jobs</h2>
+                        <h2 class="text-xl font-bold text-terminal">> JOB_DATABASE_QUERY</h2>
                         <div class="flex items-center space-x-2">
-                            <button onclick="previousWeek()" class="glass-button px-3 py-2">
-                                ←
+                            <button onclick="previousWeek()" class="terminal-button px-3 py-2">
+                                [<<]
                             </button>
-                            <span id="weekRange" class="text-sm font-medium text-glass"></span>
-                            <button onclick="nextWeek()" class="glass-button px-3 py-2">
-                                →
+                            <span id="weekRange" class="text-sm font-medium text-terminal"></span>
+                            <button onclick="nextWeek()" class="terminal-button px-3 py-2">
+                                [>>]
                             </button>
                         </div>
                     </div>
@@ -316,10 +450,11 @@
                     </div>
 
                     <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden glass-card p-8 text-center">
+                    <div id="noJobs" class="hidden terminal-card p-8 text-center">
+                        <div class="scanline"></div>
                         <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-glass mb-2">No Jobs Scheduled</div>
-                        <div class="text-glass-muted">You have no jobs assigned for this period.</div>
+                        <div class="text-xl font-semibold text-terminal mb-2">> NO_JOBS_SCHEDULED</div>
+                        <div class="text-terminal-muted">QUERY_RETURNED_EMPTY_SET</div>
                     </div>
                 </div>
 
@@ -329,13 +464,14 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div id="jobModal" class="fixed inset-0 glass-modal-overlay z-50 hidden">
+    <div id="jobModal" class="fixed inset-0 terminal-modal-overlay z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="glass-modal max-w-md w-full p-6">
+            <div class="terminal-modal max-w-md w-full p-6">
+                <div class="scanline"></div>
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-glass">Job Details</h3>
-                    <button onclick="closeJobModal()" class="text-glass hover:text-white text-2xl font-bold transition-colors">
-                        ×
+                    <h3 class="text-lg font-bold text-terminal">> JOB_DETAILS.EXE</h3>
+                    <button onclick="closeJobModal()" class="text-terminal hover:text-white text-2xl font-bold transition-colors">
+                        [X]
                     </button>
                 </div>
                 <div id="modalContent">
@@ -772,20 +908,21 @@
             appElement.innerHTML = `
                 <!-- Admin Header -->
                 <div class="min-h-screen">
-                    <header class="glass-header sticky top-0 z-50">
+                    <header class="terminal-header sticky top-0 z-50">
+                        <div class="scanline"></div>
                         <div class="max-w-4xl mx-auto px-4 py-3">
                             <div class="flex justify-between items-center">
                                 <div class="flex items-center">
                                     <div class="text-2xl mr-3">👑</div>
                                     <div>
-                                        <h1 class="text-lg font-bold text-glass">Admin Portal</h1>
-                                        <div class="text-xs text-glass-muted">Installer Management System</div>
+                                        <h1 class="text-lg font-bold text-terminal">ADMIN_CONSOLE.EXE</h1>
+                                        <div class="text-xs text-terminal-muted">INSTALLER_MANAGEMENT_SYSTEM</div>
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-3">
-                                    <span class="text-sm font-medium text-glass">${installerData.name} (Admin)</span>
-                                    <button onclick="location.reload()" class="text-glass hover:text-white transition-colors">
-                                        <i class="fas fa-sign-out-alt"></i> Logout
+                                    <span class="text-sm font-medium text-terminal">${installerData.name} (ADMIN)</span>
+                                    <button onclick="location.reload()" class="text-terminal hover:text-white transition-colors">
+                                        [LOGOUT]
                                     </button>
                                 </div>
                             </div>
@@ -794,70 +931,79 @@
 
                     <main class="max-w-4xl mx-auto px-4 py-6">
                         <div class="mb-6">
-                            <h2 class="text-2xl font-bold text-glass">👑 Admin Dashboard</h2>
-                            <p class="text-glass-muted">Manage installers, jobs, and system settings</p>
+                            <h2 class="text-2xl font-bold text-terminal">> ADMIN_DASHBOARD_MAIN</h2>
+                            <p class="text-terminal-muted">SYSTEM_CONTROL_INTERFACE</p>
                         </div>
                         
                         <!-- Admin Actions -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                            <div class="glass-card p-4 border-l-4 border-blue-500">
-                                <h3 class="font-semibold text-glass mb-2">👥 Installer Management</h3>
-                                <p class="text-sm text-glass-muted mb-3">Add, edit, and manage installer accounts</p>
-                                <button onclick="showInstallerManagement()" class="glass-button-primary">
-                                    Manage Installers
+                            <div class="terminal-card p-4 border-l-4 border-green-500">
+                                <div class="scanline"></div>
+                                <h3 class="font-semibold text-terminal mb-2">> INSTALLER_MANAGEMENT</h3>
+                                <p class="text-sm text-terminal-muted mb-3">ADD_EDIT_MANAGE_ACCOUNTS</p>
+                                <button onclick="showInstallerManagement()" class="terminal-button">
+                                    [MANAGE_INSTALLERS]
                                 </button>
                             </div>
                             
-                            <div class="glass-card p-4 border-l-4 border-purple-500">
-                                <h3 class="font-semibold text-glass mb-2">🔧 System Settings</h3>
-                                <p class="text-sm text-glass-muted mb-3">Configure Teamup sync and system preferences</p>
-                                <button onclick="showSystemSettings()" class="glass-button-primary">
-                                    Settings
+                            <div class="terminal-card p-4 border-l-4 border-cyan-500">
+                                <div class="scanline"></div>
+                                <h3 class="font-semibold text-terminal mb-2">> SYSTEM_SETTINGS</h3>
+                                <p class="text-sm text-terminal-muted mb-3">CONFIGURE_TEAMUP_SYNC</p>
+                                <button onclick="showSystemSettings()" class="terminal-button">
+                                    [SETTINGS]
                                 </button>
                             </div>
                             
-                            <div class="glass-card p-4 border-l-4 border-green-500">
-                                <h3 class="font-semibold text-glass mb-2">📅 Calendar View</h3>
-                                <p class="text-sm text-glass-muted mb-3">View all installer schedules and calendars</p>
-                                <button onclick="showAdminCalendarView()" class="glass-button-primary">
-                                    View Calendars
+                            <div class="terminal-card p-4 border-l-4 border-yellow-500">
+                                <div class="scanline"></div>
+                                <h3 class="font-semibold text-terminal mb-2">> CALENDAR_VIEW</h3>
+                                <p class="text-sm text-terminal-muted mb-3">VIEW_ALL_SCHEDULES</p>
+                                <button onclick="showAdminCalendarView()" class="terminal-button">
+                                    [CALENDARS]
                                 </button>
                             </div>
                             
-                            <div class="glass-card p-4 border-l-4 border-orange-500">
-                                <h3 class="font-semibold text-glass mb-2">👥 New Installer Provisioning</h3>
-                                <p class="text-sm text-glass-muted mb-3">Create accounts for installers found in TeamUp</p>
-                                <button onclick="showNewInstallerProvisioning()" class="glass-button-primary">
-                                    Provision New Installers
+                            <div class="terminal-card p-4 border-l-4 border-orange-500">
+                                <div class="scanline"></div>
+                                <h3 class="font-semibold text-terminal mb-2">> PROVISIONING</h3>
+                                <p class="text-sm text-terminal-muted mb-3">CREATE_NEW_ACCOUNTS</p>
+                                <button onclick="showNewInstallerProvisioning()" class="terminal-button">
+                                    [PROVISION]
                                 </button>
                             </div>
                         </div>
                         
                         <!-- Quick Stats -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" id="dashboardStats">
-                            <div class="glass-stat">
-                                <div class="text-2xl font-bold text-glass" id="totalInstallersCount">Loading...</div>
-                                <div class="text-sm text-glass-muted">Total Installers</div>
+                            <div class="terminal-stat">
+                                <div class="scanline"></div>
+                                <div class="text-2xl font-bold text-terminal" id="totalInstallersCount">LOADING...</div>
+                                <div class="text-sm text-terminal-muted">TOTAL_INSTALLERS</div>
                             </div>
-                            <div class="glass-stat">
-                                <div class="text-2xl font-bold text-glass" id="activeInstallersCount">Loading...</div>
-                                <div class="text-sm text-glass-muted">Active Installers</div>
+                            <div class="terminal-stat">
+                                <div class="scanline"></div>
+                                <div class="text-2xl font-bold text-terminal" id="activeInstallersCount">LOADING...</div>
+                                <div class="text-sm text-terminal-muted">ACTIVE_INSTALLERS</div>
                             </div>
-                            <div class="glass-stat">
-                                <div class="text-2xl font-bold text-glass" id="pendingProvisionCount">Loading...</div>
-                                <div class="text-sm text-glass-muted">Need Provisioning</div>
+                            <div class="terminal-stat">
+                                <div class="scanline"></div>
+                                <div class="text-2xl font-bold text-terminal" id="pendingProvisionCount">LOADING...</div>
+                                <div class="text-sm text-terminal-muted">NEED_PROVISIONING</div>
                             </div>
-                            <div class="glass-stat">
-                                <div class="text-2xl font-bold text-glass" id="lastSyncStatus">Loading...</div>
-                                <div class="text-sm text-glass-muted">Last Sync Status</div>
+                            <div class="terminal-stat">
+                                <div class="scanline"></div>
+                                <div class="text-2xl font-bold text-terminal" id="lastSyncStatus">LOADING...</div>
+                                <div class="text-sm text-terminal-muted">LAST_SYNC_STATUS</div>
                             </div>
                         </div>
                         
                         <!-- Recent Activity -->
-                        <div class="glass-card p-4">
-                            <h3 class="font-semibold text-glass mb-3">📊 Recent Activity</h3>
+                        <div class="terminal-card p-4">
+                            <div class="scanline"></div>
+                            <h3 class="font-semibold text-terminal mb-3">> RECENT_ACTIVITY_LOG</h3>
                             <div class="space-y-2" id="recentActivity">
-                                <div class="text-sm text-glass-muted">Loading recent activity...</div>
+                                <div class="text-sm text-terminal-muted">LOADING_ACTIVITY_DATA...</div>
                             </div>
                         </div>
                     </main>
