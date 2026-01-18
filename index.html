@@ -2264,6 +2264,32 @@
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">🔍 Installers Found in TeamUp</h3>
                             <p class="text-sm text-gray-600 mb-4">Installers found in TeamUp who need accounts created</p>
                             
+                            <!-- Debug Controls -->
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                                <h4 class="font-semibold text-gray-800 mb-2">🔧 Debug Controls</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">API Endpoint Test</label>
+                                        <select id="debugEndpoint" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                                            <option value="/calendars">/calendars (Standard)</option>
+                                            <option value="/subcalendars">/subcalendars (Alternative)</option>
+                                            <option value="/events">/events (Event-based)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Debug Mode</label>
+                                        <select id="debugMode" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                                            <option value="normal">Normal</option>
+                                            <option value="verbose">Verbose</option>
+                                            <option value="minimal">Minimal</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onclick="testTeamUpEndpoints()" class="mt-3 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                                    🧪 Test Endpoints
+                                </button>
+                            </div>
+                            
                             <div id="teamUpInstallersList" class="space-y-4">
                                 <!-- TeamUp installers will be populated here -->
                             </div>
@@ -2306,12 +2332,18 @@
                 return;
             }
             
+            // Get debug settings
+            const debugEndpoint = document.getElementById('debugEndpoint')?.value || '/calendars';
+            const debugMode = document.getElementById('debugMode')?.value || 'normal';
+            
             console.log('🔍 Loading installers from TeamUp calendars...');
             console.log('🔑 API Key:', teamupConfig.apiKey ? 'Present' : 'Missing');
             console.log('📅 Calendar ID:', teamupConfig.calendarId);
+            console.log('🔧 Debug Endpoint:', debugEndpoint);
+            console.log('🔧 Debug Mode:', debugMode);
             
-            // Get list of calendars (sub-calendars) from TeamUp
-            const calendarsApiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/calendars`;
+            // Try different API endpoints
+            const calendarsApiUrl = `https://api.teamup.com/${teamupConfig.calendarId}${debugEndpoint}`;
             console.log('🌐 API URL:', calendarsApiUrl);
             
             fetch(calendarsApiUrl, {
@@ -2329,32 +2361,65 @@
                 
                 return response.json();
             })
-            .then(calendarsData => {
-                console.log('📊 Full calendars response:', calendarsData);
-                console.log('📅 Found calendars:', calendarsData.calendars?.length || 0);
+            .then(data => {
+                console.log('📊 Full response:', data);
                 
-                const calendars = calendarsData.calendars || [];
-                const installersMap = new Map();
+                let installers = [];
                 
-                // Process each calendar as a potential installer
-                calendars.forEach((calendar, index) => {
-                    console.log(`📋 Calendar ${index}:`, calendar);
+                if (debugEndpoint === '/events') {
+                    // Extract installers from events
+                    const events = data.events || [];
+                    const installersMap = new Map();
                     
-                    const installerName = calendar.name;
-                    if (installerName && !installersMap.has(installerName)) {
-                        installersMap.set(installerName, {
-                            name: installerName,
-                            calendarId: calendar.id,
-                            active: calendar.active !== false,
-                            color: calendar.color || '#3B82F6',
-                            phone: '',
-                            email: ''
-                        });
-                    }
-                });
+                    events.forEach((event, index) => {
+                        if (debugMode === 'verbose') {
+                            console.log(`📋 Event ${index}:`, event);
+                        }
+                        
+                        if (event.who && event.who.length > 0) {
+                            const installerName = event.who[0].name;
+                            if (installerName && !installersMap.has(installerName)) {
+                                installersMap.set(installerName, {
+                                    name: installerName,
+                                    calendarId: event.calendar_id || 'unknown',
+                                    active: true,
+                                    color: '#3B82F6',
+                                    phone: event.location?.phone || '',
+                                    email: event.location?.notes || ''
+                                });
+                            }
+                        }
+                    });
+                    
+                    installers = Array.from(installersMap.values());
+                    console.log(`👥 Found ${installers.length} installers from events`);
+                    
+                } else {
+                    // Extract from calendars/subcalendars
+                    const calendars = data.calendars || data.subcalendars || [];
+                    
+                    calendars.forEach((calendar, index) => {
+                        if (debugMode === 'verbose') {
+                            console.log(`📋 Calendar ${index}:`, calendar);
+                        }
+                        
+                        const installerName = calendar.name;
+                        if (installerName) {
+                            installers.push({
+                                name: installerName,
+                                calendarId: calendar.id,
+                                active: calendar.active !== false,
+                                color: calendar.color || '#3B82F6',
+                                phone: '',
+                                email: ''
+                            });
+                        }
+                    });
+                    
+                    console.log(`👥 Found ${installers.length} installers from calendars`);
+                }
                 
-                console.log(`👥 Found ${installersMap.size} installer calendars`);
-                console.log('👥 Installers map:', Array.from(installersMap.values()));
+                console.log('👥 Final installers list:', installers);
                 
                 // Get existing installers from Firebase to check who's already provisioned
                 if (db) {
@@ -2367,7 +2432,7 @@
                         console.log(`📋 ${existingInstallers.size} installers already provisioned:`, Array.from(existingInstallers));
                         
                         // Mark which installers need provisioning
-                        const installersList = Array.from(installersMap.values()).map(installer => ({
+                        const installersList = installers.map(installer => ({
                             ...installer,
                             needsProvisioning: !existingInstallers.has(installer.name)
                         }));
@@ -2376,13 +2441,13 @@
                         displayTeamUpInstallers(installersList);
                     });
                 } else {
-                    // Fallback - just show all calendars
-                    console.log('⚠️ No Firebase DB - showing all calendars');
-                    displayTeamUpInstallers(Array.from(installersMap.values()));
+                    // Fallback - just show all installers
+                    console.log('⚠️ No Firebase DB - showing all installers');
+                    displayTeamUpInstallers(installers);
                 }
             })
             .catch(error => {
-                console.error('❌ Failed to load TeamUp calendars:', error);
+                console.error('❌ Failed to load TeamUp data:', error);
                 console.error('❌ Error details:', {
                     message: error.message,
                     stack: error.stack
@@ -2390,10 +2455,43 @@
                 
                 document.getElementById('teamUpInstallersList').innerHTML = `
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                        <p class="text-red-800">❌ Failed to load TeamUp calendars: ${error.message}</p>
+                        <p class="text-red-800">❌ Failed to load TeamUp data: ${error.message}</p>
                         <p class="text-red-600 text-sm mt-2">Check console for detailed error information</p>
+                        <p class="text-red-600 text-sm mt-2">Try different endpoint from debug controls above</p>
                     </div>
                 `;
+            });
+        }
+
+        function testTeamUpEndpoints() {
+            const endpoints = ['/calendars', '/subcalendars', '/events'];
+            const debugMode = document.getElementById('debugMode')?.value || 'normal';
+            
+            console.log('🧪 Testing all TeamUp endpoints...');
+            
+            endpoints.forEach(endpoint => {
+                const apiUrl = `https://api.teamup.com/${teamupConfig.calendarId}${endpoint}`;
+                console.log(`🧪 Testing ${apiUrl}...`);
+                
+                fetch(apiUrl, {
+                    headers: {
+                        'Teamup-Token': teamupConfig.apiKey
+                    }
+                })
+                .then(response => {
+                    console.log(`✅ ${endpoint}: Status ${response.status}`);
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    console.log(`✅ ${endpoint}: Success - ${JSON.stringify(data).substring(0, 100)}...`);
+                })
+                .catch(error => {
+                    console.log(`❌ ${endpoint}: ${error.message}`);
+                });
             });
         }
 
