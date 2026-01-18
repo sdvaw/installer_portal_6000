@@ -1347,18 +1347,18 @@
             
             console.log('🔄 Syncing with TeamUp...');
             
-            // Calculate date range - last 30 days to next 30 days
+            // Calculate date range - current week + next 3 weeks
             const now = new Date();
-            const startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days ago
-            const endDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days ahead
+            const currentWeekStart = getWeekStart(now);
+            const threeWeeksEnd = new Date(currentWeekStart.getTime() + (28 * 24 * 60 * 60 * 1000)); // 4 weeks total
             
             // Format dates for TeamUp API
-            const startDateStr = startDate.toISOString().split('T')[0];
-            const endDateStr = endDate.toISOString().split('T')[0];
+            const startDateStr = currentWeekStart.toISOString().split('T')[0];
+            const endDateStr = threeWeeksEnd.toISOString().split('T')[0];
             
-            console.log(`📅 Syncing events from ${startDateStr} to ${endDateStr}`);
+            console.log(`📅 Syncing events from ${startDateStr} to ${endDateStr} (current week + 3 weeks)`);
             
-            // TeamUp API call with date range
+            // TeamUp API call with optimized date range
             const apiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
             
             return fetch(apiUrl, {
@@ -1383,6 +1383,13 @@
                 console.error('❌ TeamUp sync failed:', error);
                 throw error;
             });
+        }
+
+        function getWeekStart(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
         }
 
         function processTeamUpEvents(events) {
