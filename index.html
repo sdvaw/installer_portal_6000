@@ -198,14 +198,15 @@
     </div>
 
     <script>
-        // Firebase Configuration - REPLACE WITH YOUR ACTUAL CONFIG
+        // Your web app's Firebase configuration
         const firebaseConfig = {
-            apiKey: "YOUR_ACTUAL_API_KEY",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDYFdyiz_T_0Tsqya_CSKS4wRlWOEckMGk",
+            authDomain: "installer-portal-6000.firebaseapp.com",
+            projectId: "installer-portal-6000",
+            storageBucket: "installer-portal-6000.firebasestorage.app",
+            messagingSenderId: "582559700006",
+            appId: "1:582559700006:web:e3b795dcf17501e310c2e7",
+            measurementId: "G-93D62ZGLEJ"
         };
 
         // Initialize Firebase with error handling
@@ -216,9 +217,9 @@
             auth = firebase.auth();
             db = firebase.firestore();
             storage = firebase.storage();
-            console.log('Firebase initialized successfully');
+            console.log('✅ Firebase initialized successfully');
         } catch (error) {
-            console.log('Firebase initialization failed, using demo mode:', error);
+            console.error('❌ Firebase initialization failed:', error);
             // Set to null for demo mode
             auth = null;
             db = null;
