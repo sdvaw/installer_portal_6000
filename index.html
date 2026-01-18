@@ -1646,6 +1646,8 @@
 
         // Send installer invite
         async function sendInstallerInvite(installerId) {
+            console.log('🚀 Starting invite process for installer:', installerId);
+            
             const installer = installers.find(i => i.id === installerId);
             if (!installer) {
                 alert('Installer not found!');
@@ -1657,10 +1659,25 @@
                 return;
             }
 
-            // Choose delivery method
-            const deliveryMethod = installer.email && installer.phone 
-                ? prompt('Choose delivery method:\n\n1 = EMAIL\n2 = SMS\n3 = BOTH')
-                : installer.email ? '1' : '2';
+            console.log('📧 Installer details:', {
+                name: installer.name,
+                email: installer.email,
+                phone: installer.phone
+            });
+
+            // Choose delivery method with better UI
+            let deliveryMethod;
+            if (installer.email && installer.phone) {
+                deliveryMethod = prompt(`Choose delivery method for ${installer.name}:\n\n1 = EMAIL\n2 = SMS\n3 = BOTH\n\nType 1, 2, or 3:`);
+            } else if (installer.email) {
+                deliveryMethod = '1'; // Email only
+                console.log('📧 Email only - auto-selected');
+            } else {
+                deliveryMethod = '2'; // SMS only
+                console.log('📱 SMS only - auto-selected');
+            }
+
+            console.log('📦 Selected delivery method:', deliveryMethod);
 
             let sendEmail = false;
             let sendSMS = false;
@@ -1677,14 +1694,17 @@
                     sendSMS = true;
                     break;
                 default:
+                    alert('Invalid choice. Please try again.');
                     return;
             }
 
             const isTest = false; // ALWAYS SEND REAL EMAILS - NO MORE TEST MODE
+            console.log('📧 Test mode:', isTest ? 'YES' : 'NO (REAL)');
             
             try {
                 // Generate unique login link
                 const loginLink = generateInstallerLoginLink(installer);
+                console.log('🔗 Generated login link:', loginLink);
                 
                 // Update invite status in Firebase
                 const inviteData = {
@@ -1706,6 +1726,7 @@
                     ]
                 };
 
+                console.log('💾 Updating Firebase with invite data...');
                 // Update installer document
                 await db.collection('installers').doc(installerId).update(inviteData);
                 
@@ -1713,10 +1734,13 @@
                 Object.assign(installer, inviteData);
                 renderInstallerCards();
 
+                console.log('📤 Starting to send invites...');
                 // Send the invites IMMEDIATELY without delays
                 const results = [];
                 
                 if (sendEmail && installer.email) {
+                    console.log('📧 Preparing email for:', installer.email);
+                    
                     // OPEN EMAIL CLIENT IMMEDIATELY
                     const subject = encodeURIComponent('Your Installer Portal Access');
                     const installerPassword = installer.phone || 'installer123';
@@ -1724,19 +1748,24 @@
                     
                     const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
                     
-                    console.log('📧 OPENING EMAIL CLIENT NOW...');
+                    console.log('📧 Opening email client with mailto link:', mailtoLink);
+                    
+                    // Open email client immediately
                     window.open(mailtoLink, '_blank');
                     
                     results.push('✅ Email client opened with pre-filled message');
                 }
                 
                 if (sendSMS && installer.phone) {
+                    console.log('📱 Sending SMS to:', installer.phone);
                     const smsResult = await sendSMSInvite(installer, loginLink, isTest);
                     results.push(`SMS: ${smsResult.success ? '✅ Sent' : '❌ Failed'}`);
                 }
                 
                 // Show immediate success message
-                alert(`📧 Invite Sent!\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}\n\n${sendEmail ? '✅ Email client opened - just click SEND!' : ''}`);
+                const successMessage = `📧 Invite Sent!\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}\n\n${sendEmail ? '✅ Email client opened - just click SEND!' : ''}`;
+                console.log('✅ Success:', successMessage);
+                alert(successMessage);
 
             } catch (error) {
                 console.error('❌ Error sending invite:', error);
