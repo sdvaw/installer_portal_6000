@@ -235,25 +235,217 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
             
-            // Check if Firebase is available
-            if (!db || !auth) {
-                console.log('Firebase not available, using demo mode');
-                await demoLogin();
-                return;
+            // Check URL for routing
+            const path = window.location.pathname;
+            console.log('Current path:', path);
+            
+            if (path.includes('/admin')) {
+                // Admin portal
+                console.log('Loading admin portal...');
+                loadAdminPortal();
+            } else if (path.includes('/installer/')) {
+                // Installer portal with unique ID
+                const installerId = path.split('/installer/')[1];
+                console.log('Loading installer portal for ID:', installerId);
+                loadInstallerPortal(installerId);
+            } else {
+                // General landing page
+                console.log('Loading landing page...');
+                loadLandingPage();
+            }
+        });
+
+        // Landing page function
+        function loadLandingPage() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
             }
             
-            // Check authentication
-            auth.onAuthStateChanged(async (user) => {
-                if (user) {
-                    await loadInstallerData(user);
-                    await loadJobs();
-                    showPortal();
-                } else {
-                    // For demo, auto-login
-                    await demoLogin();
-                }
-            });
-        });
+            // Show landing page
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                    <div class="max-w-md w-full space-y-8">
+                        <div class="text-center">
+                            <h1 class="text-4xl font-bold text-gray-900">🔧 Installer Portal</h1>
+                            <p class="mt-2 text-gray-600">Secure access for installers and administrators</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">📋 Installer Access</h3>
+                                    <p class="text-sm text-gray-600">Use your unique portal link sent to your email</p>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">👑 Administrator Access</h3>
+                                    <button onclick="window.location.href='/admin'" class="mt-2 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
+                                        Admin Login
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Admin portal function
+        function loadAdminPortal() {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+            
+            // Show admin login screen
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                    <div class="max-w-md w-full space-y-8">
+                        <div>
+                            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                                👑 Admin Portal
+                            </h2>
+                            <p class="mt-2 text-center text-sm text-gray-600">
+                                Administrator access only
+                            </p>
+                            <div class="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
+                                <p class="text-sm font-medium text-yellow-800">
+                                    <strong>🔐 Demo Credentials:</strong><br>
+                                    Email: admin@company.com<br>
+                                    Password: admin123
+                                </p>
+                            </div>
+                        </div>
+                        <form id="adminLoginForm" class="mt-8 space-y-6">
+                            <div>
+                                <label for="adminEmail" class="block text-sm font-medium text-gray-700">
+                                    Admin Email
+                                </label>
+                                <input id="adminEmail" name="email" type="email" autocomplete="email" required 
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Enter admin email" value="admin@company.com">
+                            </div>
+
+                            <div>
+                                <label for="adminPassword" class="block text-sm font-medium text-gray-700">
+                                    Admin Password
+                                </label>
+                                <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Enter admin password" value="admin123">
+                            </div>
+
+                            <div>
+                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    🔐 Admin Sign In
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            // Setup admin login form
+            const adminLoginForm = document.getElementById('adminLoginForm');
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('adminEmail').value;
+                    const password = document.getElementById('adminPassword').value;
+                    
+                    console.log(`Admin login attempt: ${email}`);
+                    
+                    // Demo admin login - accept any credentials for now
+                    currentUser = {
+                        uid: 'admin-123',
+                        email: email,
+                        displayName: 'Admin User',
+                        role: 'admin'
+                    };
+                    
+                    userRole = 'admin';
+                    await adminLogin();
+                });
+            }
+        }
+
+        // Installer portal function
+        function loadInstallerPortal(installerId) {
+            const loadingElement = document.getElementById('loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+            
+            // Show installer login screen
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                    <div class="max-w-md w-full space-y-8">
+                        <div>
+                            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                                🔧 Installer Portal
+                            </h2>
+                            <p class="mt-2 text-center text-sm text-gray-600">
+                                Welcome Installer #${installerId}
+                            </p>
+                        </div>
+                        <form id="installerLoginForm" class="mt-8 space-y-6">
+                            <div>
+                                <label for="installerEmail" class="block text-sm font-medium text-gray-700">
+                                    Email
+                                </label>
+                                <input id="installerEmail" name="email" type="email" autocomplete="email" required 
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Enter your email">
+                            </div>
+
+                            <div>
+                                <label for="installerPassword" class="block text-sm font-medium text-gray-700">
+                                    Password
+                                </label>
+                                <input id="installerPassword" name="password" type="password" autocomplete="current-password" required 
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Enter your password">
+                            </div>
+
+                            <div>
+                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                    🔐 Installer Sign In
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            // Setup installer login form
+            const installerLoginForm = document.getElementById('installerLoginForm');
+            if (installerLoginForm) {
+                installerLoginForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const email = document.getElementById('installerEmail').value;
+                    const password = document.getElementById('installerPassword').value;
+                    
+                    console.log(`Installer login attempt: ${email} (ID: ${installerId})`);
+                    
+                    // Demo installer login
+                    currentUser = {
+                        uid: installerId,
+                        email: email,
+                        displayName: 'John Smith',
+                        role: 'installer'
+                    };
+                    
+                    userRole = 'installer';
+                    await installerLogin();
+                });
+            }
+        }
 
         // Demo login (replace with real auth)
         async function demoLogin() {
