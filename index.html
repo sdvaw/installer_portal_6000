@@ -1608,9 +1608,9 @@
                         
                         <!-- Action Buttons -->
                         <div class="space-y-2">
-                            <button onclick="sendSimpleEmail('${installer.email}', '${installer.name}', '${installer.phone || 'installer123'}')" 
+                            <button onclick="copyInstallerLink('${installer.id}', '${installer.name}', '${installer.email}', '${installer.phone || 'installer123'}')" 
                                     class="w-full terminal-button">
-                                [SEND_EMAIL_SMS]
+                                [COPY_LOGIN_LINK]
                             </button>
                             <div class="grid grid-cols-2 gap-2">
                                 <button onclick="editInstaller('${installer.id}')" 
@@ -2116,6 +2116,28 @@ function renderInstallerCards() {
                     alert('Failed to update status');
                 });
             }
+        }
+
+        // Copy installer login link function
+        function copyInstallerLink(installerId, name, email, password) {
+            console.log('📋 Copy link function called');
+            console.log('📋 Installer:', name);
+            console.log('📋 Email:', email);
+            console.log('📋 Password:', password);
+            
+            const loginLink = window.location.origin + '/installer-login?installer=' + email;
+            
+            // Copy link to clipboard
+            navigator.clipboard.writeText(loginLink).then(() => {
+                // Show success message with all details
+                const message = `✅ Login Link Copied!\n\nINSTALLER: ${name}\nEMAIL: ${email}\nPASSWORD: ${password}\n\nLINK: ${loginLink}\n\nSend this link to the installer with their login details!`;
+                alert(message);
+                console.log('📋 Link copied to clipboard:', loginLink);
+            }).catch(err => {
+                console.error('❌ Failed to copy link:', err);
+                // Fallback: show link in alert
+                alert(`📋 Copy this link manually:\n\n${loginLink}\n\nInstaller: ${name}\nEmail: ${email}\nPassword: ${password}`);
+            });
         }
 
         // Send installer invite
