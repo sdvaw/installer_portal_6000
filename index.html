@@ -2307,24 +2307,39 @@
             }
             
             console.log('🔍 Loading installers from TeamUp calendars...');
+            console.log('🔑 API Key:', teamupConfig.apiKey ? 'Present' : 'Missing');
+            console.log('📅 Calendar ID:', teamupConfig.calendarId);
             
             // Get list of calendars (sub-calendars) from TeamUp
             const calendarsApiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/calendars`;
+            console.log('🌐 API URL:', calendarsApiUrl);
             
             fetch(calendarsApiUrl, {
                 headers: {
                     'Teamup-Token': teamupConfig.apiKey
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return response.json();
+            })
             .then(calendarsData => {
+                console.log('📊 Full calendars response:', calendarsData);
                 console.log('📅 Found calendars:', calendarsData.calendars?.length || 0);
                 
                 const calendars = calendarsData.calendars || [];
                 const installersMap = new Map();
                 
                 // Process each calendar as a potential installer
-                calendars.forEach(calendar => {
+                calendars.forEach((calendar, index) => {
+                    console.log(`📋 Calendar ${index}:`, calendar);
+                    
                     const installerName = calendar.name;
                     if (installerName && !installersMap.has(installerName)) {
                         installersMap.set(installerName, {
@@ -2339,6 +2354,7 @@
                 });
                 
                 console.log(`👥 Found ${installersMap.size} installer calendars`);
+                console.log('👥 Installers map:', Array.from(installersMap.values()));
                 
                 // Get existing installers from Firebase to check who's already provisioned
                 if (db) {
@@ -2348,7 +2364,7 @@
                             existingInstallers.add(doc.data().name);
                         });
                         
-                        console.log(`📋 ${existingInstallers.size} installers already provisioned`);
+                        console.log(`📋 ${existingInstallers.size} installers already provisioned:`, Array.from(existingInstallers));
                         
                         // Mark which installers need provisioning
                         const installersList = Array.from(installersMap.values()).map(installer => ({
@@ -2356,18 +2372,26 @@
                             needsProvisioning: !existingInstallers.has(installer.name)
                         }));
                         
+                        console.log('🎯 Final installers list:', installersList);
                         displayTeamUpInstallers(installersList);
                     });
                 } else {
                     // Fallback - just show all calendars
+                    console.log('⚠️ No Firebase DB - showing all calendars');
                     displayTeamUpInstallers(Array.from(installersMap.values()));
                 }
             })
             .catch(error => {
                 console.error('❌ Failed to load TeamUp calendars:', error);
+                console.error('❌ Error details:', {
+                    message: error.message,
+                    stack: error.stack
+                });
+                
                 document.getElementById('teamUpInstallersList').innerHTML = `
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                         <p class="text-red-800">❌ Failed to load TeamUp calendars: ${error.message}</p>
+                        <p class="text-red-600 text-sm mt-2">Check console for detailed error information</p>
                     </div>
                 `;
             });
