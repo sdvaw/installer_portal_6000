@@ -832,9 +832,10 @@
             const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
             
             let filteredInstallers = installers.filter(installer => {
-                const matchesSearch = installer.name.toLowerCase().includes(searchTerm) || 
-                                   installer.email.toLowerCase().includes(searchTerm) ||
-                                   installer.phone.includes(searchTerm);
+                const matchesSearch = installer.name && installer.email && installer.phone && 
+                                   (installer.name.toLowerCase().includes(searchTerm) || 
+                                    installer.email.toLowerCase().includes(searchTerm) ||
+                                    installer.phone.includes(searchTerm));
                 const matchesStatus = !statusFilter || installer.status === statusFilter;
                 return matchesSearch && matchesStatus;
             });
@@ -842,25 +843,25 @@
             tbody.innerHTML = filteredInstallers.map(installer => `
                 <tr>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">${installer.name}</div>
+                        <div class="text-sm font-medium text-gray-900">${installer.name || 'Unknown'}</div>
                         <div class="text-xs text-gray-500">ID: ${installer.id}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${installer.email}</div>
+                        <div class="text-sm text-gray-900">${installer.email || 'No email'}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${installer.phone}</div>
+                        <div class="text-sm text-gray-900">${installer.phone || 'No phone'}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex flex-wrap gap-1">
-                            ${installer.crews.map(crew => `
+                            ${(installer.crews || []).map(crew => `
                                 <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">${crew}</span>
                             `).join('')}
                         </div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <span class="px-2 py-1 text-xs rounded ${installer.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${installer.status.toUpperCase()}
+                            ${(installer.status || 'unknown').toUpperCase()}
                         </span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
