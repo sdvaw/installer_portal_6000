@@ -1606,7 +1606,7 @@
                         
                         <!-- Action Buttons -->
                         <div class="space-y-2">
-                            <button onclick="sendInstallerInvite('${installer.id}')" 
+                            <button onclick="console.log('🔥 BUTTON CLICKED!'); sendInstallerInvite('${installer.id}')" 
                                     class="w-full terminal-button">
                                 [SEND_INVITE]
                             </button>
@@ -1646,6 +1646,7 @@
 
         // Send installer invite
         async function sendInstallerInvite(installerId) {
+            alert('🔥 FUNCTION CALLED! Installer ID: ' + installerId);
             console.log('🚀 Starting invite process for installer:', installerId);
             
             const installer = installers.find(i => i.id === installerId);
