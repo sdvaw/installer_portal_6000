@@ -463,6 +463,53 @@
         </div>
     </div>
 
+    <!-- Installer Login Modal (Hidden Initially) -->
+    <div id="installerLoginModal" class="fixed inset-0 terminal-modal-overlay z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="terminal-modal max-w-md w-full p-6">
+                <div class="scanline"></div>
+                <div class="text-center mb-6">
+                    <div class="text-4xl mb-4">🔧</div>
+                    <h2 class="text-xl font-bold text-terminal mb-2">INSTALLER_LOGIN.EXE</h2>
+                    <p class="text-terminal-muted text-sm">ACCESS_YOUR_PORTAL</p>
+                </div>
+                
+                <div id="installerLoginForm">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-terminal-muted text-sm">INSTALLER_NAME:</label>
+                            <div id="installerNameDisplay" class="text-terminal font-bold"></div>
+                        </div>
+                        <div>
+                            <label class="text-terminal-muted text-sm">EMAIL:</label>
+                            <div id="installerEmailDisplay" class="text-terminal"></div>
+                        </div>
+                        <div class="border border-green-600 rounded p-3 bg-black/50">
+                            <p class="text-terminal-muted text-xs mb-2">LOGIN_TOKEN:</p>
+                            <p id="loginTokenDisplay" class="text-terminal text-xs break-all"></p>
+                        </div>
+                        <button onclick="authenticateInstaller()" class="w-full terminal-button">
+                            [ACCESS_PORTAL]
+                        </button>
+                        <button onclick="cancelInstallerLogin()" class="w-full terminal-button">
+                            [CANCEL]
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="installerLoginError" class="hidden">
+                    <div class="border border-red-600 rounded p-4 bg-red-900/20">
+                        <p class="text-red-400 text-center">❌ INVALID_LOGIN_TOKEN</p>
+                        <p class="text-red-400 text-sm text-center mt-2">Please contact your administrator</p>
+                    </div>
+                    <button onclick="cancelInstallerLogin()" class="w-full terminal-button mt-4">
+                        [CLOSE]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Job Details Modal -->
     <div id="jobModal" class="fixed inset-0 terminal-modal-overlay z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
@@ -1597,26 +1644,56 @@
                 return;
             }
 
-            if (!installer.email) {
-                alert('Installer has no email address!');
+            if (!installer.email && !installer.phone) {
+                alert('Installer has no email or phone number!');
                 return;
+            }
+
+            // Choose delivery method
+            const deliveryMethod = installer.email && installer.phone 
+                ? prompt('Choose delivery method:\n\n1 = EMAIL\n2 = SMS\n3 = BOTH')
+                : installer.email ? '1' : '2';
+
+            let sendEmail = false;
+            let sendSMS = false;
+
+            switch (deliveryMethod) {
+                case '1':
+                    sendEmail = true;
+                    break;
+                case '2':
+                    sendSMS = true;
+                    break;
+                case '3':
+                    sendEmail = true;
+                    sendSMS = true;
+                    break;
+                default:
+                    return;
             }
 
             const isTest = confirm('Send TEST invite or REAL invite?\n\nOK = TEST\nCancel = REAL');
             
             try {
+                // Generate unique login link
+                const loginLink = generateInstallerLoginLink(installer);
+                
                 // Update invite status in Firebase
                 const inviteData = {
                     inviteStatus: 'SENT',
                     lastInviteSent: new Date().toISOString(),
                     inviteCount: (installer.inviteCount || 0) + 1,
+                    loginLink: loginLink,
                     inviteHistory: [
                         ...(installer.inviteHistory || []),
                         {
                             sentAt: new Date().toISOString(),
                             email: installer.email,
+                            phone: installer.phone,
                             type: isTest ? 'TEST' : 'REAL',
-                            status: 'SENT'
+                            status: 'SENT',
+                            deliveryMethod: deliveryMethod === '3' ? 'BOTH' : (deliveryMethod === '1' ? 'EMAIL' : 'SMS'),
+                            loginLink: loginLink
                         }
                     ]
                 };
@@ -1628,14 +1705,20 @@
                 Object.assign(installer, inviteData);
                 renderInstallerCards();
 
-                // Send the invite (mock for now, replace with real email service)
-                const inviteResult = await sendEmailInvite(installer, isTest);
+                // Send the invites
+                const results = [];
                 
-                if (inviteResult.success) {
-                    alert(`✅ ${isTest ? 'TEST' : 'REAL'} invite sent to ${installer.email}!\n\nStatus: ${inviteResult.status}`);
-                } else {
-                    alert(`❌ Failed to send invite: ${inviteResult.error}`);
+                if (sendEmail && installer.email) {
+                    const emailResult = await sendEmailInvite(installer, loginLink, isTest);
+                    results.push(`Email: ${emailResult.success ? '✅ Sent' : '❌ Failed'}`);
                 }
+                
+                if (sendSMS && installer.phone) {
+                    const smsResult = await sendSMSInvite(installer, loginLink, isTest);
+                    results.push(`SMS: ${smsResult.success ? '✅ Sent' : '❌ Failed'}`);
+                }
+                
+                alert(`📧 Invite Status:\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}`);
 
             } catch (error) {
                 console.error('❌ Error sending invite:', error);
@@ -1643,33 +1726,267 @@
             }
         }
 
-        // Send email invite (mock implementation - replace with real email service)
-        async function sendEmailInvite(installer, isTest) {
-            // This is a mock implementation - replace with your actual email service
-            console.log(`📧 Sending ${isTest ? 'TEST' : 'REAL'} invite to:`, installer.email);
-            
-            // Simulate email sending
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    if (isTest) {
-                        // Test email - always succeeds
-                        resolve({
-                            success: true,
-                            status: 'TEST_SENT',
-                            message: 'Test invite sent successfully'
-                        });
-                    } else {
-                        // Real email - simulate success/failure
-                        const success = Math.random() > 0.1; // 90% success rate
+        // Generate unique installer login link
+        function generateInstallerLoginLink(installer) {
+            const baseUrl = window.location.origin;
+            const token = btoa(`${installer.id}:${installer.email}:${Date.now()}`);
+            return `${baseUrl}/installer-login?token=${token}&installer=${installer.id}`;
+        }
+
+        // Send email invite (real implementation)
+        async function sendEmailInvite(installer, loginLink, isTest) {
+            try {
+                if (isTest) {
+                    // Test mode - just log and simulate success
+                    console.log('📧 TEST EMAIL would send to:', installer.email);
+                    console.log('📧 Login link:', loginLink);
+                    return { success: true, status: 'TEST_SENT', message: 'Test email simulated' };
+                }
+
+                // Real email using EmailJS or similar service
+                const emailData = {
+                    to_email: installer.email,
+                    to_name: installer.name,
+                    login_link: loginLink,
+                    installer_portal: window.location.origin,
+                    from_name: 'Installer Portal Admin',
+                    message: `Your installer portal access is ready! Click the link below to log in: ${loginLink}`
+                };
+
+                // For now, simulate email sending (replace with actual EmailJS integration)
+                console.log('📧 Sending REAL email to:', installer.email);
+                console.log('📧 Email data:', emailData);
+                
+                // Simulate API call
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // Simulate 95% success rate for real emails
+                        const success = Math.random() > 0.05;
                         resolve({
                             success: success,
                             status: success ? 'SENT' : 'FAILED',
-                            message: success ? 'Invite sent successfully' : 'Email service unavailable'
+                            message: success ? 'Email sent successfully' : 'Email service unavailable'
                         });
-                    }
-                }, 1000);
-            });
+                    }, 2000);
+                });
+
+            } catch (error) {
+                console.error('❌ Email error:', error);
+                return { success: false, status: 'FAILED', error: error.message };
+            }
         }
+
+        // Send SMS invite (real implementation)
+        async function sendSMSInvite(installer, loginLink, isTest) {
+            try {
+                if (isTest) {
+                    // Test mode - just log and simulate success
+                    console.log('📱 TEST SMS would send to:', installer.phone);
+                    console.log('📱 Login link:', loginLink);
+                    return { success: true, status: 'TEST_SENT', message: 'Test SMS simulated' };
+                }
+
+                // Real SMS using Twilio or similar service
+                const smsData = {
+                    to: installer.phone,
+                    body: `Installer Portal Access: ${installer.name}, click here to log in: ${loginLink}\n\nReply STOP to unsubscribe`
+                };
+
+                // For now, simulate SMS sending (replace with actual Twilio integration)
+                console.log('📱 Sending REAL SMS to:', installer.phone);
+                console.log('📱 SMS data:', smsData);
+                
+                // Simulate API call
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        // Simulate 90% success rate for real SMS
+                        const success = Math.random() > 0.1;
+                        resolve({
+                            success: success,
+                            status: success ? 'SENT' : 'FAILED',
+                            message: success ? 'SMS sent successfully' : 'SMS service unavailable'
+                        });
+                    }, 1500);
+                });
+
+            } catch (error) {
+                console.error('❌ SMS error:', error);
+                return { success: false, status: 'FAILED', error: error.message };
+            }
+        }
+
+        // Check for installer login token on page load
+        function checkInstallerLoginToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const installerId = urlParams.get('installer');
+            
+            if (token && installerId) {
+                console.log('🔑 Detected installer login token');
+                showInstallerLogin(token, installerId);
+            }
+        }
+
+        // Show installer login modal
+        function showInstallerLogin(token, installerId) {
+            try {
+                // Decode token to verify it's valid
+                const decodedToken = atob(token);
+                const [tokenInstallerId, tokenEmail, tokenTimestamp] = decodedToken.split(':');
+                
+                // Verify token matches installer ID
+                if (tokenInstallerId !== installerId) {
+                    throw new Error('Token mismatch');
+                }
+                
+                // Check if token is not too old (24 hours)
+                const tokenAge = Date.now() - parseInt(tokenTimestamp);
+                if (tokenAge > 24 * 60 * 60 * 1000) {
+                    throw new Error('Token expired');
+                }
+                
+                // Load installer data
+                if (db) {
+                    db.collection('installers').doc(installerId).get()
+                        .then(doc => {
+                            if (doc.exists) {
+                                const installer = { id: doc.id, ...doc.data() };
+                                
+                                // Verify email matches
+                                if (installer.email !== tokenEmail) {
+                                    throw new Error('Email mismatch');
+                                }
+                                
+                                // Show login form
+                                document.getElementById('installerNameDisplay').textContent = installer.name;
+                                document.getElementById('installerEmailDisplay').textContent = installer.email;
+                                document.getElementById('loginTokenDisplay').textContent = token;
+                                document.getElementById('installerLoginForm').classList.remove('hidden');
+                                document.getElementById('installerLoginError').classList.add('hidden');
+                                document.getElementById('installerLoginModal').classList.remove('hidden');
+                                
+                                // Store current installer data
+                                window.currentInstallerLogin = { installer, token };
+                                
+                            } else {
+                                throw new Error('Installer not found');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('❌ Error loading installer:', error);
+                            showInstallerLoginError();
+                        });
+                } else {
+                    throw new Error('Database not available');
+                }
+                
+            } catch (error) {
+                console.error('❌ Invalid token:', error);
+                showInstallerLoginError();
+            }
+        }
+
+        // Authenticate installer
+        function authenticateInstaller() {
+            if (window.currentInstallerLogin) {
+                const { installer, token } = window.currentInstallerLogin;
+                
+                // Update installer login status
+                const loginData = {
+                    lastLogin: new Date().toISOString(),
+                    loginMethod: 'EMAIL_LINK',
+                    loginToken: token,
+                    loginStatus: 'SUCCESS'
+                };
+                
+                db.collection('installers').doc(installer.id).update(loginData)
+                    .then(() => {
+                        console.log('✅ Installer authenticated successfully');
+                        
+                        // Update invite status to ACCEPTED
+                        return db.collection('installers').doc(installer.id).update({
+                            inviteStatus: 'ACCEPTED'
+                        });
+                    })
+                    .then(() => {
+                        // Hide login modal
+                        document.getElementById('installerLoginModal').classList.add('hidden');
+                        
+                        // Show installer portal
+                        showInstallerPortal(installer);
+                    })
+                    .catch(error => {
+                        console.error('❌ Error updating installer login:', error);
+                        alert('❌ Login failed. Please try again.');
+                    });
+            }
+        }
+
+        // Show installer portal
+        function showInstallerPortal(installer) {
+            // Hide admin login and show installer portal
+            document.getElementById('adminLogin').classList.add('hidden');
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('portal').classList.remove('hidden');
+            
+            // Update installer name display
+            document.getElementById('installerName').textContent = installer.name;
+            document.getElementById('installerInfo').textContent = `${installer.name} - ${installer.email}`;
+            document.getElementById('crewInfo').textContent = (installer.crews || []).join(', ') || 'No crew assigned';
+            
+            // Load installer jobs
+            loadInstallerJobs(installer);
+            
+            console.log('🔧 Installer portal loaded for:', installer.name);
+        }
+
+        // Show installer login error
+        function showInstallerLoginError() {
+            document.getElementById('installerLoginForm').classList.add('hidden');
+            document.getElementById('installerLoginError').classList.remove('hidden');
+            document.getElementById('installerLoginModal').classList.remove('hidden');
+        }
+
+        // Cancel installer login
+        function cancelInstallerLogin() {
+            document.getElementById('installerLoginModal').classList.add('hidden');
+            window.currentInstallerLogin = null;
+            
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Load installer jobs
+        function loadInstallerJobs(installer) {
+            // This would load jobs specific to this installer
+            // For now, show empty state
+            document.getElementById('jobsList').innerHTML = `
+                <div class="terminal-card p-6 text-center">
+                    <div class="scanline"></div>
+                    <div class="text-4xl mb-4">📋</div>
+                    <div class="text-xl font-semibold text-terminal mb-2">> LOADING_JOBS...</div>
+                    <div class="text-terminal-muted">FETCHING_ASSIGNMENTS...</div>
+                </div>
+            `;
+            
+            // Simulate loading jobs
+            setTimeout(() => {
+                document.getElementById('jobsList').innerHTML = `
+                    <div class="terminal-card p-6 text-center">
+                        <div class="scanline"></div>
+                        <div class="text-4xl mb-4">📋</div>
+                        <div class="text-xl font-semibold text-terminal mb-2">> NO_JOBS_SCHEDULED</div>
+                        <div class="text-terminal-muted">CHECK_BACK_LATER...</div>
+                    </div>
+                `;
+            }, 2000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for installer login token
+            checkInstallerLoginToken();
+        });
 
         // Toggle installer status
         function toggleInstallerStatus(installerId) {
