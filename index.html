@@ -119,21 +119,21 @@
 
         /* Custom Grid Styles - Since Tailwind isn't working */
         .installer-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            width: 100%;
+            display: grid !important;
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 24px !important;
+            width: 100% !important;
         }
 
-        @media (min-width: 768px) {
+        @media (max-width: 1024px) {
             .installer-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(2, 1fr) !important;
             }
         }
 
-        @media (min-width: 1024px) {
+        @media (max-width: 768px) {
             .installer-grid {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: 1fr !important;
             }
         }
 
