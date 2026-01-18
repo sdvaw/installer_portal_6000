@@ -481,26 +481,44 @@
             // Check if Firebase is available (for future use)
             if (!db || !auth) {
                 console.log('Firebase not available, using demo mode');
-                // Continue with demo mode - don't return
-            } else {
-                console.log('Firebase is available, checking auth...');
-                // Check authentication
-                auth.onAuthStateChanged(async (user) => {
-                    if (user) {
-                        await loadInstallerData(user);
-                        await loadJobs();
-                        showPortal();
-                    } else {
-                        // Show login screen
-                        if (loadingElement) {
-                            loadingElement.classList.add('hidden');
-                        }
-                        if (loginScreenElement) {
-                            loginScreenElement.classList.remove('hidden');
-                        }
-                    }
-                });
+                console.log('Setting up demo login directly...');
+                // Set up demo login directly
+                const demoUser = {
+                    uid: 'demo-user-123',
+                    email: 'demo@company.com',
+                    displayName: 'John Smith'
+                };
+                
+                currentUser = {
+                    uid: demoUser.uid,
+                    email: demoUser.email,
+                    displayName: demoUser.displayName,
+                    role: 'installer'
+                };
+                
+                userRole = 'installer';
+                
+                await installerLogin();
+                return;
             }
+            
+            console.log('Firebase is available, checking auth...');
+            // Check authentication
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    await loadInstallerData(user);
+                    await loadJobs();
+                    showPortal();
+                } else {
+                    // Show login screen
+                    if (loadingElement) {
+                        loadingElement.classList.add('hidden');
+                    }
+                    if (loginScreenElement) {
+                        loginScreenElement.classList.remove('hidden');
+                    }
+                }
+            });
         });
 
         // Handle completion status change
