@@ -760,7 +760,7 @@
                     });
                     console.log('✅ Installers loaded from Firebase:', installers.length);
                     console.log('📋 Installers data:', installers);
-                    renderInstallersTable();
+                    renderInstallerCards();
                 }).catch((error) => {
                     console.error('❌ Error loading installers:', error);
                     // Fallback to demo data
@@ -1408,7 +1408,7 @@
         function deleteInstaller(installerId) {
             if (confirm('Are you sure you want to delete this installer? This action cannot be undone.')) {
                 installers = installers.filter(i => i.id !== installerId);
-                renderInstallersTable();
+                renderInstallerCards();
             }
         }
 
