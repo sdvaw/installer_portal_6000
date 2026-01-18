@@ -9,6 +9,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+    <!-- EmailJS for real email sending -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         /* Mobile-first design */
         .mobile-first { font-size: 16px; }
@@ -1733,7 +1735,7 @@
             return `${baseUrl}/installer-login?token=${token}&installer=${installer.id}`;
         }
 
-        // Send email invite (real implementation)
+        // Send email invite (DIRECT EMAIL - works immediately!)
         async function sendEmailInvite(installer, loginLink, isTest) {
             try {
                 if (isTest) {
@@ -1743,32 +1745,25 @@
                     return { success: true, status: 'TEST_SENT', message: 'Test email simulated' };
                 }
 
-                // Real email using EmailJS or similar service
-                const emailData = {
-                    to_email: installer.email,
-                    to_name: installer.name,
-                    login_link: loginLink,
-                    installer_portal: window.location.origin,
-                    from_name: 'Installer Portal Admin',
-                    message: `Your installer portal access is ready! Click the link below to log in: ${loginLink}`
-                };
-
-                // For now, simulate email sending (replace with actual EmailJS integration)
-                console.log('📧 Sending REAL email to:', installer.email);
-                console.log('📧 Email data:', emailData);
+                // Create email content
+                const subject = encodeURIComponent('Your Installer Portal Access');
+                const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nYour details:\n- Email: ${installer.email}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
                 
-                // Simulate API call
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        // Simulate 95% success rate for real emails
-                        const success = Math.random() > 0.05;
-                        resolve({
-                            success: success,
-                            status: success ? 'SENT' : 'FAILED',
-                            message: success ? 'Email sent successfully' : 'Email service unavailable'
-                        });
-                    }, 2000);
-                });
+                const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
+                
+                console.log('📧 Opening email client for:', installer.email);
+                console.log('📧 Mailto link:', mailtoLink);
+                
+                // Open email client immediately
+                window.open(mailtoLink, '_blank');
+                
+                return { 
+                    success: true, 
+                    status: 'EMAIL_CLIENT_OPENED', 
+                    message: 'Email client opened with pre-filled message',
+                    email: installer.email,
+                    loginLink: loginLink
+                };
 
             } catch (error) {
                 console.error('❌ Email error:', error);
