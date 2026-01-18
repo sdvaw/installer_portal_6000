@@ -554,12 +554,18 @@
 
         // Render admin dashboard
         function renderAdminDashboard() {
+            console.log('Rendering admin dashboard...');
+            
+            // The app element should exist because we just created it in loadAdminPortal
             const appElement = document.getElementById('app');
+            console.log('App element found:', !!appElement);
+            
             if (!appElement) {
-                console.error('App element not found!');
+                console.error('App element not found! Current DOM:', document.body.innerHTML);
                 return;
             }
             
+            console.log('Setting admin dashboard HTML...');
             appElement.innerHTML = `
                 <!-- Admin Header -->
                 <div class="min-h-screen bg-gray-100">
@@ -574,7 +580,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-3">
-                                    <span id="installerName" class="text-sm font-medium text-gray-700">${installerData.name} (Admin)</span>
+                                    <span class="text-sm font-medium text-gray-700">${installerData.name} (Admin)</span>
                                     <button onclick="location.reload()" class="text-red-600 hover:text-red-800">
                                         <i class="fas fa-sign-out-alt"></i> Logout
                                     </button>
@@ -672,6 +678,8 @@
                     </main>
                 </div>
             `;
+            
+            console.log('Admin dashboard rendered successfully!');
         }
 
         // Render installer dashboard
