@@ -1707,12 +1707,20 @@
                 Object.assign(installer, inviteData);
                 renderInstallerCards();
 
-                // Send the invites
+                // Send the invites IMMEDIATELY without delays
                 const results = [];
                 
                 if (sendEmail && installer.email) {
-                    const emailResult = await sendEmailInvite(installer, loginLink, isTest);
-                    results.push(`Email: ${emailResult.success ? '✅ Sent' : '❌ Failed'}`);
+                    // OPEN EMAIL CLIENT IMMEDIATELY
+                    const subject = encodeURIComponent('Your Installer Portal Access');
+                    const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nYour details:\n- Email: ${installer.email}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
+                    
+                    const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
+                    
+                    console.log('📧 OPENING EMAIL CLIENT NOW...');
+                    window.open(mailtoLink, '_blank');
+                    
+                    results.push('✅ Email client opened with pre-filled message');
                 }
                 
                 if (sendSMS && installer.phone) {
@@ -1720,7 +1728,8 @@
                     results.push(`SMS: ${smsResult.success ? '✅ Sent' : '❌ Failed'}`);
                 }
                 
-                alert(`📧 Invite Status:\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}`);
+                // Show immediate success message
+                alert(`📧 Invite Sent!\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nInstaller: ${installer.name}\n\n${sendEmail ? '✅ Email client opened - just click SEND!' : ''}`);
 
             } catch (error) {
                 console.error('❌ Error sending invite:', error);
