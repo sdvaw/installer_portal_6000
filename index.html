@@ -486,6 +486,12 @@
                             <label class="text-terminal-muted text-sm">EMAIL:</label>
                             <div id="installerEmailDisplay" class="text-terminal"></div>
                         </div>
+                        <div>
+                            <label class="text-terminal-muted text-sm">PASSWORD:</label>
+                            <input type="password" id="installerPasswordInput" 
+                                   class="terminal-input w-full" 
+                                   placeholder="ENTER_PASSWORD">
+                        </div>
                         <div class="border border-green-600 rounded p-3 bg-black/50">
                             <p class="text-terminal-muted text-xs mb-2">LOGIN_TOKEN:</p>
                             <p id="loginTokenDisplay" class="text-terminal text-xs break-all"></p>
@@ -1674,7 +1680,7 @@
                     return;
             }
 
-            const isTest = confirm('Send TEST invite or REAL invite?\n\nOK = TEST\nCancel = REAL');
+            const isTest = false; // ALWAYS SEND REAL EMAILS - NO MORE TEST MODE
             
             try {
                 // Generate unique login link
@@ -1713,7 +1719,8 @@
                 if (sendEmail && installer.email) {
                     // OPEN EMAIL CLIENT IMMEDIATELY
                     const subject = encodeURIComponent('Your Installer Portal Access');
-                    const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nYour details:\n- Email: ${installer.email}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
+                    const installerPassword = installer.phone || 'installer123';
+                    const body = encodeURIComponent(`Hi ${installer.name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nPortal: ${window.location.origin}\n\nLOGIN DETAILS:\n- Email: ${installer.email}\n- Password: ${installerPassword}\n- Phone: ${installer.phone || 'Not provided'}\n- Crews: ${(installer.crews || []).join(', ') || 'Not assigned'}\n\nIMPORTANT: Your password is your phone number or "installer123"\n\nIf you have trouble clicking the link, copy and paste it into your browser.\n\nThanks,\nInstaller Portal Admin`);
                     
                     const mailtoLink = `mailto:${installer.email}?subject=${subject}&body=${body}`;
                     
@@ -1895,12 +1902,24 @@
             if (window.currentInstallerLogin) {
                 const { installer, token } = window.currentInstallerLogin;
                 
+                // Get password from input
+                const password = document.getElementById('installerPasswordInput').value;
+                
+                // Simple password check - default to installer's phone number or a default password
+                const expectedPassword = installer.phone || 'installer123';
+                
+                if (password !== expectedPassword) {
+                    alert('❌ Incorrect password! Please try again.\n\nDefault password is your phone number or "installer123"');
+                    return;
+                }
+                
                 // Update installer login status
                 const loginData = {
                     lastLogin: new Date().toISOString(),
                     loginMethod: 'EMAIL_LINK',
                     loginToken: token,
-                    loginStatus: 'SUCCESS'
+                    loginStatus: 'SUCCESS',
+                    password: expectedPassword // Store the password that worked
                 };
                 
                 db.collection('installers').doc(installer.id).update(loginData)
