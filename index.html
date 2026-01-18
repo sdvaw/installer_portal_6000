@@ -676,10 +676,11 @@
             console.log('📊 Loading dashboard stats...');
             
             try {
+                let installersList = [];
+                
                 // Load installers from Firebase
                 if (db) {
                     const installersSnapshot = await db.collection('installers').get();
-                    const installersList = [];
                     installersSnapshot.forEach(doc => {
                         installersList.push({ id: doc.id, ...doc.data() });
                     });
