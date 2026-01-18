@@ -244,6 +244,9 @@
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
             
+            // Load saved settings first
+            loadSavedSettings();
+            
             // Check URL for routing
             const path = window.location.pathname;
             console.log('Current path:', path);
@@ -625,7 +628,7 @@
                             <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
                                 <h3 class="font-semibold text-gray-900 mb-2">🔧 System Settings</h3>
                                 <p class="text-sm text-gray-600 mb-3">Configure Teamup sync and system preferences</p>
-                                <button onclick="alert('System Settings - Coming Soon!')" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                                <button onclick="showSystemSettings()" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
                                     Settings
                                 </button>
                             </div>
@@ -1995,6 +1998,209 @@
                 } else {
                     adminJobs = adminJobs.filter(j => j.id !== jobId);
                     renderJobsTable();
+                }
+            }
+        }
+
+        // System Settings Functions
+        function showSystemSettings() {
+            console.log('Loading system settings...');
+            
+            // Replace main content with system settings
+            const mainElement = document.querySelector('main');
+            if (mainElement) {
+                mainElement.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-900">🔧 System Settings</h2>
+                            <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                ← Back to Dashboard
+                            </button>
+                        </div>
+                        
+                        <!-- TeamUp Configuration -->
+                        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">🔄 TeamUp Integration</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">TeamUp API Key</label>
+                                    <input type="password" id="teamupApiKey" 
+                                           value="${teamupConfig.apiKey || ''}"
+                                           placeholder="Enter your TeamUp API key"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                                    <p class="mt-1 text-xs text-gray-500">Get this from your TeamUp account settings</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Calendar ID</label>
+                                    <input type="text" id="teamupCalendarId" 
+                                           value="${teamupConfig.calendarId || ''}"
+                                           placeholder="Enter TeamUp calendar ID"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                                    <p class="mt-1 text-xs text-gray-500">Found in TeamUp calendar URL</p>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Sync Interval (minutes)</label>
+                                    <select id="teamupSyncInterval" 
+                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500">
+                                        <option value="1" ${teamupConfig.syncInterval === 1 ? 'selected' : ''}>1 minute</option>
+                                        <option value="5" ${teamupConfig.syncInterval === 5 ? 'selected' : ''}>5 minutes</option>
+                                        <option value="10" ${teamupConfig.syncInterval === 10 ? 'selected' : ''}>10 minutes</option>
+                                        <option value="15" ${teamupConfig.syncInterval === 15 ? 'selected' : ''}>15 minutes</option>
+                                        <option value="30" ${teamupConfig.syncInterval === 30 ? 'selected' : ''}>30 minutes</option>
+                                        <option value="60" ${teamupConfig.syncInterval === 60 ? 'selected' : ''}>1 hour</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="flex items-end">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Last Sync</label>
+                                        <div class="mt-1 text-sm text-gray-600">
+                                            ${teamupConfig.lastSync ? teamupConfig.lastSync.toLocaleString() : 'Never synced'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 flex space-x-3">
+                                <button onclick="testTeamUpConnection()" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                                    🔍 Test Connection
+                                </button>
+                                <button onclick="saveSystemSettings()" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                                    💾 Save Settings
+                                </button>
+                                <button onclick="manualSyncTeamUp()" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                    🔄 Sync Now
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Sync Status -->
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">📊 Sync Status</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-blue-600" id="totalTeamUpEvents">-</div>
+                                    <div class="text-sm text-gray-600">TeamUp Events</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-green-600" id="firebaseJobsCount">-</div>
+                                    <div class="text-sm text-gray-600">Firebase Jobs</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold text-purple-600" id="syncStatus">Not Configured</div>
+                                    <div class="text-sm text-gray-600">Sync Status</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load current sync status
+                updateSyncStatus();
+            }
+        }
+
+        function testTeamUpConnection() {
+            const apiKey = document.getElementById('teamupApiKey').value;
+            const calendarId = document.getElementById('teamupCalendarId').value;
+            
+            if (!apiKey || !calendarId) {
+                alert('Please enter both API Key and Calendar ID');
+                return;
+            }
+            
+            console.log('🔍 Testing TeamUp connection...');
+            
+            fetch(`https://api.teamup.com/${calendarId}/events`, {
+                headers: {
+                    'Teamup-Token': apiKey
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            })
+            .then(data => {
+                const eventCount = data.events?.length || 0;
+                alert(`✅ Connection successful! Found ${eventCount} events in TeamUp calendar.`);
+                document.getElementById('totalTeamUpEvents').textContent = eventCount;
+            })
+            .catch(error => {
+                console.error('❌ TeamUp connection test failed:', error);
+                alert(`❌ Connection failed: ${error.message}`);
+            });
+        }
+
+        function saveSystemSettings() {
+            const apiKey = document.getElementById('teamupApiKey').value;
+            const calendarId = document.getElementById('teamupCalendarId').value;
+            const syncInterval = parseInt(document.getElementById('teamupSyncInterval').value);
+            
+            // Update config
+            teamupConfig = {
+                apiKey: apiKey,
+                calendarId: calendarId,
+                syncInterval: syncInterval,
+                lastSync: teamupConfig.lastSync
+            };
+            
+            // Save to localStorage for persistence
+            localStorage.setItem('teamupConfig', JSON.stringify(teamupConfig));
+            
+            console.log('✅ System settings saved:', teamupConfig);
+            
+            // Restart sync with new settings
+            if (apiKey && calendarId) {
+                startTeamUpSync();
+                document.getElementById('syncStatus').textContent = 'Active';
+            }
+            
+            alert('✅ Settings saved successfully!');
+        }
+
+        function manualSyncTeamUp() {
+            if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
+                alert('Please configure TeamUp settings first');
+                return;
+            }
+            
+            console.log('🔄 Manual TeamUp sync triggered...');
+            syncWithTeamUp();
+            updateSyncStatus();
+        }
+
+        function updateSyncStatus() {
+            // Update Firebase jobs count
+            if (db) {
+                db.collection('jobs').get().then(snapshot => {
+                    document.getElementById('firebaseJobsCount').textContent = snapshot.size;
+                });
+            }
+            
+            // Update sync status
+            if (teamupConfig.apiKey && teamupConfig.calendarId) {
+                document.getElementById('syncStatus').textContent = 
+                    teamupConfig.lastSync ? 'Active' : 'Ready';
+            } else {
+                document.getElementById('syncStatus').textContent = 'Not Configured';
+            }
+        }
+
+        // Load saved settings on startup
+        function loadSavedSettings() {
+            const saved = localStorage.getItem('teamupConfig');
+            if (saved) {
+                try {
+                    teamupConfig = JSON.parse(saved);
+                    console.log('✅ Loaded saved TeamUp config:', teamupConfig);
+                } catch (error) {
+                    console.error('❌ Failed to load saved settings:', error);
                 }
             }
         }
