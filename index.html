@@ -774,6 +774,7 @@
                         installers.push({ id: doc.id, ...doc.data() });
                     });
                     console.log('✅ Installers loaded from Firebase:', installers.length);
+                    console.log('📋 Installers data:', installers);
                     renderInstallersTable();
                 }).catch((error) => {
                     console.error('❌ Error loading installers:', error);
@@ -2582,34 +2583,93 @@
             
             console.log('🚀 Provisioning installers:', selectedInstallers);
             
-            // Create installer accounts for selected installers
-            selectedInstallers.forEach(installerName => {
-                const installerData = {
+            // Show email collection dialog
+            const emailDialog = document.createElement('div');
+            emailDialog.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            emailDialog.innerHTML = `
+                <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">📧 Enter Email Addresses</h3>
+                    <p class="text-sm text-gray-600 mb-4">Please enter email addresses for each installer:</p>
+                    <div class="space-y-3">
+                        ${selectedInstallers.map(installerName => `
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">${installerName}</label>
+                                <input type="email" id="email-${installerName.replace(/\s+/g, '-')}" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                       placeholder="${installerName.toLowerCase().replace(/\s+/g, '.')}@company.com"
+                                       required>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button onclick="this.closest('.fixed').remove()" 
+                                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button onclick="provisionInstallersWithEmails()" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                            ✅ Create Accounts
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(emailDialog);
+            
+            // Store selected installers for the provisioning function
+            window.selectedInstallersForProvisioning = selectedInstallers;
+        }
+
+        function provisionInstallersWithEmails() {
+            const selectedInstallers = window.selectedInstallersForProvisioning;
+            const installerData = [];
+            
+            // Collect email data
+            for (const installerName of selectedInstallers) {
+                const emailInput = document.getElementById(`email-${installerName.replace(/\s+/g, '-')}`);
+                const email = emailInput.value.trim();
+                
+                if (!email) {
+                    alert(`Please enter an email address for ${installerName}`);
+                    return;
+                }
+                
+                installerData.push({
                     name: installerName,
-                    email: `${installerName.toLowerCase().replace(/\s+/g, '.')}@company.com`,
+                    email: email,
                     phone: '(555) 000-0000',
                     crews: ['Default Crew'],
                     status: 'active',
                     notes: `Auto-provisioned from TeamUp calendar on ${new Date().toLocaleDateString()}`,
                     createdAt: new Date()
-                };
-                
-                // Save to Firebase
+                });
+            }
+            
+            console.log('📧 Creating installer accounts with emails:', installerData);
+            
+            // Create installer accounts for selected installers
+            const promises = installerData.map(data => {
                 if (db) {
-                    db.collection('installers').add(installerData)
-                    .then(docRef => {
-                        console.log(`✅ Created account for ${installerName} with ID: ${docRef.id}`);
-                    })
-                    .catch(error => {
-                        console.error(`❌ Failed to create account for ${installerName}:`, error);
-                    });
+                    return db.collection('installers').add(data);
                 }
+                return Promise.resolve();
             });
             
-            alert(`✅ Provisioning complete! Accounts created for ${selectedInstallers.length} installer(s).`);
-            
-            // Refresh list to show updated provisioning status
-            loadTeamUpInstallers();
+            Promise.all(promises).then(results => {
+                console.log('✅ All installer accounts created successfully');
+                alert(`✅ Provisioning complete! Accounts created for ${installerData.length} installer(s).`);
+                
+                // Close dialog
+                document.querySelector('.fixed.inset-0').remove();
+                
+                // Refresh list to show updated provisioning status
+                loadTeamUpInstallers();
+                
+                // Reload installers in management view
+                loadDemoInstallers();
+            }).catch(error => {
+                console.error('❌ Failed to create some installer accounts:', error);
+                alert(`❌ Error creating accounts: ${error.message}`);
+            });
         }
 
         // Render installer dashboard
