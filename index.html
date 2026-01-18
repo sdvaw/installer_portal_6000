@@ -2268,9 +2268,9 @@
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700">API Endpoint Test</label>
                                         <select id="debugEndpoint" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
-                                            <option value="/calendars">/calendars (Standard)</option>
+                                            <option value="/events" selected>/events (Working - 149 events found)</option>
                                             <option value="/subcalendars">/subcalendars (Alternative)</option>
-                                            <option value="/events">/events (Event-based)</option>
+                                            <option value="/calendars">/calendars (Not Working - 404)</option>
                                         </select>
                                     </div>
                                     <div>
@@ -2340,7 +2340,7 @@
             }
             
             // Get debug settings
-            const debugEndpoint = document.getElementById('debugEndpoint')?.value || '/calendars';
+            const debugEndpoint = document.getElementById('debugEndpoint')?.value || '/events';
             const debugMode = document.getElementById('debugMode')?.value || 'normal';
             
             console.log('🔍 Loading installers from TeamUp calendars...');
