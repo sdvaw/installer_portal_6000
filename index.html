@@ -489,6 +489,57 @@
             });
         });
 
+        // Handle completion status change
+        document.addEventListener('DOMContentLoaded', function() {
+            const completionStatus = document.getElementById('completionStatus');
+            if (completionStatus) {
+                completionStatus.addEventListener('change', function() {
+                    const balanceNoteSection = document.getElementById('balanceNoteSection');
+                    const issuesSection = document.getElementById('issuesSection');
+                    const balanceNote = document.getElementById('balanceNote');
+                    const issueDetails = document.getElementById('issueDetails');
+                    
+                    // Reset sections
+                    balanceNoteSection.classList.add('hidden');
+                    issuesSection.classList.add('hidden');
+                    balanceNote.required = false;
+                    issueDetails.required = false;
+                    
+                    // Show relevant sections
+                    if (this.value === 'completed-ready-inspection-no-balance') {
+                        balanceNoteSection.classList.remove('hidden');
+                        balanceNote.required = true;
+                    } else if (this.value === 'not-collected-issues') {
+                        issuesSection.classList.remove('hidden');
+                        issueDetails.required = true;
+                    }
+                });
+            }
+        });
+
+        // Handle unit type change for issue form
+        document.addEventListener('DOMContentLoaded', function() {
+            const unitTypeSelect = document.getElementById('unitType');
+            if (unitTypeSelect) {
+                unitTypeSelect.addEventListener('change', function() {
+                    const unitType = this.value;
+                    const windowDetails = document.getElementById('windowDetails');
+                    const doorDetails = document.getElementById('doorDetails');
+                    
+                    if (unitType === 'window') {
+                        windowDetails.classList.remove('hidden');
+                        doorDetails.classList.add('hidden');
+                    } else if (unitType === 'door') {
+                        doorDetails.classList.remove('hidden');
+                        windowDetails.classList.add('hidden');
+                    } else {
+                        windowDetails.classList.add('hidden');
+                        doorDetails.classList.add('hidden');
+                    }
+                });
+            }
+        });
+
         // Admin login
         async function adminLogin() {
             console.log('=== STARTING ADMIN LOGIN ===');
