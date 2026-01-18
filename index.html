@@ -1216,7 +1216,7 @@
         }
 
         // Job Assignment Functions
-        let jobs = [];
+        let adminJobs = [];
         let editingJob = null;
 
         // Show job assignment interface
@@ -1296,7 +1296,7 @@
 
         // Load demo jobs
         function loadDemoJobs() {
-            jobs = [
+            adminJobs = [
                 {
                     id: 'JOB001',
                     title: 'Window Installation - Living Room',
@@ -1385,7 +1385,7 @@
             const statusFilter = document.getElementById('jobStatusFilter')?.value || '';
             const installerFilter = document.getElementById('jobInstallerFilter')?.value || '';
             
-            let filteredJobs = jobs.filter(job => {
+            let filteredJobs = adminJobs.filter(job => {
                 const matchesSearch = job.customer.toLowerCase().includes(searchTerm) || 
                                    job.address.toLowerCase().includes(searchTerm) ||
                                    job.title.toLowerCase().includes(searchTerm);
@@ -1492,7 +1492,7 @@
 
         // Edit job
         function editJob(jobId) {
-            editingJob = jobs.find(j => j.id === jobId);
+            editingJob = adminJobs.find(j => j.id === jobId);
             showJobForm();
         }
 
@@ -1673,9 +1673,9 @@
             
             if (editingJob) {
                 // Update existing job
-                const index = jobs.findIndex(j => j.id === editingJob.id);
+                const index = adminJobs.findIndex(j => j.id === editingJob.id);
                 if (index !== -1) {
-                    jobs[index] = { ...jobs[index], ...formData };
+                    adminJobs[index] = { ...adminJobs[index], ...formData };
                 }
             } else {
                 // Create new job
@@ -1683,7 +1683,7 @@
                     id: 'JOB' + Date.now(),
                     ...formData
                 };
-                jobs.push(newJob);
+                adminJobs.push(newJob);
             }
             
             showJobAssignment();
@@ -1691,7 +1691,7 @@
 
         // Assign job
         function assignJob(jobId) {
-            const job = jobs.find(j => j.id === jobId);
+            const job = adminJobs.find(j => j.id === jobId);
             if (!job) return;
             
             editingJob = job;
@@ -1700,7 +1700,7 @@
 
         // View job details
         function viewJobDetails(jobId) {
-            const job = jobs.find(j => j.id === jobId);
+            const job = adminJobs.find(j => j.id === jobId);
             if (!job) return;
             
             const installer = installers.find(i => i.id === job.assignedInstaller);
@@ -1816,7 +1816,7 @@
         // Delete job
         function deleteJob(jobId) {
             if (confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
-                jobs = jobs.filter(j => j.id !== jobId);
+                adminJobs = adminJobs.filter(j => j.id !== jobId);
                 renderJobsTable();
             }
         }
