@@ -1278,8 +1278,8 @@
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-2xl font-bold text-gray-900">📅 Job Assignment</h2>
                             <div class="flex space-x-2">
-                                <button onclick="showAddJobForm()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                                    ➕ Create New Job
+                                <button onclick="manualSyncTeamUp()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    🔄 Sync from TeamUp
                                 </button>
                                 <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                                     ← Back to Dashboard
@@ -1595,17 +1595,11 @@
                                 <button onclick="viewJobDetails('${job.id}')" class="text-blue-600 hover:text-blue-900">
                                     👁️ View
                                 </button>
-                                <button onclick="editJob('${job.id}')" class="text-green-600 hover:text-green-900">
-                                    ✏️ Edit
-                                </button>
                                 ${job.status === 'unassigned' ? `
                                     <button onclick="assignJob('${job.id}')" class="text-purple-600 hover:text-purple-900">
                                         👥 Assign
                                     </button>
                                 ` : ''}
-                                <button onclick="deleteJob('${job.id}')" class="text-red-600 hover:text-red-900">
-                                    🗑️ Delete
-                                </button>
                             </div>
                         </td>
                     </tr>
@@ -1971,14 +1965,6 @@
                             </div>
                             
                             <div class="mt-6 flex space-x-3">
-                                <button onclick="editJob('${job.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                    ✏️ Edit Job
-                                </button>
-                                ${job.status === 'unassigned' ? `
-                                    <button onclick="assignJob('${job.id}')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                                        👥 Assign Installer
-                                    </button>
-                                ` : ''}
                                 <button onclick="showJobAssignment()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                                     Back to Jobs
                                 </button>
