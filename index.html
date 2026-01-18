@@ -117,24 +117,18 @@
             flex-direction: column;
         }
 
-        /* Custom Grid Styles - Since Tailwind isn't working */
+        /* Simple Flexbox Layout - Guaranteed to work */
         .installer-grid {
-            display: grid !important;
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 24px !important;
-            width: 100% !important;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
         }
 
-        @media (max-width: 1024px) {
-            .installer-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .installer-grid {
-                grid-template-columns: 1fr !important;
-            }
+        .installer-grid .terminal-card {
+            flex: 1 1 300px;
+            min-width: 300px;
+            max-width: 400px;
         }
 
         .terminal-card::before {
