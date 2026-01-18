@@ -2306,42 +2306,68 @@
                 return;
             }
             
-            console.log('🔍 Loading installers from TeamUp...');
+            console.log('🔍 Loading installers from TeamUp calendars...');
             
-            // Get TeamUp events to find installers
-            fetch(`https://api.teamup.com/${teamupConfig.calendarId}/events`, {
+            // Get list of calendars (sub-calendars) from TeamUp
+            const calendarsApiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/calendars`;
+            
+            fetch(calendarsApiUrl, {
                 headers: {
                     'Teamup-Token': teamupConfig.apiKey
                 }
             })
             .then(response => response.json())
-            .then(data => {
-                const events = data.events || [];
+            .then(calendarsData => {
+                console.log('📅 Found calendars:', calendarsData.calendars?.length || 0);
+                
+                const calendars = calendarsData.calendars || [];
                 const installersMap = new Map();
                 
-                // Extract unique installers from events
-                events.forEach(event => {
-                    if (event.who && event.who.length > 0) {
-                        const installerName = event.who[0].name;
-                        if (installerName && !installersMap.has(installerName)) {
-                            installersMap.set(installerName, {
-                                name: installerName,
-                                events: [],
-                                phone: event.location?.phone || '',
-                                email: event.location?.notes || ''
-                            });
-                        }
+                // Process each calendar as a potential installer
+                calendars.forEach(calendar => {
+                    const installerName = calendar.name;
+                    if (installerName && !installersMap.has(installerName)) {
+                        installersMap.set(installerName, {
+                            name: installerName,
+                            calendarId: calendar.id,
+                            active: calendar.active !== false,
+                            color: calendar.color || '#3B82F6',
+                            phone: '',
+                            email: ''
+                        });
                     }
                 });
                 
-                // Display installers
-                displayTeamUpInstallers(Array.from(installersMap.values()));
+                console.log(`👥 Found ${installersMap.size} installer calendars`);
+                
+                // Get existing installers from Firebase to check who's already provisioned
+                if (db) {
+                    db.collection('installers').get().then(snapshot => {
+                        const existingInstallers = new Set();
+                        snapshot.forEach(doc => {
+                            existingInstallers.add(doc.data().name);
+                        });
+                        
+                        console.log(`📋 ${existingInstallers.size} installers already provisioned`);
+                        
+                        // Mark which installers need provisioning
+                        const installersList = Array.from(installersMap.values()).map(installer => ({
+                            ...installer,
+                            needsProvisioning: !existingInstallers.has(installer.name)
+                        }));
+                        
+                        displayTeamUpInstallers(installersList);
+                    });
+                } else {
+                    // Fallback - just show all calendars
+                    displayTeamUpInstallers(Array.from(installersMap.values()));
+                }
             })
             .catch(error => {
-                console.error('❌ Failed to load TeamUp installers:', error);
+                console.error('❌ Failed to load TeamUp calendars:', error);
                 document.getElementById('teamUpInstallersList').innerHTML = `
                     <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-                        <p class="text-red-800">❌ Failed to load TeamUp data: ${error.message}</p>
+                        <p class="text-red-800">❌ Failed to load TeamUp calendars: ${error.message}</p>
                     </div>
                 `;
             });
@@ -2354,27 +2380,32 @@
             if (installers.length === 0) {
                 listElement.innerHTML = `
                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                        <p class="text-gray-600">No installers found in TeamUp events.</p>
+                        <p class="text-gray-600">No installers found in TeamUp calendars.</p>
                     </div>
                 `;
                 return;
             }
             
             listElement.innerHTML = installers.map((installer, index) => `
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <div class="bg-white border border-gray-200 rounded-lg p-4 ${installer.needsProvisioning ? 'border-l-4 border-orange-500' : 'border-l-4 border-green-500'}">
                     <div class="flex items-start space-x-3">
                         <input type="checkbox" id="installer-${index}" value="${installer.name}" 
-                               class="mt-1 h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
+                               class="mt-1 h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                               ${!installer.needsProvisioning ? 'disabled' : ''}>
                         <div class="flex-1">
                             <div class="flex items-center justify-between">
                                 <div>
                                     <h4 class="font-semibold text-gray-900">${installer.name}</h4>
-                                    <p class="text-sm text-gray-600">Found in TeamUp events</p>
+                                    <p class="text-sm text-gray-600">
+                                        ${installer.needsProvisioning ? 'Needs account created' : 'Already provisioned'}
+                                        ${installer.calendarId ? `• Calendar ID: ${installer.calendarId}` : ''}
+                                    </p>
                                 </div>
                                 <div class="text-right">
-                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                                        ${installer.events.length} events
-                                    </span>
+                                    ${installer.needsProvisioning ? 
+                                        `<span class="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded">⚠️ Needs Account</span>` :
+                                        `<span class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">✅ Provisioned</span>`
+                                    }
                                 </div>
                             </div>
                         </div>
@@ -2385,7 +2416,7 @@
         }
 
         function selectAllInstallers() {
-            const checkboxes = document.querySelectorAll('#teamUpInstallersList input[type="checkbox"]');
+            const checkboxes = document.querySelectorAll('#teamUpInstallersList input[type="checkbox"]:not(:disabled)');
             checkboxes.forEach(cb => cb.checked = true);
             updateProvisioningSummary();
         }
@@ -2402,7 +2433,7 @@
             const summaryElement = document.getElementById('provisioningSummary');
             
             if (selectedCount === 0) {
-                summaryElement.textContent = 'Select installers to create accounts for';
+                summaryElement.innerHTML = 'Select installers to create accounts for';
             } else {
                 summaryElement.innerHTML = `
                     <strong>${selectedCount}</strong> installer(s) selected for account creation
@@ -2430,7 +2461,7 @@
                     phone: '(555) 000-0000',
                     crews: ['Default Crew'],
                     status: 'active',
-                    notes: `Auto-provisioned from TeamUp events on ${new Date().toLocaleDateString()}`,
+                    notes: `Auto-provisioned from TeamUp calendar on ${new Date().toLocaleDateString()}`,
                     createdAt: new Date()
                 };
                 
@@ -2448,7 +2479,7 @@
             
             alert(`✅ Provisioning complete! Accounts created for ${selectedInstallers.length} installer(s).`);
             
-            // Refresh the list
+            // Refresh list to show updated provisioning status
             loadTeamUpInstallers();
         }
 
