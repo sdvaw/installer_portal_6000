@@ -711,9 +711,14 @@
                 mainElement.innerHTML = `
                     <!-- Installer Management Header -->
                     <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">👥 Installer Management</h2>
-                            <p class="text-gray-600">Manage installer accounts, performance, and credentials</p>
+                        <div class="flex items-center space-x-4">
+                            <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                ← Back to Dashboard
+                            </button>
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900">👥 Installer Management</h2>
+                                <p class="text-gray-600">Manage installer accounts, performance, and credentials</p>
+                            </div>
                         </div>
                         <div class="flex space-x-3">
                             <button onclick="showAddInstallerForm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
