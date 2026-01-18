@@ -345,18 +345,48 @@
         let installerData = null;
         let jobs = [];
         let jobsUnsubscribe = null;
+        let currentUser = null;
+        let userRole = null; // 'installer' or 'admin'
+
+        // Login form handler
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const userType = document.getElementById('userType').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            console.log(`Login attempt: ${userType} - ${email}`);
+            
+            // Demo mode - accept any credentials
+            currentUser = {
+                uid: userType === 'admin' ? 'admin-123' : 'demo-user-123',
+                email: email,
+                displayName: userType === 'admin' ? 'Admin User' : 'John Smith',
+                role: userType
+            };
+            
+            userRole = userType;
+            
+            if (userType === 'admin') {
+                await adminLogin();
+            } else {
+                await installerLogin();
+            }
+        });
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('Installer Portal - Firebase System');
             console.log('DOM Content Loaded - starting initialization...');
             
-            // Check if Firebase is available
+            // Show login screen first
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
+            
+            // Check if Firebase is available (for future use)
             if (!db || !auth) {
                 console.log('Firebase not available, using demo mode');
-                console.log('Calling demoLogin...');
-                await demoLogin();
-                console.log('demoLogin completed');
                 return;
             }
             
@@ -368,30 +398,53 @@
                     await loadJobs();
                     showPortal();
                 } else {
-                    // For demo, auto-login
-                    await demoLogin();
+                    // Show login screen
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('loginScreen').classList.remove('hidden');
                 }
             });
         });
 
-        // Demo login (replace with real auth)
-        async function demoLogin() {
-            console.log('=== STARTING DEMO LOGIN ===');
+        // Admin login
+        async function adminLogin() {
+            console.log('=== STARTING ADMIN LOGIN ===');
             
-            // Use demo mode when Firebase config is not set
-            console.log('Using demo mode - Firebase config not set');
-            
-            const demoUser = {
-                uid: 'demo-user-123',
-                email: 'john@company.com',
-                displayName: 'John Smith'
+            // Create admin data
+            installerData = {
+                uid: currentUser.uid,
+                name: currentUser.displayName,
+                email: currentUser.email,
+                role: 'admin',
+                crews: ['All Crews'],
+                active: true
             };
             
-            // Create demo data without Firebase
+            console.log('Admin data created:', installerData);
+            
+            // Load all installers and jobs for admin view
+            await loadAllInstallers();
+            await loadAllJobs();
+            
+            // Update UI for admin
+            document.getElementById('installerName').textContent = installerData.name + ' (Admin)';
+            document.getElementById('installerInfo').textContent = installerData.name + ' - Administrator';
+            
+            // Show admin dashboard
+            renderAdminDashboard();
+            
+            console.log('=== ADMIN LOGIN COMPLETED ===');
+            showPortal();
+        }
+
+        // Installer login (existing function)
+        async function installerLogin() {
+            console.log('=== STARTING INSTALLER LOGIN ===');
+            
+            // Create installer data
             installerData = {
-                uid: demoUser.uid,
-                name: demoUser.displayName || 'John Smith',
-                email: demoUser.email,
+                uid: currentUser.uid,
+                name: currentUser.displayName,
+                email: currentUser.email,
                 crews: ['Crew A', 'Crew B'],
                 active: true
             };
@@ -399,11 +452,9 @@
             console.log('Installer data created:', installerData);
             
             // Load installer availability
-            console.log('Loading installer availability...');
             await loadInstallerAvailability();
-            console.log('Availability loaded');
             
-            // Create demo jobs (realistic data)
+            // Create demo jobs
             jobs = [
                 {
                     id: 'JOB001',
@@ -440,20 +491,194 @@
             console.log('Demo jobs created:', jobs);
             
             // Update UI
-            console.log('Updating UI elements...');
             document.getElementById('installerName').textContent = installerData.name;
             document.getElementById('installerInfo').textContent = installerData.name;
             
-            console.log('Rendering week view...');
-            renderWeekView();
-            updateWeekRange();
+            // Show installer dashboard
+            renderInstallerDashboard();
             
-            console.log('=== SHOWING PORTAL ===');
+            console.log('=== INSTALLER LOGIN COMPLETED ===');
             showPortal();
-            console.log('=== DEMO LOGIN COMPLETED ===');
         }
 
-        // Load installer data from Firestore
+        // Admin dashboard functions
+        let allInstallers = [];
+        
+        async function loadAllInstallers() {
+            // Demo mode - create sample installers
+            allInstallers = [
+                {
+                    uid: 'demo-user-123',
+                    name: 'John Smith',
+                    email: 'john@company.com',
+                    crews: ['Crew A', 'Crew B'],
+                    active: true,
+                    status: 'available'
+                },
+                {
+                    uid: 'installer-456',
+                    name: 'Mike Johnson',
+                    email: 'mike@company.com',
+                    crews: ['Crew B'],
+                    active: true,
+                    status: 'on-job'
+                },
+                {
+                    uid: 'installer-789',
+                    name: 'Sarah Davis',
+                    email: 'sarah@company.com',
+                    crews: ['Crew A'],
+                    active: true,
+                    status: 'available'
+                }
+            ];
+            console.log('All installers loaded:', allInstallers);
+        }
+        
+        async function loadAllJobs() {
+            // Demo mode - create sample jobs for all installers
+            jobs = [
+                {
+                    id: 'JOB001',
+                    title: 'Window Installation - Living Room',
+                    customer: 'John Smith',
+                    address: '123 Main Street, Springfield',
+                    scheduledDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+                    status: 'scheduled',
+                    crew: 'Crew A',
+                    installerId: 'demo-user-123',
+                    installerName: 'John Smith',
+                    notes: 'Install new double-hung windows'
+                },
+                {
+                    id: 'JOB002',
+                    title: 'Door Replacement - Front Entry',
+                    customer: 'Mary Johnson',
+                    address: '456 Oak Avenue, Springfield',
+                    scheduledDate: new Date(Date.now() + 6 * 60 * 60 * 1000),
+                    status: 'in-progress',
+                    crew: 'Crew B',
+                    installerId: 'installer-456',
+                    installerName: 'Mike Johnson',
+                    notes: 'Remove old door frame, install new entry door'
+                },
+                {
+                    id: 'JOB003',
+                    title: 'Window Repair - Bedroom',
+                    customer: 'Robert Davis',
+                    address: '789 Pine Street, Springfield',
+                    scheduledDate: new Date(Date.now() - 4 * 60 * 60 * 1000),
+                    status: 'completed',
+                    crew: 'Crew A',
+                    installerId: 'installer-789',
+                    installerName: 'Sarah Davis',
+                    notes: 'Fix broken window seal'
+                }
+            ];
+            console.log('All jobs loaded:', jobs);
+        }
+        
+        function renderAdminDashboard() {
+            const mainContent = document.querySelector('main');
+            mainContent.innerHTML = `
+                <!-- Admin Header -->
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">👑 Admin Dashboard</h2>
+                    <p class="text-gray-600">Manage installers, jobs, and system settings</p>
+                </div>
+                
+                <!-- Admin Actions -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-blue-500">
+                        <h3 class="font-semibold text-gray-900 mb-2">👥 Installer Management</h3>
+                        <p class="text-sm text-gray-600 mb-3">Add, edit, and manage installer accounts</p>
+                        <button onclick="showInstallerManagement()" class="px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">
+                            Manage Installers
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
+                        <h3 class="font-semibold text-gray-900 mb-2">📅 Job Assignment</h3>
+                        <p class="text-sm text-gray-600 mb-3">Assign jobs to installers and manage scheduling</p>
+                        <button onclick="showJobAssignment()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                            Assign Jobs
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
+                        <h3 class="font-semibold text-gray-900 mb-2">🔧 System Settings</h3>
+                        <p class="text-sm text-gray-600 mb-3">Configure Teamup sync and system preferences</p>
+                        <button onclick="showSystemSettings()" class="px-3 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700">
+                            Settings
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="text-2xl font-bold text-blue-600">${allInstallers.length}</div>
+                        <div class="text-sm text-gray-600">Total Installers</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="text-2xl font-bold text-green-600">${allInstallers.filter(i => i.status === 'available').length}</div>
+                        <div class="text-sm text-gray-600">Available</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="text-2xl font-bold text-orange-600">${allInstallers.filter(i => i.status === 'on-job').length}</div>
+                        <div class="text-sm text-gray-600">On Job</div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4">
+                        <div class="text-2xl font-bold text-purple-600">${jobs.filter(j => j.status === 'scheduled').length}</div>
+                        <div class="text-sm text-gray-600">Scheduled Jobs</div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <h3 class="font-semibold text-gray-900 mb-3">📊 Recent Activity</h3>
+                    <div class="space-y-2">
+                        ${jobs.slice(0, 5).map(job => `
+                            <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                                <div>
+                                    <span class="font-medium">${job.id}</span>
+                                    <span class="text-sm text-gray-600 ml-2">${job.customer}</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="px-2 py-1 rounded text-xs ${
+                                        job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                        job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                                        'bg-gray-100 text-gray-800'
+                                    }">
+                                        ${job.status.replace('-', ' ').toUpperCase()}
+                                    </span>
+                                    <span class="text-gray-500 ml-2">${job.installerName}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderInstallerDashboard() {
+            // Show the regular installer dashboard
+            renderWeekView();
+            updateWeekRange();
+        }
+        
+        // Admin management functions (placeholders for now)
+        function showInstallerManagement() {
+            alert('Installer Management - Coming Soon!');
+        }
+        
+        function showJobAssignment() {
+            alert('Job Assignment - Coming Soon!');
+        }
+        
+        function showSystemSettings() {
+            alert('System Settings - Coming Soon!');
+        }
         async function loadInstallerData(user) {
             try {
                 // Get installer document
