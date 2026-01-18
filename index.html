@@ -608,7 +608,7 @@
                             <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-green-500">
                                 <h3 class="font-semibold text-gray-900 mb-2">📅 Job Assignment</h3>
                                 <p class="text-sm text-gray-600 mb-3">Assign jobs to installers and manage scheduling</p>
-                                <button onclick="alert('Job Assignment - Coming Soon!')" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
+                                <button onclick="showJobAssignment()" class="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700">
                                     Assign Jobs
                                 </button>
                             </div>
@@ -1212,6 +1212,612 @@
             if (confirm('Are you sure you want to delete this installer? This action cannot be undone.')) {
                 installers = installers.filter(i => i.id !== installerId);
                 renderInstallersTable();
+            }
+        }
+
+        // Job Assignment Functions
+        let jobs = [];
+        let editingJob = null;
+
+        // Show job assignment interface
+        function showJobAssignment() {
+            console.log('Loading job assignment...');
+            
+            // Load demo jobs
+            loadDemoJobs();
+            
+            // Replace main content with job assignment
+            const mainElement = document.querySelector('main');
+            if (mainElement) {
+                mainElement.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-900">📅 Job Assignment</h2>
+                            <div class="flex space-x-2">
+                                <button onclick="showAddJobForm()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                    ➕ Create New Job
+                                </button>
+                                <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                    ← Back to Dashboard
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Search and Filter -->
+                        <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                            <div class="flex flex-col md:flex-row gap-4">
+                                <input type="text" id="jobSearch" placeholder="Search jobs by customer or address..." 
+                                       class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       onkeyup="filterJobs()">
+                                <select id="jobStatusFilter" onchange="filterJobs()" 
+                                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Status</option>
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                                <select id="jobInstallerFilter" onchange="filterJobs()" 
+                                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">All Installers</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Jobs Table -->
+                        <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled Date</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installer</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jobsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Jobs will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                
+                // Populate installer filter
+                populateInstallerFilter();
+                
+                // Render jobs table
+                renderJobsTable();
+            }
+        }
+
+        // Load demo jobs
+        function loadDemoJobs() {
+            jobs = [
+                {
+                    id: 'JOB001',
+                    title: 'Window Installation - Living Room',
+                    customer: 'John Smith',
+                    phone: '(555) 123-4567',
+                    email: 'john.smith@email.com',
+                    address: '123 Main Street, Springfield',
+                    scheduledDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+                    assignedInstaller: 'installer-001',
+                    status: 'scheduled',
+                    crew: 'Crew A',
+                    notes: 'Install new double-hung windows, remove old frames',
+                    estimatedDuration: '4 hours',
+                    priority: 'normal'
+                },
+                {
+                    id: 'JOB002',
+                    title: 'Door Replacement - Front Entry',
+                    customer: 'Mary Johnson',
+                    phone: '(555) 234-5678',
+                    email: 'mary.johnson@email.com',
+                    address: '456 Oak Avenue, Springfield',
+                    scheduledDate: new Date(Date.now() + 6 * 60 * 60 * 1000),
+                    assignedInstaller: 'installer-002',
+                    status: 'scheduled',
+                    crew: 'Crew C',
+                    notes: 'Remove old door frame, install new entry door with hardware',
+                    estimatedDuration: '3 hours',
+                    priority: 'high'
+                },
+                {
+                    id: 'JOB003',
+                    title: 'Window Repair - Bedroom',
+                    customer: 'Robert Davis',
+                    phone: '(555) 345-6789',
+                    email: 'robert.davis@email.com',
+                    address: '789 Pine Street, Springfield',
+                    scheduledDate: new Date(Date.now() - 4 * 60 * 60 * 1000),
+                    assignedInstaller: 'installer-001',
+                    status: 'completed',
+                    crew: 'Crew A',
+                    notes: 'Fix broken window seal, replace weatherstripping',
+                    estimatedDuration: '2 hours',
+                    priority: 'low'
+                },
+                {
+                    id: 'JOB004',
+                    title: 'Full Window Replacement - Kitchen',
+                    customer: 'Sarah Wilson',
+                    phone: '(555) 456-7890',
+                    email: 'sarah.wilson@email.com',
+                    address: '321 Elm Street, Springfield',
+                    scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                    assignedInstaller: null,
+                    status: 'unassigned',
+                    crew: null,
+                    notes: 'Replace all kitchen windows with new energy-efficient models',
+                    estimatedDuration: '6 hours',
+                    priority: 'high'
+                }
+            ];
+        }
+
+        // Populate installer filter dropdown
+        function populateInstallerFilter() {
+            const filter = document.getElementById('jobInstallerFilter');
+            if (!filter) return;
+            
+            // Add active installers to filter
+            const activeInstallers = installers.filter(i => i.status === 'active');
+            
+            filter.innerHTML = `
+                <option value="">All Installers</option>
+                ${activeInstallers.map(installer => `
+                    <option value="${installer.id}">${installer.name}</option>
+                `).join('')}
+            `;
+        }
+
+        // Render jobs table
+        function renderJobsTable() {
+            const tbody = document.getElementById('jobsTableBody');
+            if (!tbody) return;
+            
+            const searchTerm = document.getElementById('jobSearch')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('jobStatusFilter')?.value || '';
+            const installerFilter = document.getElementById('jobInstallerFilter')?.value || '';
+            
+            let filteredJobs = jobs.filter(job => {
+                const matchesSearch = job.customer.toLowerCase().includes(searchTerm) || 
+                                   job.address.toLowerCase().includes(searchTerm) ||
+                                   job.title.toLowerCase().includes(searchTerm);
+                const matchesStatus = !statusFilter || job.status === statusFilter;
+                const matchesInstaller = !installerFilter || job.assignedInstaller === installerFilter;
+                return matchesSearch && matchesStatus && matchesInstaller;
+            });
+            
+            // Sort by scheduled date
+            filteredJobs.sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate));
+            
+            tbody.innerHTML = filteredJobs.map(job => {
+                const installer = installers.find(i => i.id === job.assignedInstaller);
+                const installerName = installer ? installer.name : 'Unassigned';
+                
+                return `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${job.id}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">${job.customer}</div>
+                            <div class="text-xs text-gray-500">${job.phone}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="text-sm text-gray-900">${job.address}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${formatDate(job.scheduledDate)}</div>
+                            <div class="text-xs text-gray-500">${formatTime(job.scheduledDate)}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">${installerName}</div>
+                            ${job.crew ? `<div class="text-xs text-gray-500">${job.crew}</div>` : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs rounded ${getStatusClass(job.status)}">
+                                ${job.status.replace('_', ' ').toUpperCase()}
+                            </span>
+                            ${job.priority === 'high' ? '<div class="text-xs text-red-600 mt-1">⚠️ High Priority</div>' : ''}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div class="flex space-x-2">
+                                <button onclick="viewJobDetails('${job.id}')" class="text-blue-600 hover:text-blue-900">
+                                    👁️ View
+                                </button>
+                                <button onclick="editJob('${job.id}')" class="text-green-600 hover:text-green-900">
+                                    ✏️ Edit
+                                </button>
+                                ${job.status === 'unassigned' ? `
+                                    <button onclick="assignJob('${job.id}')" class="text-purple-600 hover:text-purple-900">
+                                        👥 Assign
+                                    </button>
+                                ` : ''}
+                                <button onclick="deleteJob('${job.id}')" class="text-red-600 hover:text-red-900">
+                                    🗑️ Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Get status styling class
+        function getStatusClass(status) {
+            switch(status) {
+                case 'scheduled': return 'bg-blue-100 text-blue-800';
+                case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+                case 'completed': return 'bg-green-100 text-green-800';
+                case 'cancelled': return 'bg-red-100 text-red-800';
+                case 'unassigned': return 'bg-gray-100 text-gray-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        // Format date
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        // Format time
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        }
+
+        // Filter jobs
+        function filterJobs() {
+            renderJobsTable();
+        }
+
+        // Show add job form
+        function showAddJobForm() {
+            editingJob = null;
+            showJobForm();
+        }
+
+        // Edit job
+        function editJob(jobId) {
+            editingJob = jobs.find(j => j.id === jobId);
+            showJobForm();
+        }
+
+        // Show job form
+        function showJobForm() {
+            const mainElement = document.querySelector('main');
+            if (!mainElement) return;
+            
+            const job = editingJob || {
+                title: '',
+                customer: '',
+                phone: '',
+                email: '',
+                address: '',
+                scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+                assignedInstaller: '',
+                crew: '',
+                status: 'scheduled',
+                notes: '',
+                estimatedDuration: '',
+                priority: 'normal'
+            };
+            
+            // Format date for input
+            const dateForInput = new Date(job.scheduledDate).toISOString().slice(0, 16);
+            
+            mainElement.innerHTML = `
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-900">
+                            ${editingJob ? '✏️ Edit Job' : '➕ Create New Job'}
+                        </h2>
+                        <button onclick="showJobAssignment()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                            ← Back to Jobs
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <form id="jobForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Job Title *</label>
+                                    <input type="text" id="jobTitle" required 
+                                           value="${job.title}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Customer Name *</label>
+                                    <input type="text" id="jobCustomer" required 
+                                           value="${job.customer}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Customer Phone *</label>
+                                    <input type="tel" id="jobPhone" required 
+                                           value="${job.phone}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Customer Email</label>
+                                    <input type="email" id="jobEmail" 
+                                           value="${job.email}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700">Service Address *</label>
+                                    <input type="text" id="jobAddress" required 
+                                           value="${job.address}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Scheduled Date & Time *</label>
+                                    <input type="datetime-local" id="jobScheduledDate" required 
+                                           value="${dateForInput}"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Assign Installer</label>
+                                    <select id="jobAssignedInstaller" 
+                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="">Select Installer</option>
+                                        ${installers.filter(i => i.status === 'active').map(installer => `
+                                            <option value="${installer.id}" ${job.assignedInstaller === installer.id ? 'selected' : ''}>
+                                                ${installer.name}
+                                            </option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Priority</label>
+                                    <select id="jobPriority" 
+                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="low" ${job.priority === 'low' ? 'selected' : ''}>Low</option>
+                                        <option value="normal" ${job.priority === 'normal' ? 'selected' : ''}>Normal</option>
+                                        <option value="high" ${job.priority === 'high' ? 'selected' : ''}>High</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Estimated Duration</label>
+                                    <input type="text" id="jobEstimatedDuration" 
+                                           value="${job.estimatedDuration}"
+                                           placeholder="e.g., 4 hours"
+                                           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Status</label>
+                                    <select id="jobStatus" 
+                                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                        <option value="unassigned" ${job.status === 'unassigned' ? 'selected' : ''}>Unassigned</option>
+                                        <option value="scheduled" ${job.status === 'scheduled' ? 'selected' : ''}>Scheduled</option>
+                                        <option value="in_progress" ${job.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="completed" ${job.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                        <option value="cancelled" ${job.status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Job Notes</label>
+                                <textarea id="jobNotes" rows="4" 
+                                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">${job.notes}</textarea>
+                            </div>
+                            
+                            <div class="flex justify-end space-x-3">
+                                <button type="button" onclick="showJobAssignment()" 
+                                        class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit" 
+                                        class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
+                                    ${editingJob ? 'Update Job' : 'Create Job'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+            
+            // Setup form submission
+            const form = document.getElementById('jobForm');
+            if (form) {
+                form.addEventListener('submit', saveJob);
+            }
+        }
+
+        // Save job
+        async function saveJob(e) {
+            e.preventDefault();
+            
+            const formData = {
+                title: document.getElementById('jobTitle').value,
+                customer: document.getElementById('jobCustomer').value,
+                phone: document.getElementById('jobPhone').value,
+                email: document.getElementById('jobEmail').value,
+                address: document.getElementById('jobAddress').value,
+                scheduledDate: new Date(document.getElementById('jobScheduledDate').value),
+                assignedInstaller: document.getElementById('jobAssignedInstaller').value,
+                priority: document.getElementById('jobPriority').value,
+                estimatedDuration: document.getElementById('jobEstimatedDuration').value,
+                status: document.getElementById('jobStatus').value,
+                notes: document.getElementById('jobNotes').value
+            };
+            
+            // Set crew based on installer
+            if (formData.assignedInstaller) {
+                const installer = installers.find(i => i.id === formData.assignedInstaller);
+                formData.crew = installer ? installer.crews[0] : null;
+            }
+            
+            if (editingJob) {
+                // Update existing job
+                const index = jobs.findIndex(j => j.id === editingJob.id);
+                if (index !== -1) {
+                    jobs[index] = { ...jobs[index], ...formData };
+                }
+            } else {
+                // Create new job
+                const newJob = {
+                    id: 'JOB' + Date.now(),
+                    ...formData
+                };
+                jobs.push(newJob);
+            }
+            
+            showJobAssignment();
+        }
+
+        // Assign job
+        function assignJob(jobId) {
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+            
+            editingJob = job;
+            showJobForm();
+        }
+
+        // View job details
+        function viewJobDetails(jobId) {
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
+            
+            const installer = installers.find(i => i.id === job.assignedInstaller);
+            const installerName = installer ? installer.name : 'Unassigned';
+            
+            const mainElement = document.querySelector('main');
+            if (mainElement) {
+                mainElement.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-900">👁️ Job Details</h2>
+                            <button onclick="showJobAssignment()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                ← Back to Jobs
+                            </button>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Job Information</h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Job ID</label>
+                                            <div class="text-lg font-mono">${job.id}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Title</label>
+                                            <div class="text-lg">${job.title}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Status</label>
+                                            <span class="px-2 py-1 text-xs rounded ${getStatusClass(job.status)}">
+                                                ${job.status.replace('_', ' ').toUpperCase()}
+                                            </span>
+                                            ${job.priority === 'high' ? '<div class="text-sm text-red-600 mt-1">⚠️ High Priority</div>' : ''}
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Scheduled Date</label>
+                                            <div class="text-lg">${formatDate(job.scheduledDate)} at ${formatTime(job.scheduledDate)}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Estimated Duration</label>
+                                            <div class="text-lg">${job.estimatedDuration || 'Not specified'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Customer Name</label>
+                                            <div class="text-lg">${job.customer}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Phone</label>
+                                            <div class="text-lg">${job.phone}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Email</label>
+                                            <div class="text-lg">${job.email || 'Not provided'}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Service Address</label>
+                                            <div class="text-lg">${job.address}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Assignment</h3>
+                                    <div class="space-y-3">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Assigned Installer</label>
+                                            <div class="text-lg">${installerName}</div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700">Crew</label>
+                                            <div class="text-lg">${job.crew || 'Not assigned'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                ${job.notes ? `
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+                                        <div class="bg-gray-50 p-3 rounded">${job.notes}</div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="mt-6 flex space-x-3">
+                                <button onclick="editJob('${job.id}')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    ✏️ Edit Job
+                                </button>
+                                ${job.status === 'unassigned' ? `
+                                    <button onclick="assignJob('${job.id}')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                        👥 Assign Installer
+                                    </button>
+                                ` : ''}
+                                <button onclick="showJobAssignment()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                                    Back to Jobs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Delete job
+        function deleteJob(jobId) {
+            if (confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+                jobs = jobs.filter(j => j.id !== jobId);
+                renderJobsTable();
             }
         }
 
