@@ -1824,7 +1824,7 @@
         // Render installer dashboard
         function renderInstallerDashboard() {
             // Show the regular installer dashboard
-            renderJobs();
+            renderInstallerJobs();
             updateWeekRange();
         }
 
@@ -1887,7 +1887,7 @@
             document.getElementById('installerInfo').textContent = installerData.name;
             document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
             
-            renderJobs();
+            renderInstallerJobs();
             updateWeekRange();
             showPortal();
         }
@@ -1959,7 +1959,7 @@
         }
 
         // Render jobs
-        function renderJobs() {
+        function renderInstallerJobs() {
             const jobsList = document.getElementById('jobsList');
             const noJobs = document.getElementById('noJobs');
 
