@@ -51,6 +51,29 @@
                 font-size: 16px;
                 padding: 14px 12px;
             }
+            
+            /* Mobile calendar styling */
+            #weekView {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #weekView > div {
+                min-width: 80px !important;
+            }
+            
+            /* Mobile search results */
+            .search-result-card {
+                padding: 16px !important;
+            }
+            
+            /* Mobile availability calendar */
+            #availabilityCalendar {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #availabilityCalendar .grid-cols-7 {
+                min-width: 600px;
+            }
         }
         /* Modal z-index fixes */
         .modal-overlay {
@@ -539,7 +562,7 @@
                 }
                 
                 weekHTML += `
-                    <div class="flex-shrink-0 w-24 p-2 ${bgColor} border ${borderColor} rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                    <div class="flex-shrink-0 w-20 sm:w-24 p-2 ${bgColor} border ${borderColor} rounded-lg cursor-pointer hover:shadow-md transition-shadow"
                          onclick="showDayDetails('${dateStr}')">
                         <div class="text-center">
                             <div class="text-xs font-medium ${statusColor}">${dayName}</div>
