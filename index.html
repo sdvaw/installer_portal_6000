@@ -1641,125 +1641,69 @@
                     return 'text-red-400';
                 case 'OPENED':
                     return 'text-blue-400';
-                default:
-                    return 'text-gray-400';
-            }
         }
+    ];
+}
 
-        // Real SMTP email and SMS function
-        async function sendSimpleEmail(email, name, password) {
-            console.log('📧 Real email/SMS function called');
-            console.log('📧 Email:', email);
-            console.log('📧 Name:', name);
-            console.log('📧 Password:', password);
+// Render installer cards
+function renderInstallerCards() {
+    const cardsContainer = document.getElementById('installerCards');
+    if (!cardsContainer) return;
+    
+    const searchTerm = document.getElementById('installerSearch')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
+    
+    let filteredInstallers = installers.filter(installer => {
+        const matchesSearch = installer.name && installer.email && installer.phone && 
+                               (installer.name.toLowerCase().includes(searchTerm) || 
+                                installer.email.toLowerCase().includes(searchTerm) ||
+                                installer.phone.includes(searchTerm));
+        const matchesStatus = !statusFilter || installer.status === statusFilter;
+        return matchesSearch && matchesStatus;
+    });
+    
+    cardsContainer.innerHTML = filteredInstallers.map(installer => `
+        <div class="terminal-card p-4 mb-4">
+            <div class="scanline"></div>
+            <!-- Card Header -->
+            <div class="border-b border-green-500 pb-3 mb-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="text-lg font-bold text-terminal">${installer.name || 'Unknown'}</h3>
+                        <p class="text-terminal-muted text-sm">ID: ${installer.id}</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${installer.status === 'active' ? 'checked' : ''} 
+                                   onchange="toggleInstallerStatus('${installer.id}')" 
+                                   class="sr-only peer">
+                            <div class="w-11 h-6 bg-green-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-green-400 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-green-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
             
-            const loginLink = window.location.origin + '/installer-login?installer=' + email;
-            
-            // Choose delivery method
-            const method = prompt(`Send to ${name}:\n\n1 = EMAIL (SMTP)\n2 = SMS TEXT\n3 = BOTH\n\nType 1, 2, or 3:`);
-            
-            const results = [];
-            
-            if (method === '1' || method === '3') {
-                // Send real SMTP email via EmailJS
-                try {
-                    console.log('📧 Sending SMTP email via EmailJS...');
-                    
-                    // Initialize EmailJS (you'll need to set this up)
-                    emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
-                    
-                    const emailData = {
-                        to_email: email,
-                        to_name: name,
-                        login_link: loginLink,
-                        password: password,
-                        installer_portal: window.location.origin,
-                        from_name: 'Installer Portal Admin'
-                    };
-                    
-                    const response = await emailjs.send(
-                        'YOUR_SERVICE_ID',    // Replace with your EmailJS service ID
-                        'YOUR_TEMPLATE_ID',   // Replace with your EmailJS template ID
-                        emailData
-                    );
-                    
-                    if (response.status === 200) {
-                        results.push('✅ Email sent successfully via SMTP');
-                        console.log('📧 Email sent via EmailJS:', response);
-                    } else {
-                        results.push('❌ Email failed: ' + response.text);
-                    }
-                    
-                } catch (error) {
-                    console.error('📧 EmailJS error:', error);
-                    results.push('❌ Email error: ' + error.message);
-                }
-            }
-            
-            if (method === '2' || method === '3') {
-                // Send real SMS via Twilio
-                try {
-                    console.log('📱 Sending SMS via Twilio...');
-                    
-                    // For demo, we'll simulate Twilio SMS
-                    // In production, you'd use actual Twilio credentials
-                    const smsData = {
-                        to: password, // Phone number
-                        body: `Installer Portal Access: ${name}, click here: ${loginLink}\n\nPassword: ${password}\n\nReply STOP to unsubscribe`
-                    };
-                    
-                    // Simulate SMS sending (replace with real Twilio code)
-                    const smsResult = await sendRealSMS(smsData);
-                    
-                    if (smsResult.success) {
-                        results.push('✅ SMS sent successfully');
-                        console.log('📱 SMS sent:', smsResult);
-                    } else {
-                        results.push('❌ SMS failed: ' + smsResult.error);
-                    }
-                    
-                } catch (error) {
-                    console.error('📱 SMS error:', error);
-                    results.push('❌ SMS error: ' + error.message);
-                }
-            }
-            
-            // Show results
-            alert(`📧 Send Results:\n\n${results.join('\n')}\n\nLogin Link: ${loginLink}\n\nPassword: ${password}`);
-        }
-        
-        // Real SMS sending function
-        async function sendRealSMS(smsData) {
-            // For demo purposes, simulate SMS sending
-            // In production, replace with actual Twilio implementation:
-            /*
-            const twilioClient = new Twilio('ACCOUNT_SID', 'AUTH_TOKEN');
-            
-            const message = await twilioClient.messages.create({
-                body: smsData.body,
-                to: smsData.to,
-                from: '+1234567890' // Your Twilio phone number
-            });
-            
-            return { success: true, message: message };
-            */
-            
-            // Simulation for now
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    const success = Math.random() > 0.1; // 90% success rate
-                    resolve({
-                        success: success,
-                        message: success ? 'SMS sent successfully' : 'SMS service unavailable',
-                        sid: success ? 'SM_' + Math.random().toString(36).substr(2, 9) : null
-                    });
-                }, 2000);
-            });
-        }
-
-        // Send installer invite
-        async function sendInstallerInvite(installerId) {
-            console.log('🚀 Starting invite process for installer:', installerId);
+            <!-- Card Body -->
+            <div class="space-y-3">
+                <!-- Contact Info -->
+                <div class="space-y-1 text-sm">
+                    <div class="flex items-center">
+                        <span class="text-terminal-muted w-16">EMAIL:</span>
+                        <span class="text-terminal">${installer.email || 'No email'}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-terminal-muted w-16">PHONE:</span>
+                        <span class="text-terminal">${installer.phone || 'No phone'}</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-terminal-muted w-16">CREWS:</span>
+                        <div class="flex flex-wrap gap-1">
+                            ${(installer.crews || []).map(crew => `
+                                <span class="px-2 py-1 text-xs bg-green-900 text-green-400 rounded border border-green-600">${crew}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
             
             const installer = installers.find(i => i.id === installerId);
             if (!installer) {
