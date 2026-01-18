@@ -1189,21 +1189,32 @@
         }
 
         // Save installer
-        async function saveInstaller() {
+        async function saveInstaller(event) {
+            event.preventDefault(); // Prevent form submission
+            
             const formData = {
                 name: document.getElementById('installerName').value,
                 email: document.getElementById('installerEmail').value,
                 phone: document.getElementById('installerPhone').value,
-                crews: Array.from(document.getElementById('installerCrews').selectedOptions).map(option => option.value),
+                crews: Array.from(document.getElementById('crewsList').querySelectorAll('span')).map(span => span.textContent.trim().replace('×', '')),
                 status: document.getElementById('installerStatus').value,
                 notes: document.getElementById('installerNotes').value
             };
             
+            console.log('💾 Saving installer data:', formData);
+            
             if (editingInstaller) {
                 // Update existing installer
                 if (db) {
-                    await db.collection('installers').doc(editingInstaller.id).update(formData);
-                    console.log('✅ Installer updated in Firebase');
+                    try {
+                        await db.collection('installers').doc(editingInstaller.id).update(formData);
+                        console.log('✅ Installer updated in Firebase');
+                        alert('✅ Installer updated successfully!');
+                    } catch (error) {
+                        console.error('❌ Failed to update installer:', error);
+                        alert('❌ Failed to update installer: ' + error.message);
+                        return;
+                    }
                 } else {
                     const index = installers.findIndex(i => i.id === editingInstaller.id);
                     if (index !== -1) {
@@ -1213,11 +1224,18 @@
             } else {
                 // Create new installer
                 if (db) {
-                    const docRef = await db.collection('installers').add({
-                        ...formData,
-                        createdAt: new Date()
-                    });
-                    console.log('✅ New installer created in Firebase with ID:', docRef.id);
+                    try {
+                        const docRef = await db.collection('installers').add({
+                            ...formData,
+                            createdAt: new Date()
+                        });
+                        console.log('✅ New installer created in Firebase with ID:', docRef.id);
+                        alert('✅ New installer created successfully!');
+                    } catch (error) {
+                        console.error('❌ Failed to create installer:', error);
+                        alert('❌ Failed to create installer: ' + error.message);
+                        return;
+                    }
                 } else {
                     const newInstaller = {
                         id: 'installer-' + Date.now(),
@@ -1232,6 +1250,7 @@
                 }
             }
             
+            // Return to installer management
             showInstallerManagement();
         }
 
