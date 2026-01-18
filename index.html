@@ -502,41 +502,58 @@
             const today = new Date();
             const weekStart = new Date(today.getTime() + (currentWeekOffset * 7 * 24 * 60 * 60 * 1000));
             
-            // Clear week view
-            weekView.innerHTML = '';
+            // Get installer's blocked dates
+            const installerId = installerData?.uid || 'demo-user-123';
+            const blockedDates = installerAvailability[installerId] || [];
             
-            // Generate 7 days
+            let weekHTML = '';
+            
             for (let i = 0; i < 7; i++) {
                 const currentDate = new Date(weekStart.getTime() + (i * 24 * 60 * 60 * 1000));
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const isToday = currentDate.toDateString() === today.toDateString();
+                const isBlocked = blockedDates.includes(dateStr);
+                
+                // Count jobs for this date
                 const dayJobs = jobs.filter(job => {
-                    const jobDate = new Date(job.scheduledDate);
-                    return jobDate.toDateString() === currentDate.toDateString();
+                    const jobDate = new Date(job.scheduledDate).toISOString().split('T')[0];
+                    return jobDate === dateStr;
                 });
                 
-                const isToday = currentDate.toDateString() === today.toDateString();
-                const dayElement = document.createElement('div');
-                dayElement.className = `flex-shrink-0 border rounded-lg p-3 min-w-32 cursor-pointer transition-all ${
-                    isToday ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-200 hover:bg-gray-50'
-                }`;
+                const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayNumber = currentDate.getDate();
                 
-                dayElement.innerHTML = `
-                    <div class="text-center">
-                        <div class="text-xs font-medium ${isToday ? 'text-blue-800' : 'text-gray-600'}">${currentDate.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                        <div class="text-lg font-bold ${isToday ? 'text-blue-800' : 'text-gray-900'}">${currentDate.getDate()}</div>
-                        ${dayJobs.length > 0 ? `
-                            <div class="mt-2 space-y-1">
-                                ${dayJobs.map(job => `
-                                    <div onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700 cursor-pointer truncate">
-                                        ${job.id} - ${job.customer}
-                                    </div>
-                                `).join('')}
+                let bgColor = 'bg-white';
+                let borderColor = 'border-gray-200';
+                let statusColor = 'text-gray-600';
+                let availabilityIcon = '';
+                
+                if (isToday) {
+                    bgColor = 'bg-blue-50';
+                    borderColor = 'border-blue-300';
+                    statusColor = 'text-blue-700';
+                }
+                
+                if (isBlocked) {
+                    availabilityIcon = '<div class="text-xs text-red-600">🚫</div>';
+                }
+                
+                weekHTML += `
+                    <div class="flex-shrink-0 w-24 p-2 ${bgColor} border ${borderColor} rounded-lg cursor-pointer hover:shadow-md transition-shadow"
+                         onclick="showDayDetails('${dateStr}')">
+                        <div class="text-center">
+                            <div class="text-xs font-medium ${statusColor}">${dayName}</div>
+                            <div class="text-lg font-bold text-gray-900">${dayNumber}</div>
+                            ${availabilityIcon}
+                            <div class="text-xs text-gray-600 mt-1">
+                                ${dayJobs.length} job${dayJobs.length !== 1 ? 's' : ''}
                             </div>
-                        ` : '<div class="text-xs text-gray-400">No jobs</div>'}
+                        </div>
                     </div>
                 `;
-                
-                weekView.appendChild(dayElement);
             }
+            
+            weekView.innerHTML = weekHTML;
         }
 
         // Search jobs
@@ -1037,8 +1054,9 @@
                     });
                     console.log('Availability saved to Firebase');
                 } else {
-                    // Demo mode - just log it
-                    console.log('Availability saved locally:', installerAvailability[installerId]);
+                    // Demo mode - save to localStorage
+                    localStorage.setItem(`availability_${installerId}`, JSON.stringify(installerAvailability[installerId] || []));
+                    console.log('Availability saved to localStorage:', installerAvailability[installerId]);
                 }
             } catch (error) {
                 console.error('Failed to save availability:', error);
@@ -1050,8 +1068,15 @@
                 // Don't try to load from Firebase in demo mode
                 if (!db) {
                     const installerId = installerData?.uid || 'demo-user-123';
-                    installerAvailability[installerId] = [];
-                    console.log('Demo mode - no availability data');
+                    // Load from localStorage
+                    const saved = localStorage.getItem(`availability_${installerId}`);
+                    if (saved) {
+                        installerAvailability[installerId] = JSON.parse(saved);
+                        console.log('Availability loaded from localStorage:', installerAvailability[installerId]);
+                    } else {
+                        installerAvailability[installerId] = [];
+                        console.log('Demo mode - no availability data found, using empty array');
+                    }
                     return;
                 }
                 
