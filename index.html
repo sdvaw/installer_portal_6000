@@ -1347,8 +1347,21 @@
             
             console.log('🔄 Syncing with TeamUp...');
             
-            // TeamUp API call to get events
-            return fetch(`https://api.teamup.com/${teamupConfig.calendarId}/events`, {
+            // Calculate date range - last 30 days to next 30 days
+            const now = new Date();
+            const startDate = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days ago
+            const endDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days ahead
+            
+            // Format dates for TeamUp API
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+            
+            console.log(`📅 Syncing events from ${startDateStr} to ${endDateStr}`);
+            
+            // TeamUp API call with date range
+            const apiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
+            
+            return fetch(apiUrl, {
                 headers: {
                     'Teamup-Token': teamupConfig.apiKey
                 }
