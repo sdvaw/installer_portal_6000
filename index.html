@@ -1606,13 +1606,9 @@
                         
                         <!-- Action Buttons -->
                         <div class="space-y-2">
-                            <button onclick="alert('Button clicked! Installer: ${installer.id}')" 
+                            <button onclick="sendSimpleEmail('${installer.email}', '${installer.name}', '${installer.phone || 'installer123'}')" 
                                     class="w-full terminal-button">
-                                [TEST_BUTTON]
-                            </button>
-                            <button onclick="sendInstallerInvite('${installer.id}')" 
-                                    class="w-full terminal-button">
-                                [SEND_INVITE]
+                                [SEND_EMAIL_NOW]
                             </button>
                             <div class="grid grid-cols-2 gap-2">
                                 <button onclick="editInstaller('${installer.id}')" 
@@ -1646,6 +1642,26 @@
                 default:
                     return 'text-gray-400';
             }
+        }
+
+        // Simple email function - just opens email client
+        function sendSimpleEmail(email, name, password) {
+            console.log('📧 Simple email function called');
+            console.log('📧 Email:', email);
+            console.log('📧 Name:', name);
+            console.log('📧 Password:', password);
+            
+            const loginLink = window.location.origin + '/installer-login?installer=' + email;
+            const subject = encodeURIComponent('Your Installer Portal Access');
+            const body = encodeURIComponent(`Hi ${name},\n\nYour installer portal access is ready!\n\nClick here to log in: ${loginLink}\n\nLOGIN DETAILS:\n- Email: ${email}\n- Password: ${password}\n\nIMPORTANT: Your password is ${password}\n\nThanks,\nInstaller Portal Admin`);
+            
+            const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`;
+            console.log('📧 Opening email client:', mailtoLink);
+            
+            // Open email client immediately
+            window.open(mailtoLink, '_blank');
+            
+            alert('✅ Email client opened with pre-filled message!\n\nJust click SEND in your email client.');
         }
 
         // Send installer invite
