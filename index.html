@@ -713,12 +713,9 @@
                     <div class="flex justify-between items-center mb-6">
                         <div>
                             <h2 class="text-2xl font-bold text-gray-900">👥 Installer Management</h2>
-                            <p class="text-gray-600">Manage installer accounts and information</p>
+                            <p class="text-gray-600">Manage installer accounts, performance, and credentials</p>
                         </div>
                         <div class="flex space-x-3">
-                            <button onclick="showBulkEmailEdit()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                                📧 Bulk Edit Emails
-                            </button>
                             <button onclick="showAddInstallerForm()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                                 ➕ Add Installer
                             </button>
@@ -726,12 +723,12 @@
                     </div>
                     
                     <!-- Search and Filter -->
-                    <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
                         <div class="flex flex-col md:flex-row gap-4">
                             <input type="text" id="installerSearch" placeholder="Search installers..." 
                                    class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                   onkeyup="filterInstallers()">
-                            <select id="installerStatusFilter" onchange="filterInstallers()" 
+                                   onkeyup="renderInstallerCards()">
+                            <select id="installerStatusFilter" onchange="renderInstallerCards()" 
                                     class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">All Status</option>
                                 <option value="active">Active</option>
@@ -740,28 +737,14 @@
                         </div>
                     </div>
                     
-                    <!-- Installers Table -->
-                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crews</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="installersTableBody" class="bg-white divide-y divide-gray-200">
-                                <!-- Installers will be populated here -->
-                            </tbody>
-                        </table>
+                    <!-- Installer Cards Grid -->
+                    <div id="installerCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Installer cards will be populated here -->
                     </div>
                 `;
                 
-                // Render installers table
-                renderInstallersTable();
+                // Render installer cards
+                renderInstallerCards();
             }
         }
 
@@ -825,10 +808,10 @@
             ];
         }
 
-        // Render installers table
-        function renderInstallersTable() {
-            const tbody = document.getElementById('installersTableBody');
-            if (!tbody) return;
+        // Render installer cards
+        function renderInstallerCards() {
+            const cardsContainer = document.getElementById('installerCards');
+            if (!cardsContainer) return;
             
             const searchTerm = document.getElementById('installerSearch')?.value.toLowerCase() || '';
             const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
@@ -842,50 +825,119 @@
                 return matchesSearch && matchesStatus;
             });
             
-            tbody.innerHTML = filteredInstallers.map(installer => `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm font-medium text-gray-900">${installer.name || 'Unknown'}</div>
-                        <div class="text-xs text-gray-500">ID: ${installer.id}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${installer.email || 'No email'}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">${installer.phone || 'No phone'}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex flex-wrap gap-1">
-                            ${(installer.crews || []).map(crew => `
-                                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">${crew}</span>
-                            `).join('')}
+            cardsContainer.innerHTML = filteredInstallers.map(installer => `
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                    <!-- Card Header -->
+                    <div class="bg-gradient-to-r ${installer.status === 'active' ? 'from-blue-500 to-blue-600' : 'from-gray-400 to-gray-500'} p-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-lg font-semibold text-white">${installer.name || 'Unknown'}</h3>
+                                <p class="text-blue-100 text-sm">ID: ${installer.id}</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" ${installer.status === 'active' ? 'checked' : ''} 
+                                           onchange="toggleInstallerStatus('${installer.id}')" 
+                                           class="sr-only peer">
+                                    <div class="w-11 h-6 bg-white/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-400"></div>
+                                </label>
+                            </div>
                         </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 py-1 text-xs rounded ${installer.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
-                            ${(installer.status || 'unknown').toUpperCase()}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div class="flex space-x-2">
-                            <button onclick="editInstaller('${installer.id}')" class="text-blue-600 hover:text-blue-900">
-                                ✏️ Edit
-                            </button>
-                            <button onclick="viewInstallerDetails('${installer.id}')" class="text-green-600 hover:text-green-900">
-                                👁️ View
-                            </button>
-                            <button onclick="deleteInstaller('${installer.id}')" class="text-red-600 hover:text-red-900">
-                                🗑️ Delete
-                            </button>
+                    </div>
+                    
+                    <!-- Card Body -->
+                    <div class="p-4">
+                        <!-- Contact Info -->
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-sm">
+                                <span class="text-gray-500 w-16">Email:</span>
+                                <span class="text-gray-900">${installer.email || 'No email'}</span>
+                            </div>
+                            <div class="flex items-center text-sm">
+                                <span class="text-gray-500 w-16">Phone:</span>
+                                <span class="text-gray-900">${installer.phone || 'No phone'}</span>
+                            </div>
+                            <div class="flex items-center text-sm">
+                                <span class="text-gray-500 w-16">Crews:</span>
+                                <div class="flex flex-wrap gap-1">
+                                    ${(installer.crews || []).map(crew => `
+                                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">${crew}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
                         </div>
-                    </td>
-                </tr>
+                        
+                        <!-- Performance Metrics -->
+                        <div class="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-red-600">${installer.defects || 0}</div>
+                                <div class="text-xs text-gray-600">Defects</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-orange-600">${installer.chargebacks || 0}</div>
+                                <div class="text-xs text-gray-600">Chargebacks</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-lg font-bold text-green-600">${installer.reviews || 0}</div>
+                                <div class="text-xs text-gray-600">Reviews</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="space-y-2">
+                            <button onclick="sendInstallerInvite('${installer.id}')" 
+                                    class="w-full px-3 py-2 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700">
+                                📧 Send/Update Invite
+                            </button>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="editInstaller('${installer.id}')" 
+                                        class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+                                    ✏️ Edit
+                                </button>
+                                <button onclick="viewInstallerDetails('${installer.id}')" 
+                                        class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700">
+                                    👁️ Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             `).join('');
         }
 
-        // Filter installers
-        function filterInstallers() {
-            renderInstallersTable();
+        // Toggle installer status
+        function toggleInstallerStatus(installerId) {
+            const installer = installers.find(i => i.id === installerId);
+            if (!installer) return;
+            
+            const newStatus = installer.status === 'active' ? 'inactive' : 'active';
+            
+            if (db) {
+                db.collection('installers').doc(installerId).update({ status: newStatus })
+                .then(() => {
+                    console.log(`✅ Updated ${installer.name} status to ${newStatus}`);
+                    installer.status = newStatus;
+                    renderInstallerCards();
+                })
+                .catch(error => {
+                    console.error('❌ Failed to update status:', error);
+                    alert('Failed to update status');
+                });
+            }
+        }
+
+        // Send installer invite
+        function sendInstallerInvite(installerId) {
+            const installer = installers.find(i => i.id === installerId);
+            if (!installer) return;
+            
+            if (!installer.email) {
+                alert('Installer must have an email address to send an invite.');
+                return;
+            }
+            
+            // TODO: Implement email sending logic
+            alert(`📧 Invite sent to ${installer.name} at ${installer.email}\n\n(This would send an actual email with login credentials)`);
         }
 
         // Show bulk email edit interface
