@@ -1741,29 +1741,6 @@
         // Authenticate installer
         function authenticateInstaller() {
             if (window.currentInstallerLogin) {
-                const { installer, token } = window.currentInstallerLogin;
-                
-                // Get password from input
-                const password = document.getElementById('installerPasswordInput').value;
-                
-                // Debug - show what we're comparing
-                console.log('🔍 Password check debug:');
-                console.log('🔍 Entered password:', password);
-                console.log('🔍 Installer phone:', installer.phone);
-                console.log('🔍 Expected password:', installer.phone || 'installer123');
-                
-                // Simple password check - try both possible passwords
-                const cleanPhone = installer.phone ? installer.phone.replace(/\D/g, '').trim() : '';
-                const possiblePasswords = [cleanPhone, 'installer123'];
-                
-                // Debug alert - show exact values
-                alert(`🔍 Password Debug:\n\nTyped: "${password}"\nPhone: "${cleanPhone}"\nTrying: ${possiblePasswords.join(' or ')}`);
-                
-                if (!possiblePasswords.includes(password)) {
-                    alert('❌ Incorrect password! Try: ' + possiblePasswords.join(' or '));
-                    return;
-                }
-                
                 // Update installer login status
                 const loginData = {
                     lastLogin: new Date().toISOString(),
