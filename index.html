@@ -1838,9 +1838,18 @@
             if (portalEl) {
                 portalEl.classList.remove('hidden');
                 console.log('🔍 Showed portal - classes:', portalEl.className);
-                // Force visibility
+                // Force visibility with multiple methods
                 portalEl.style.display = 'block';
+                portalEl.style.visibility = 'visible';
+                portalEl.style.opacity = '1';
+                portalEl.style.position = 'relative';
+                portalEl.style.zIndex = '1000';
                 console.log('🔍 Forced portal display: block');
+                
+                // Add bright red border to make it visible
+                portalEl.style.border = '5px solid red';
+                portalEl.style.backgroundColor = 'yellow';
+                console.log('🔍 Added visual indicators to portal');
             }
             
             // Hide login modal
