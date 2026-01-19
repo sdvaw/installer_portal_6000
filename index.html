@@ -1940,9 +1940,9 @@
             if (db && installer.id) {
                 console.log('🔍 Querying jobs for installer:', installer.id);
                 
+                // Simple query without ordering to avoid index requirement
                 db.collection('jobs')
                     .where('installerId', '==', installer.id)
-                    .orderBy('date', 'asc')
                     .get()
                     .then(snapshot => {
                         console.log('🔍 Jobs query result:', snapshot.size, 'jobs found');
@@ -1952,9 +1952,22 @@
                             console.log('🔍 No jobs found for installer');
                         } else {
                             let jobsHTML = '<div style="color: black !important;">';
+                            const jobs = [];
                             snapshot.forEach(doc => {
                                 const job = doc.data();
+                                jobs.push(job);
                                 console.log('🔍 Found job:', job);
+                            });
+                            
+                            // Sort by date manually
+                            jobs.sort((a, b) => {
+                                const dateA = new Date(a.date || 0);
+                                const dateB = new Date(b.date || 0);
+                                return dateA - dateB;
+                            });
+                            
+                            // Display sorted jobs
+                            jobs.forEach(job => {
                                 jobsHTML += `
                                     <div style="border: 2px solid #333; margin: 10px 0; padding: 10px; background: white;">
                                         <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
@@ -1964,8 +1977,8 @@
                                     </div>
                                 `;
                             });
-                            jobsHTML += '</div>';
                             
+                            jobsHTML += '</div>';
                             jobsListEl.innerHTML = jobsHTML;
                             console.log('🔍 Jobs displayed successfully');
                         }
