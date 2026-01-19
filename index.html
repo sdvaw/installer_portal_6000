@@ -1792,6 +1792,11 @@
 
         // Show installer portal
         function showInstallerPortal(installer) {
+            if (!installer) {
+                console.error('❌ showInstallerPortal called with null installer');
+                return;
+            }
+            
             // Hide admin login and show installer portal
             document.getElementById('adminLogin').classList.add('hidden');
             document.getElementById('loading').classList.add('hidden');
