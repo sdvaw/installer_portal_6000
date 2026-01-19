@@ -1604,7 +1604,12 @@
             console.log('📋 Email:', email);
             console.log('📋 Password:', password);
             
-            const loginLink = window.location.origin + '/installer-login?installer=' + email;
+            // Generate secure token with timestamp
+            const timestamp = Date.now().toString();
+            const tokenData = `${installerId}:${email}:${timestamp}`;
+            const token = btoa(tokenData);
+            
+            const loginLink = window.location.origin + '/installer-login?installer=' + installerId + '&token=' + token;
             
             // Copy link to clipboard
             navigator.clipboard.writeText(loginLink).then(() => {
