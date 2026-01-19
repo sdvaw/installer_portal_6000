@@ -1602,7 +1602,7 @@
 
         // Copy installer login link function
         function copyInstallerLink(installerId, name, email, password) {
-            console.log('📋 Copy link function called');
+            console.log('📋 Copy link function called - VERSION 2.0');
             console.log('📋 Installer:', name);
             console.log('📋 Email:', email);
             console.log('📋 Password:', password);
@@ -1613,6 +1613,8 @@
             const token = btoa(tokenData);
             
             const loginLink = window.location.origin + '/installer-login?installer=' + installerId + '&token=' + token;
+            
+            console.log('📋 Generated link:', loginLink);
             
             // Copy link to clipboard
             navigator.clipboard.writeText(loginLink).then(() => {
