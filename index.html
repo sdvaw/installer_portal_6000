@@ -1767,6 +1767,7 @@
                     .then(() => {
                         console.log('✅ Installer authenticated successfully');
                         console.log('🔍 About to update invite status...');
+                        console.log('🔍 Installer object being passed to showInstallerPortal:', installer);
                         
                         // Update invite status to ACCEPTED
                         return db.collection('installers').doc(installer.id).update({
@@ -1775,6 +1776,7 @@
                     })
                     .then(() => {
                         console.log('✅ Invite status updated successfully');
+                        console.log('🔍 About to call showInstallerPortal with installer:', installer);
                         
                         // Hide login modal
                         document.getElementById('installerLoginModal').classList.add('hidden');
