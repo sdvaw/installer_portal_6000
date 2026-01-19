@@ -1736,6 +1736,12 @@
                 // Get password from input
                 const password = document.getElementById('installerPasswordInput').value;
                 
+                // Debug - show what we're comparing
+                console.log('🔍 Password check debug:');
+                console.log('🔍 Entered password:', password);
+                console.log('🔍 Installer phone:', installer.phone);
+                console.log('🔍 Expected password:', installer.phone || 'installer123');
+                
                 // Simple password check - default to installer's phone number or a default password
                 const expectedPassword = installer.phone || 'installer123';
                 
