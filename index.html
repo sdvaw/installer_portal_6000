@@ -1920,22 +1920,11 @@
             console.log('🔍 Found jobsList element:', jobsListEl);
             console.log('🔍 Current jobsList content:', jobsListEl.innerHTML);
             
-            // This would load jobs specific to this installer
-            // For now, show empty state
-            const jobsHTML = `
-                <div class="terminal-card p-6 text-center">
-                    <div class="scanline"></div>
-                    <div class="text-4xl mb-4">📋</div>
-                    <div class="text-xl font-semibold text-terminal mb-2">> NO_JOBS_SCHEDULED</div>
-                    <div class="text-terminal-muted">CHECK_BACK_LATER...</div>
-                </div>
-            `;
+            // Test with simple text first
+            jobsListEl.innerHTML = '🎉 JOBS TEST - THIS SHOULD BE VISIBLE!';
+            console.log('🔍 Set simple test text');
             
-            jobsListEl.innerHTML = jobsHTML;
-            console.log('🔍 Set jobsList HTML to:', jobsHTML);
-            console.log('🔍 New jobsList content:', jobsListEl.innerHTML);
-            
-            alert('🎉 Jobs loaded successfully! Check the page - jobs should be visible now.');
+            alert('🎉 Jobs loaded! You should see red box with "JOBS TEST" text inside.');
         }
 
         // Toggle installer status
