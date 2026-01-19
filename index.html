@@ -1820,13 +1820,32 @@
             
             // Hide admin login and show installer portal
             const adminLoginEl = document.getElementById('adminLogin');
-            if (adminLoginEl) adminLoginEl.classList.add('hidden');
+            if (adminLoginEl) {
+                adminLoginEl.classList.add('hidden');
+                console.log('🔍 Hidden admin login');
+            }
             
             const loadingEl = document.getElementById('loading');
-            if (loadingEl) loadingEl.classList.add('hidden');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
+                console.log('🔍 Hidden loading');
+            }
             
             const portalEl = document.getElementById('portal');
-            if (portalEl) portalEl.classList.remove('hidden');
+            if (portalEl) {
+                portalEl.classList.remove('hidden');
+                console.log('🔍 Showed portal - classes:', portalEl.className);
+                // Force visibility
+                portalEl.style.display = 'block';
+                console.log('🔍 Forced portal display: block');
+            }
+            
+            // Hide login modal
+            const loginModalEl = document.getElementById('installerLoginModal');
+            if (loginModalEl) {
+                loginModalEl.classList.add('hidden');
+                console.log('🔍 Hidden login modal');
+            }
             
             // Update installer name display
             const installerNameEl = document.getElementById('installerName');
@@ -1852,6 +1871,9 @@
             loadInstallerJobs(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
+            
+            // Visual test - show alert
+            alert('🎉 INSTALLER PORTAL SHOULD NOW BE VISIBLE!\n\nInstaller: ' + installer.name + '\n\nIf you see this alert but no portal, the HTML is hidden by CSS.');
         }
 
         // Show installer login error
