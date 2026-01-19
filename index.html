@@ -420,7 +420,7 @@
             </header>
 
             <!-- Main Content -->
-            <main class="w-full mx-auto px-4 py-6">
+            <main class="max-w-4xl mx-auto px-4 py-6">
                 <!-- Installer Info -->
                 <div class="terminal-card p-4 mb-6">
                     <div class="scanline"></div>
@@ -1448,8 +1448,7 @@
                     </div>
                     
                     <!-- Installer Cards Grid -->
-                    <div id="installerCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" 
-                         style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+                    <div id="installerCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <!-- Installer cards will be populated here -->
                     </div>
                 `;
@@ -1668,7 +1667,7 @@ function renderInstallerCards() {
     });
     
     cardsContainer.innerHTML = filteredInstallers.map(installer => `
-        <div class="terminal-card p-4" style="width: 100%; min-width: 300px;">
+        <div class="terminal-card p-4">
             <div class="scanline"></div>
             <!-- Card Header -->
             <div class="border-b border-green-500 pb-3 mb-3">
