@@ -4253,12 +4253,14 @@
 
         function previousWeek() {
             currentWeekOffset--;
-            loadJobs();
+            // loadJobs(); // Disabled - causing null uid error
+            console.log('📅 Previous week navigation disabled');
         }
 
         function nextWeek() {
             currentWeekOffset++;
-            loadJobs();
+            // loadJobs(); // Disabled - causing null uid error
+            console.log('📅 Next week navigation disabled');
         }
 
         function updateWeekRange() {
