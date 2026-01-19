@@ -1920,7 +1920,7 @@
             console.log('🔍 Found jobsList element:', jobsListEl);
             
             // Show proper jobs display - working version
-            jobsListEl.innerHTML = `
+            const testHTML = `
                 <div style="padding: 20px; text-align: center; border: 2px solid #333; background: #fff;">
                     <div style="font-size: 32px; margin-bottom: 16px;">📋</div>
                     <div style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">> NO_JOBS_SCHEDULED</div>
@@ -1928,8 +1928,16 @@
                 </div>
             `;
             
-            console.log('🔍 Jobs display loaded successfully');
-            alert('🎉 INSTALLER PORTAL FULLY WORKING!\n\nPortal: ✅ Visible\nJobs: ✅ Displayed\nInstaller: ' + installer.name);
+            jobsListEl.innerHTML = testHTML;
+            console.log('🔍 Set jobsList HTML to:', testHTML);
+            console.log('🔍 Current jobsList innerHTML after setting:', jobsListEl.innerHTML);
+            
+            // Force display with multiple methods
+            jobsListEl.style.display = 'block';
+            jobsListEl.style.visibility = 'visible';
+            jobsListEl.style.opacity = '1';
+            
+            alert('🎉 Jobs content set! Check console for HTML verification.\n\nYou should see content inside the white box.');
         }
 
         // Toggle installer status
