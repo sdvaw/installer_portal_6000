@@ -1913,7 +1913,6 @@
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
-                alert('❌ jobsList element not found!');
                 return;
             }
             
@@ -1934,11 +1933,50 @@
                 opacity: 1 !important;
             `;
             
-            // Set plain text with inline styles
-            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">TEST TEXT - THIS SHOULD BE VISIBLE!</span>';
+            // Show loading state
+            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">🔄 LOADING JOBS...</span>';
             
-            console.log('🔍 Set text with forced styles');
-            console.log('🔍 Current innerHTML:', jobsListEl.innerHTML);
+            // Load actual jobs from Firestore
+            if (db && installer.id) {
+                console.log('🔍 Querying jobs for installer:', installer.id);
+                
+                db.collection('jobs')
+                    .where('installerId', '==', installer.id)
+                    .orderBy('date', 'asc')
+                    .get()
+                    .then(snapshot => {
+                        console.log('🔍 Jobs query result:', snapshot.size, 'jobs found');
+                        
+                        if (snapshot.empty) {
+                            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">📋 NO JOBS SCHEDULED</span>';
+                            console.log('🔍 No jobs found for installer');
+                        } else {
+                            let jobsHTML = '<div style="color: black !important;">';
+                            snapshot.forEach(doc => {
+                                const job = doc.data();
+                                console.log('🔍 Found job:', job);
+                                jobsHTML += `
+                                    <div style="border: 2px solid #333; margin: 10px 0; padding: 10px; background: white;">
+                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
+                                        📅 ${job.date || 'No Date'}<br>
+                                        👥 ${job.crew || 'No Crew Assigned'}<br>
+                                        📝 ${job.description || 'No Description'}
+                                    </div>
+                                `;
+                            });
+                            jobsHTML += '</div>';
+                            
+                            jobsListEl.innerHTML = jobsHTML;
+                            console.log('🔍 Jobs displayed successfully');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error loading jobs:', error);
+                        jobsListEl.innerHTML = '<span style="color: red !important; font-size: 24px !important; font-weight: bold !important;">❌ ERROR LOADING JOBS</span>';
+                    });
+            } else {
+                jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">❌ DATABASE NOT AVAILABLE</span>';
+            }
         }
 
         // Toggle installer status
