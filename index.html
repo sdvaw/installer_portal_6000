@@ -1857,28 +1857,6 @@
             }
         }
 
-        // Copy installer login link function
-        function copyInstallerLink(installerId, name, email, password) {
-            console.log('📋 Copy link function called');
-            console.log('📋 Installer:', name);
-            console.log('📋 Email:', email);
-            console.log('📋 Password:', password);
-            
-            const loginLink = window.location.origin + '/installer-login?installer=' + email;
-            
-            // Copy link to clipboard
-            navigator.clipboard.writeText(loginLink).then(() => {
-                // Show success message with all details
-                const message = `✅ Login Link Copied!\n\nINSTALLER: ${name}\nEMAIL: ${email}\nPASSWORD: ${password}\n\nLINK: ${loginLink}\n\nSend this link to the installer with their login details!`;
-                alert(message);
-                console.log('📋 Link copied to clipboard:', loginLink);
-            }).catch(err => {
-                console.error('❌ Failed to copy link:', err);
-                // Fallback: show link in alert
-                alert(`📋 Copy this link manually:\n\n${loginLink}\n\nInstaller: ${name}\nEmail: ${email}\nPassword: ${password}`);
-            });
-        }
-
         // Send installer invite
         function sendInstallerInvite(installerId) {
             const installer = installers.find(i => i.id === installerId);
