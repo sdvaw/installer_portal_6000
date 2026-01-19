@@ -1557,40 +1557,40 @@
             });
             
             listContainer.innerHTML = filteredInstallers.map(installer => `
-                <div class="border border-green-600 rounded p-4 bg-black/50 hover:bg-green-950/30 transition-colors">
-                    <div class="flex justify-between items-start mb-3">
-                        <div>
-                            <h4 class="text-lg font-bold text-terminal">${installer.name || 'Unknown'}</h4>
+                <div class="border border-green-600 rounded-lg p-6 bg-black/60 hover:bg-green-950/40 transition-all duration-200 mb-6">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1">
+                            <h4 class="text-xl font-bold text-terminal mb-2">${installer.name || 'Unknown'}</h4>
                             <p class="text-sm text-terminal-muted">ID: ${installer.id}</p>
                         </div>
-                        <span class="px-3 py-1 text-xs font-bold ${installer.status === 'active' ? 'bg-green-900 text-green-400 border-green-600' : 'bg-red-900 text-red-400 border-red-600'} rounded border">
+                        <span class="px-4 py-2 text-sm font-bold ${installer.status === 'active' ? 'bg-green-900 text-green-400 border-green-500' : 'bg-red-900 text-red-400 border-red-500'} rounded-full border">
                             ${installer.status?.toUpperCase() || 'UNKNOWN'}
                         </span>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-sm">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 text-sm">
                         <div>
-                            <span class="text-terminal-muted">EMAIL:</span>
-                            <span class="text-terminal ml-2">${installer.email || 'No email'}</span>
+                            <span class="text-terminal-muted block mb-1">EMAIL:</span>
+                            <span class="text-terminal block">${installer.email || 'No email'}</span>
                         </div>
                         <div>
-                            <span class="text-terminal-muted">PHONE:</span>
-                            <span class="text-terminal ml-2">${installer.phone || 'No phone'}</span>
+                            <span class="text-terminal-muted block mb-1">PHONE:</span>
+                            <span class="text-terminal block">${installer.phone || 'No phone'}</span>
                         </div>
                     </div>
                     
-                    <div class="flex gap-2">
+                    <div class="flex flex-wrap gap-3">
                         <button onclick="copyInstallerLink('${installer.id}', '${installer.name}', '${installer.email}', '${installer.phone || 'installer123'}')" 
-                                class="terminal-button text-sm py-2 px-4">
-                            [COPY_LINK]
+                                class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform">
+                            📋 COPY_LINK
                         </button>
                         <button onclick="editInstaller('${installer.id}')" 
-                                class="terminal-button text-sm py-2 px-4">
-                            [EDIT]
+                                class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform">
+                            ✏️ EDIT
                         </button>
                         <button onclick="viewInstallerDetails('${installer.id}')" 
-                                class="terminal-button text-sm py-2 px-4">
-                            [DETAILS]
+                                class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform">
+                            📋 DETAILS
                         </button>
                     </div>
                 </div>
