@@ -1895,7 +1895,7 @@
 
         // Load installer jobs
         function loadInstallerJobs(installer) {
-            console.log('🔍 loadInstallerJobs called with installer:', installer);
+            console.log('🔍 Loading jobs for installer:', installer.name);
             
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
@@ -1903,49 +1903,30 @@
                 return;
             }
             
-            console.log('🔍 Found jobsList element:', jobsListEl);
-            
-            // Remove all classes that might hide content
+            // Clean styling
             jobsListEl.className = '';
             jobsListEl.style.cssText = `
-                border: 5px solid red !important;
-                background-color: yellow !important;
-                color: black !important;
-                font-size: 24px !important;
-                font-weight: bold !important;
-                padding: 20px !important;
-                text-align: center !important;
-                display: block !important;
-                visibility: visible !important;
-                opacity: 1 !important;
+                border: 2px solid #ddd;
+                background-color: #f9f9f9;
+                padding: 20px;
+                border-radius: 8px;
             `;
             
             // Show loading state
-            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">🔄 LOADING JOBS...</span>';
-            
-            // Force debug alert to show we're starting
-            alert('🔍 Starting job query for installer: ' + installer.id);
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                console.log('🔍 Querying jobs for installer:', installer.id);
-                
-                // First, check what collections exist
+                // Check what collections exist
                 db.listCollections().then(collections => {
-                    console.log('🔍 Available collections:', collections.map(c => c.id));
-                    alert('🔍 Available collections: ' + collections.map(c => c.id).join(', '));
-                    
-                    // Check if jobs collection exists
                     const jobsCollection = collections.find(c => c.id === 'jobs');
                     if (!jobsCollection) {
                         // Create jobs collection with sample data
-                        alert('🔍 Creating jobs collection with sample data...');
-                        
                         const sampleJob = {
                             installerId: installer.id,
                             installerName: installer.name,
                             location: 'Sample Job Location',
-                            date: new Date().toISOString(),
+                            date: new Date().toISOString().split('T')[0],
                             crew: installer.crews ? installer.crews.join(', ') : 'No crew',
                             description: 'Sample job description',
                             status: 'scheduled',
@@ -1955,7 +1936,9 @@
                         return db.collection('jobs').add(sampleJob);
                     } else {
                         // Jobs collection exists, query it
-                        return db.collection('jobs').get();
+                        return db.collection('jobs')
+                            .where('installerId', '==', installer.id)
+                            .get();
                     }
                 }).then(() => {
                     // Now query for this installer's jobs
@@ -1963,53 +1946,46 @@
                         .where('installerId', '==', installer.id)
                         .get();
                 })
-                    .then(snapshot => {
-                        console.log('🔍 Jobs query result for installer:', snapshot.size, 'jobs found');
-                        alert('🔍 Jobs for installer ' + installer.id + ': ' + snapshot.size);
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">📋 No jobs scheduled</div>';
+                    } else {
+                        let jobsHTML = '<div style="color: #333;">';
+                        const jobs = [];
+                        snapshot.forEach(doc => {
+                            const job = doc.data();
+                            jobs.push(job);
+                        });
                         
-                        if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">📋 NO JOBS SCHEDULED</span>';
-                            console.log('🔍 No jobs found for installer');
-                        } else {
-                            let jobsHTML = '<div style="color: black !important;">';
-                            const jobs = [];
-                            snapshot.forEach(doc => {
-                                const job = doc.data();
-                                jobs.push(job);
-                                console.log('🔍 Found job for installer:', job);
-                            });
-                            
-                            // Sort by date manually
-                            jobs.sort((a, b) => {
-                                const dateA = new Date(a.date || 0);
-                                const dateB = new Date(b.date || 0);
-                                return dateA - dateB;
-                            });
-                            
-                            // Display sorted jobs
-                            jobs.forEach(job => {
-                                jobsHTML += `
-                                    <div style="border: 2px solid #333; margin: 10px 0; padding: 10px; background: white;">
-                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
-                                        📅 ${job.date || 'No Date'}<br>
-                                        👥 ${job.crew || 'No Crew Assigned'}<br>
-                                        📝 ${job.description || 'No Description'}
-                                    </div>
-                                `;
-                            });
-                            
-                            jobsHTML += '</div>';
-                            jobsListEl.innerHTML = jobsHTML;
-                            console.log('🔍 Jobs displayed successfully');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error: ' + error.message);
-                        jobsListEl.innerHTML = '<span style="color: red !important; font-size: 24px !important; font-weight: bold !important;">❌ ERROR LOADING JOBS</span>';
-                    });
+                        // Sort by date manually
+                        jobs.sort((a, b) => {
+                            const dateA = new Date(a.date || 0);
+                            const dateB = new Date(b.date || 0);
+                            return dateA - dateB;
+                        });
+                        
+                        // Display sorted jobs
+                        jobs.forEach(job => {
+                            jobsHTML += `
+                                <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
+                                    <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
+                                    📅 ${job.date || 'No Date'}<br>
+                                    👥 ${job.crew || 'No Crew Assigned'}<br>
+                                    📝 ${job.description || 'No Description'}
+                                </div>
+                            `;
+                        });
+                        
+                        jobsHTML += '</div>';
+                        jobsListEl.innerHTML = jobsHTML;
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error loading jobs:', error);
+                    jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
+                });
             } else {
-                jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">❌ DATABASE NOT AVAILABLE</span>';
+                jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
             }
         }
 
