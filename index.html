@@ -1806,6 +1806,9 @@
         function showInstallerPortal(installer) {
             console.log('🔍 showInstallerPortal called!', installer);
             
+            // Visual test - show alert FIRST
+            alert('🎉 INSTALLER PORTAL LOADING!\n\nInstaller: ' + installer.name + '\n\nThis should appear BEFORE any errors.');
+            
             if (!installer) {
                 console.error('❌ showInstallerPortal called with null installer');
                 return;
@@ -1866,14 +1869,13 @@
                 console.log('🔍 Updated crew info:', (installer.crews || []).join(', ') || 'No crew assigned');
             }
             
-            // Load installer jobs - pass installer object to avoid auth issues
             console.log('🔍 About to call loadInstallerJobs...');
             loadInstallerJobs(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
             
-            // Visual test - show alert
-            alert('🎉 INSTALLER PORTAL SHOULD NOW BE VISIBLE!\n\nInstaller: ' + installer.name + '\n\nIf you see this alert but no portal, the HTML is hidden by CSS.');
+            // Final confirmation alert
+            alert('🎉 INSTALLER PORTAL COMPLETE!\n\nInstaller: ' + installer.name + '\n\nPortal should be visible now!');
         }
 
         // Show installer login error
