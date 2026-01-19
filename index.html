@@ -1810,14 +1810,24 @@
             }
             
             // Hide admin login and show installer portal
-            document.getElementById('adminLogin').classList.add('hidden');
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('portal').classList.remove('hidden');
+            const adminLoginEl = document.getElementById('adminLogin');
+            if (adminLoginEl) adminLoginEl.classList.add('hidden');
+            
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) loadingEl.classList.add('hidden');
+            
+            const portalEl = document.getElementById('portal');
+            if (portalEl) portalEl.classList.remove('hidden');
             
             // Update installer name display
-            document.getElementById('installerName').textContent = installer.name;
-            document.getElementById('installerInfo').textContent = `${installer.name} - ${installer.email}`;
-            document.getElementById('crewInfo').textContent = (installer.crews || []).join(', ') || 'No crew assigned';
+            const installerNameEl = document.getElementById('installerName');
+            if (installerNameEl) installerNameEl.textContent = installer.name;
+            
+            const installerInfoEl = document.getElementById('installerInfo');
+            if (installerInfoEl) installerInfoEl.textContent = `${installer.name} - ${installer.email}`;
+            
+            const crewInfoEl = document.getElementById('crewInfo');
+            if (crewInfoEl) crewInfoEl.textContent = (installer.crews || []).join(', ') || 'No crew assigned';
             
             // Load installer jobs
             loadInstallerJobs(installer);
