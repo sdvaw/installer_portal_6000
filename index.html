@@ -1809,8 +1809,9 @@
                 return;
             }
             
-            // Store installer data globally for calendar functions
+            // Store installer data globally for calendar functions AND for authenticateInstaller
             window.installerData = installer;
+            window.currentInstallerLogin = { installer, token: installer.loginToken || 'unknown' };
             
             // Hide admin login and show installer portal
             const adminLoginEl = document.getElementById('adminLogin');
