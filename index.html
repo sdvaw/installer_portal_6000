@@ -1936,17 +1936,31 @@
             // Show loading state
             jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">🔄 LOADING JOBS...</span>';
             
+            // Force debug alert to show we're starting
+            alert('🔍 Starting job query for installer: ' + installer.id);
+            
             // Load actual jobs from Firestore
             if (db && installer.id) {
                 console.log('🔍 Querying jobs for installer:', installer.id);
                 
-                // First, let's see what's in the jobs collection
+                // First, let's see what's in jobs collection
                 db.collection('jobs').get()
                     .then(allJobsSnapshot => {
-                        console.log('🔍 Total jobs in collection:', allJobsSnapshot.size);
+                        const totalJobs = allJobsSnapshot.size;
+                        console.log('🔍 Total jobs in collection:', totalJobs);
+                        alert('🔍 Total jobs found: ' + totalJobs);
+                        
+                        if (totalJobs === 0) {
+                            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">❌ NO JOBS IN DATABASE</span>';
+                            return;
+                        }
+                        
+                        let jobCount = 0;
                         allJobsSnapshot.forEach(doc => {
                             const job = doc.data();
-                            console.log('🔍 Job document:', doc.id, job);
+                            jobCount++;
+                            console.log('🔍 Job ' + jobCount + ':', doc.id, job);
+                            alert('🔍 Job ' + jobCount + ': ' + JSON.stringify(job, null, 2));
                         });
                         
                         // Now query for this installer's jobs
@@ -1956,6 +1970,7 @@
                     })
                     .then(snapshot => {
                         console.log('🔍 Jobs query result for installer:', snapshot.size, 'jobs found');
+                        alert('🔍 Jobs for installer ' + installer.id + ': ' + snapshot.size);
                         
                         if (snapshot.empty) {
                             jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">📋 NO JOBS SCHEDULED</span>';
@@ -1995,6 +2010,7 @@
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
+                        alert('❌ Error: ' + error.message);
                         jobsListEl.innerHTML = '<span style="color: red !important; font-size: 24px !important; font-weight: bold !important;">❌ ERROR LOADING JOBS</span>';
                     });
             } else {
