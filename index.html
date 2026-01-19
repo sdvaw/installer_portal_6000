@@ -644,6 +644,10 @@
                 // Admin portal
                 console.log('Loading admin portal...');
                 loadAdminPortal();
+            } else if (path.includes('/installer-login')) {
+                // Installer login page
+                console.log('Loading installer login page...');
+                // Don't load anything - let the token check handle it
             } else if (path.includes('/installer/')) {
                 // Installer portal with unique ID
                 const installerId = path.split('/installer/')[1];
