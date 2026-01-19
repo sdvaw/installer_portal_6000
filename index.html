@@ -1607,8 +1607,7 @@
 
         // Copy installer login link function
         function copyInstallerLink(installerId, name, email, password) {
-            alert('TEST: NEW CODE IS DEPLOYED!');
-            console.log('📋 Copy link function called - VERSION 2.0');
+            console.log('📋 Copy link function called');
             console.log('📋 Installer:', name);
             console.log('📋 Email:', email);
             console.log('📋 Password:', password);
@@ -1624,14 +1623,21 @@
             
             // Copy link to clipboard
             navigator.clipboard.writeText(loginLink).then(() => {
-                // Show success message with all details
-                const message = `✅ Login Link Copied!\n\nINSTALLER: ${name}\nEMAIL: ${email}\nPASSWORD: ${password}\n\nLINK: ${loginLink}\n\nSend this link to the installer with their login details!`;
-                alert(message);
+                // Simple success message - no popup
                 console.log('📋 Link copied to clipboard:', loginLink);
+                const button = event.target;
+                const originalText = button.textContent;
+                button.textContent = '✅ COPIED!';
+                button.classList.add('bg-green-600');
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('bg-green-600');
+                }, 2000);
             }).catch(err => {
                 console.error('❌ Failed to copy link:', err);
-                // Fallback: show link in alert
-                alert(`📋 Copy this link manually:\n\n${loginLink}\n\nInstaller: ${name}\nEmail: ${email}\nPassword: ${password}`);
+                // Fallback: show link in console
+                console.log('📋 Copy this link manually:', loginLink);
             });
         }
 
@@ -1741,6 +1747,20 @@
         // Authenticate installer
         function authenticateInstaller() {
             if (window.currentInstallerLogin) {
+                const { installer, token } = window.currentInstallerLogin;
+                
+                // Get password from input
+                const password = document.getElementById('installerPasswordInput').value;
+                
+                // Simple password check - try both possible passwords
+                const cleanPhone = installer.phone ? installer.phone.replace(/\D/g, '').trim() : '';
+                const possiblePasswords = [cleanPhone, 'installer123'];
+                
+                if (!possiblePasswords.includes(password)) {
+                    alert('❌ Incorrect password! Try: ' + possiblePasswords.join(' or '));
+                    return;
+                }
+                
                 // Update installer login status
                 const loginData = {
                     lastLogin: new Date().toISOString(),
@@ -1753,8 +1773,6 @@
                 db.collection('installers').doc(installer.id).update(loginData)
                     .then(() => {
                         console.log('✅ Installer authenticated successfully');
-                        console.log('🔍 About to update invite status...');
-                        console.log('🔍 Installer object being passed to showInstallerPortal:', installer);
                         
                         // Update invite status to ACCEPTED
                         return db.collection('installers').doc(installer.id).update({
@@ -1763,7 +1781,6 @@
                     })
                     .then(() => {
                         console.log('✅ Invite status updated successfully');
-                        console.log('🔍 About to call showInstallerPortal with installer:', installer);
                         
                         // Hide login modal
                         document.getElementById('installerLoginModal').classList.add('hidden');
@@ -1773,7 +1790,6 @@
                     })
                     .catch(error => {
                         console.error('❌ Error updating installer login:', error);
-                        console.error('❌ Full error details:', JSON.stringify(error));
                         alert('❌ Login failed. Please try again.');
                     });
             }
@@ -1782,9 +1798,6 @@
         // Show installer portal
         function showInstallerPortal(installer) {
             console.log('🔍 showInstallerPortal called!', installer);
-            
-            // Visual test - show alert FIRST
-            alert('🎉 INSTALLER PORTAL LOADING!\n\nInstaller: ' + installer.name + '\n\nThis should appear BEFORE any errors.');
             
             if (!installer) {
                 console.error('❌ showInstallerPortal called with null installer');
@@ -1862,9 +1875,6 @@
             loadInstallerJobs(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
-            
-            // Final confirmation alert
-            alert('🎉 INSTALLER PORTAL COMPLETE!\n\nInstaller: ' + installer.name + '\n\nPortal should be visible now!');
         }
 
         // Show installer login error
