@@ -1804,12 +1804,13 @@
 
         // Show installer portal
         function showInstallerPortal(installer) {
-            alert('TEST: NEW SHOWINSTALLERPORTAL CODE IS DEPLOYED!');
-            
             if (!installer) {
                 console.error('❌ showInstallerPortal called with null installer');
                 return;
             }
+            
+            // Store installer data globally for calendar functions
+            window.installerData = installer;
             
             // Hide admin login and show installer portal
             const adminLoginEl = document.getElementById('adminLogin');
@@ -1831,7 +1832,7 @@
             const crewInfoEl = document.getElementById('crewInfo');
             if (crewInfoEl) crewInfoEl.textContent = (installer.crews || []).join(', ') || 'No crew assigned';
             
-            // Load installer jobs
+            // Load installer jobs - pass installer object to avoid auth issues
             loadInstallerJobs(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
