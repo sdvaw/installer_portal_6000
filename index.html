@@ -1445,27 +1445,13 @@
                         </div>
                     </div>
                     
-                    <!-- Installer Cards Grid -->
+                    <!-- Simple Installer List -->
                     <div class="terminal-card p-6 mb-6">
                         <div class="scanline"></div>
-                        <h3 class="text-xl font-bold text-terminal mb-4">> INSTALLER_DIRECTORY</h3>
+                        <h3 class="text-xl font-bold text-terminal mb-4">> INSTALLER_LIST</h3>
                         
-                        <!-- Installer Table -->
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-terminal text-sm">
-                                <thead>
-                                    <tr class="border-b border-green-600">
-                                        <th class="text-left p-3 text-terminal-muted">NAME</th>
-                                        <th class="text-left p-3 text-terminal-muted">EMAIL</th>
-                                        <th class="text-left p-3 text-terminal-muted">PHONE</th>
-                                        <th class="text-left p-3 text-terminal-muted">STATUS</th>
-                                        <th class="text-left p-3 text-terminal-muted">ACTIONS</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="installerTableBody">
-                                    <!-- Installer rows will be populated here -->
-                                </tbody>
-                            </table>
+                        <div id="simpleInstallerList" class="space-y-4">
+                            <!-- Installers will be listed here -->
                         </div>
                     </div>
                 `;
@@ -1551,6 +1537,64 @@
                 default:
                     return 'text-gray-400';
             }
+        }
+
+        // Simple installer list rendering
+        function renderInstallerCards() {
+            const listContainer = document.getElementById('simpleInstallerList');
+            if (!listContainer) return;
+            
+            const searchTerm = document.getElementById('installerSearch')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
+            
+            let filteredInstallers = installers.filter(installer => {
+                const matchesSearch = installer.name && installer.email && installer.phone && 
+                               (installer.name.toLowerCase().includes(searchTerm) || 
+                                installer.email.toLowerCase().includes(searchTerm) ||
+                                installer.phone.includes(searchTerm));
+                const matchesStatus = !statusFilter || installer.status === statusFilter;
+                return matchesSearch && matchesStatus;
+            });
+            
+            listContainer.innerHTML = filteredInstallers.map(installer => `
+                <div class="border border-green-600 rounded p-4 bg-black/50 hover:bg-green-950/30 transition-colors">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h4 class="text-lg font-bold text-terminal">${installer.name || 'Unknown'}</h4>
+                            <p class="text-sm text-terminal-muted">ID: ${installer.id}</p>
+                        </div>
+                        <span class="px-3 py-1 text-xs font-bold ${installer.status === 'active' ? 'bg-green-900 text-green-400 border-green-600' : 'bg-red-900 text-red-400 border-red-600'} rounded border">
+                            ${installer.status?.toUpperCase() || 'UNKNOWN'}
+                        </span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3 text-sm">
+                        <div>
+                            <span class="text-terminal-muted">EMAIL:</span>
+                            <span class="text-terminal ml-2">${installer.email || 'No email'}</span>
+                        </div>
+                        <div>
+                            <span class="text-terminal-muted">PHONE:</span>
+                            <span class="text-terminal ml-2">${installer.phone || 'No phone'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <button onclick="copyInstallerLink('${installer.id}', '${installer.name}', '${installer.email}', '${installer.phone || 'installer123'}')" 
+                                class="terminal-button text-sm py-2 px-4">
+                            [COPY_LINK]
+                        </button>
+                        <button onclick="editInstaller('${installer.id}')" 
+                                class="terminal-button text-sm py-2 px-4">
+                            [EDIT]
+                        </button>
+                        <button onclick="viewInstallerDetails('${installer.id}')" 
+                                class="terminal-button text-sm py-2 px-4">
+                            [DETAILS]
+                        </button>
+                    </div>
+                </div>
+            `).join('');
         }
 
         // Copy installer login link function
