@@ -1940,12 +1940,22 @@
             if (db && installer.id) {
                 console.log('🔍 Querying jobs for installer:', installer.id);
                 
-                // Simple query without ordering to avoid index requirement
-                db.collection('jobs')
-                    .where('installerId', '==', installer.id)
-                    .get()
+                // First, let's see what's in the jobs collection
+                db.collection('jobs').get()
+                    .then(allJobsSnapshot => {
+                        console.log('🔍 Total jobs in collection:', allJobsSnapshot.size);
+                        allJobsSnapshot.forEach(doc => {
+                            const job = doc.data();
+                            console.log('🔍 Job document:', doc.id, job);
+                        });
+                        
+                        // Now query for this installer's jobs
+                        return db.collection('jobs')
+                            .where('installerId', '==', installer.id)
+                            .get();
+                    })
                     .then(snapshot => {
-                        console.log('🔍 Jobs query result:', snapshot.size, 'jobs found');
+                        console.log('🔍 Jobs query result for installer:', snapshot.size, 'jobs found');
                         
                         if (snapshot.empty) {
                             jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">📋 NO JOBS SCHEDULED</span>';
@@ -1956,7 +1966,7 @@
                             snapshot.forEach(doc => {
                                 const job = doc.data();
                                 jobs.push(job);
-                                console.log('🔍 Found job:', job);
+                                console.log('🔍 Found job for installer:', job);
                             });
                             
                             // Sort by date manually
