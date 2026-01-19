@@ -1908,7 +1908,6 @@
 
         // Load installer jobs
         function loadInstallerJobs(installer) {
-            alert('🔍 loadInstallerJobs function STARTED!');
             console.log('🔍 loadInstallerJobs called with installer:', installer);
             
             const jobsListEl = document.getElementById('jobsList');
@@ -1918,14 +1917,28 @@
                 return;
             }
             
-            alert('🔍 Found jobsList element!');
             console.log('🔍 Found jobsList element:', jobsListEl);
             
-            // Simple test - set plain text
-            jobsListEl.innerHTML = 'TEST TEXT - THIS SHOULD BE VISIBLE!';
-            alert('🔍 Set plain text - you should see it now!');
+            // Remove all classes that might hide content
+            jobsListEl.className = '';
+            jobsListEl.style.cssText = `
+                border: 5px solid red !important;
+                background-color: yellow !important;
+                color: black !important;
+                font-size: 24px !important;
+                font-weight: bold !important;
+                padding: 20px !important;
+                text-align: center !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            `;
             
-            console.log('🔍 Set plain text successfully');
+            // Set plain text with inline styles
+            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">TEST TEXT - THIS SHOULD BE VISIBLE!</span>';
+            
+            console.log('🔍 Set text with forced styles');
+            console.log('🔍 Current innerHTML:', jobsListEl.innerHTML);
         }
 
         // Toggle installer status
