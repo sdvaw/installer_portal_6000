@@ -1804,6 +1804,8 @@
 
         // Show installer portal
         function showInstallerPortal(installer) {
+            console.log('🔍 showInstallerPortal called!', installer);
+            
             if (!installer) {
                 console.error('❌ showInstallerPortal called with null installer');
                 return;
@@ -1812,6 +1814,9 @@
             // Store installer data globally for calendar functions AND for authenticateInstaller
             window.installerData = installer;
             window.currentInstallerLogin = { installer, token: installer.loginToken || 'unknown' };
+            
+            console.log('🔍 Set window.installerData:', window.installerData);
+            console.log('🔍 Set window.currentInstallerLogin:', window.currentInstallerLogin);
             
             // Hide admin login and show installer portal
             const adminLoginEl = document.getElementById('adminLogin');
@@ -1825,15 +1830,25 @@
             
             // Update installer name display
             const installerNameEl = document.getElementById('installerName');
-            if (installerNameEl) installerNameEl.textContent = installer.name;
+            if (installerNameEl) {
+                installerNameEl.textContent = installer.name;
+                console.log('🔍 Updated installer name:', installer.name);
+            }
             
             const installerInfoEl = document.getElementById('installerInfo');
-            if (installerInfoEl) installerInfoEl.textContent = `${installer.name} - ${installer.email}`;
+            if (installerInfoEl) {
+                installerInfoEl.textContent = `${installer.name} - ${installer.email}`;
+                console.log('🔍 Updated installer info:', `${installer.name} - ${installer.email}`);
+            }
             
             const crewInfoEl = document.getElementById('crewInfo');
-            if (crewInfoEl) crewInfoEl.textContent = (installer.crews || []).join(', ') || 'No crew assigned';
+            if (crewInfoEl) {
+                crewInfoEl.textContent = (installer.crews || []).join(', ') || 'No crew assigned';
+                console.log('🔍 Updated crew info:', (installer.crews || []).join(', ') || 'No crew assigned');
+            }
             
             // Load installer jobs - pass installer object to avoid auth issues
+            console.log('🔍 About to call loadInstallerJobs...');
             loadInstallerJobs(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
