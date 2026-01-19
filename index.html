@@ -1650,9 +1650,16 @@
             const token = urlParams.get('token');
             const installerId = urlParams.get('installer');
             
+            console.log('🔍 Checking for login token...');
+            console.log('🔍 Token:', token);
+            console.log('🔍 Installer ID:', installerId);
+            console.log('🔍 Current URL:', window.location.search);
+            
             if (token && installerId) {
                 console.log('🔑 Detected installer login token');
                 showInstallerLogin(token, installerId);
+            } else {
+                console.log('🔍 No login token found, showing default installer portal');
             }
         }
 
