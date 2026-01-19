@@ -1742,16 +1742,15 @@
                 console.log('🔍 Installer phone:', installer.phone);
                 console.log('🔍 Expected password:', installer.phone || 'installer123');
                 
-                // Simple password check - default to installer's phone number or a default password
-                // Clean phone number and remove any formatting
+                // Simple password check - try both possible passwords
                 const cleanPhone = installer.phone ? installer.phone.replace(/\D/g, '').trim() : '';
-                const expectedPassword = cleanPhone || 'installer123';
+                const possiblePasswords = [cleanPhone, 'installer123'];
                 
                 // Debug alert - show exact values
-                alert(`🔍 Password Debug:\n\nTyped: "${password}"\nExpected: "${expectedPassword}"\nLength typed: ${password.length}\nLength expected: ${expectedPassword.length}\nClean phone: "${cleanPhone}"`);
+                alert(`🔍 Password Debug:\n\nTyped: "${password}"\nPhone: "${cleanPhone}"\nTrying: ${possiblePasswords.join(' or ')}`);
                 
-                if (password !== expectedPassword) {
-                    alert('❌ Incorrect password! Please try again.\n\nDefault password is your phone number or "installer123"');
+                if (!possiblePasswords.includes(password)) {
+                    alert('❌ Incorrect password! Try: ' + possiblePasswords.join(' or '));
                     return;
                 }
                 
