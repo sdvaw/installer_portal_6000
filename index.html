@@ -1766,6 +1766,7 @@
                 db.collection('installers').doc(installer.id).update(loginData)
                     .then(() => {
                         console.log('✅ Installer authenticated successfully');
+                        console.log('🔍 About to update invite status...');
                         
                         // Update invite status to ACCEPTED
                         return db.collection('installers').doc(installer.id).update({
@@ -1773,6 +1774,8 @@
                         });
                     })
                     .then(() => {
+                        console.log('✅ Invite status updated successfully');
+                        
                         // Hide login modal
                         document.getElementById('installerLoginModal').classList.add('hidden');
                         
@@ -1781,6 +1784,7 @@
                     })
                     .catch(error => {
                         console.error('❌ Error updating installer login:', error);
+                        console.error('❌ Full error details:', JSON.stringify(error));
                         alert('❌ Login failed. Please try again.');
                     });
             }
