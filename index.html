@@ -1846,10 +1846,13 @@
                 portalEl.style.zIndex = '1000';
                 console.log('🔍 Forced portal display: block');
                 
-                // Add bright red border to make it visible
-                portalEl.style.border = '5px solid red';
-                portalEl.style.backgroundColor = 'yellow';
-                console.log('🔍 Added visual indicators to portal');
+                // Add visual indicators to jobs section only, not whole portal
+                const jobsSection = portalEl.querySelector('.space-y-4');
+                if (jobsSection) {
+                    jobsSection.style.border = '5px solid red';
+                    jobsSection.style.backgroundColor = 'yellow';
+                    console.log('🔍 Added visual indicators to jobs section only');
+                }
             }
             
             // Hide login modal
