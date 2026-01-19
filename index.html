@@ -1760,7 +1760,7 @@
                     loginMethod: 'EMAIL_LINK',
                     loginToken: token,
                     loginStatus: 'SUCCESS',
-                    password: expectedPassword // Store the password that worked
+                    password: password // Store the password that worked
                 };
                 
                 db.collection('installers').doc(installer.id).update(loginData)
