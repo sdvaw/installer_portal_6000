@@ -1446,8 +1446,27 @@
                     </div>
                     
                     <!-- Installer Cards Grid -->
-                    <div id="installerCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6" style="border: 2px solid red;">
-                        <!-- Installer cards will be populated here -->
+                    <div class="terminal-card p-6 mb-6">
+                        <div class="scanline"></div>
+                        <h3 class="text-xl font-bold text-terminal mb-4">> INSTALLER_DIRECTORY</h3>
+                        
+                        <!-- Installer Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-terminal text-sm">
+                                <thead>
+                                    <tr class="border-b border-green-600">
+                                        <th class="text-left p-3 text-terminal-muted">NAME</th>
+                                        <th class="text-left p-3 text-terminal-muted">EMAIL</th>
+                                        <th class="text-left p-3 text-terminal-muted">PHONE</th>
+                                        <th class="text-left p-3 text-terminal-muted">STATUS</th>
+                                        <th class="text-left p-3 text-terminal-muted">ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="installerTableBody">
+                                    <!-- Installer rows will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 `;
                 
@@ -1516,119 +1535,6 @@
             ];
         }
 
-        // Render installer cards
-        function renderInstallerCards() {
-            const cardsContainer = document.getElementById('installerCards');
-            if (!cardsContainer) return;
-            
-            const searchTerm = document.getElementById('installerSearch')?.value.toLowerCase() || '';
-            const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
-            
-            let filteredInstallers = installers.filter(installer => {
-                const matchesSearch = installer.name && installer.email && installer.phone && 
-                                   (installer.name.toLowerCase().includes(searchTerm) || 
-                                    installer.email.toLowerCase().includes(searchTerm) ||
-                                    installer.phone.includes(searchTerm));
-                const matchesStatus = !statusFilter || installer.status === statusFilter;
-                return matchesSearch && matchesStatus;
-            });
-            
-            cardsContainer.innerHTML = filteredInstallers.map(installer => `
-                <div class="terminal-card p-4 mb-4">
-                    <div class="scanline"></div>
-                    <!-- Card Header -->
-                    <div class="border-b border-green-500 pb-3 mb-3">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="text-lg font-bold text-terminal">${installer.name || 'Unknown'}</h3>
-                                <p class="text-terminal-muted text-sm">ID: ${installer.id}</p>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <label class="relative inline-flex items-center cursor-pointer">
-                                    <input type="checkbox" ${installer.status === 'active' ? 'checked' : ''} 
-                                           onchange="toggleInstallerStatus('${installer.id}')" 
-                                           class="sr-only peer">
-                                    <div class="w-11 h-6 bg-green-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-green-400 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-green-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Card Body -->
-                    <div class="space-y-3">
-                        <!-- Contact Info -->
-                        <div class="space-y-1 text-sm">
-                            <div class="flex items-center">
-                                <span class="text-terminal-muted w-16">EMAIL:</span>
-                                <span class="text-terminal">${installer.email || 'No email'}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <span class="text-terminal-muted w-16">PHONE:</span>
-                                <span class="text-terminal">${installer.phone || 'No phone'}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <span class="text-terminal-muted w-16">CREWS:</span>
-                                <div class="flex flex-wrap gap-1">
-                                    ${(installer.crews || []).map(crew => `
-                                        <span class="px-2 py-1 text-xs bg-green-900 text-green-400 rounded border border-green-600">${crew}</span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Invite Status -->
-                        <div class="border border-green-600 rounded p-2 bg-black/50">
-                            <div class="flex justify-between items-center">
-                                <span class="text-terminal-muted text-xs">INVITE_STATUS:</span>
-                                <span class="text-xs font-bold ${getInviteStatusClass(installer.inviteStatus)}">
-                                    ${installer.inviteStatus || 'NOT_SENT'}
-                                </span>
-                            </div>
-                            ${installer.lastInviteSent ? `
-                                <div class="text-xs text-terminal-muted mt-1">
-                                    LAST_SENT: ${new Date(installer.lastInviteSent).toLocaleDateString()}
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        <!-- Performance Metrics -->
-                        <div class="grid grid-cols-3 gap-2 border border-green-600 rounded p-2 bg-black/50">
-                            <div class="text-center">
-                                <div class="text-lg font-bold text-red-400">${installer.defects || 0}</div>
-                                <div class="text-xs text-terminal-muted">DEFECTS</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-lg font-bold text-orange-400">${installer.chargebacks || 0}</div>
-                                <div class="text-xs text-terminal-muted">CHARGEBACKS</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-lg font-bold text-green-400">${installer.reviews || 0}</div>
-                                <div class="text-xs text-terminal-muted">REVIEWS</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Action Buttons -->
-                        <div class="space-y-2">
-                            <button onclick="copyInstallerLink('${installer.id}', '${installer.name}', '${installer.email}', '${installer.phone || 'installer123'}')" 
-                                    class="w-full terminal-button">
-                                [COPY_LOGIN_LINK]
-                            </button>
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="editInstaller('${installer.id}')" 
-                                        class="terminal-button">
-                                    [EDIT]
-                                </button>
-                                <button onclick="viewInstallerDetails('${installer.id}')" 
-                                        class="terminal-button">
-                                    [DETAILS]
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
         // Get invite status styling class
         function getInviteStatusClass(status) {
             switch (status) {
@@ -1645,68 +1551,6 @@
                 default:
                     return 'text-gray-400';
             }
-        }
-
-// Render installer cards
-function renderInstallerCards() {
-    const cardsContainer = document.getElementById('installerCards');
-    if (!cardsContainer) return;
-    
-    const searchTerm = document.getElementById('installerSearch')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('installerStatusFilter')?.value || '';
-    
-    let filteredInstallers = installers.filter(installer => {
-        const matchesSearch = installer.name && installer.email && installer.phone && 
-                               (installer.name.toLowerCase().includes(searchTerm) || 
-                                installer.email.toLowerCase().includes(searchTerm) ||
-                                installer.phone.includes(searchTerm));
-        const matchesStatus = !statusFilter || installer.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-    
-    cardsContainer.innerHTML = filteredInstallers.map(installer => `
-        <div class="terminal-card p-4">
-            <div class="scanline"></div>
-            <!-- Card Header -->
-            <div class="border-b border-green-500 pb-3 mb-3">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="text-lg font-bold text-terminal">${installer.name || 'Unknown'}</h3>
-                        <p class="text-terminal-muted text-sm">ID: ${installer.id}</p>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" ${installer.status === 'active' ? 'checked' : ''} 
-                                   onchange="toggleInstallerStatus('${installer.id}')" 
-                                   class="sr-only peer">
-                            <div class="w-11 h-6 bg-green-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-green-400 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-green-400 after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Card Body -->
-            <div class="space-y-3">
-                <!-- Contact Info -->
-                <div class="space-y-1 text-sm">
-                    <div class="flex items-center">
-                        <span class="text-terminal-muted w-16">EMAIL:</span>
-                        <span class="text-terminal">${installer.email || 'No email'}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="text-terminal-muted w-16">PHONE:</span>
-                        <span class="text-terminal">${installer.phone || 'No phone'}</span>
-                    </div>
-                    <div class="flex items-center">
-                        <span class="text-terminal-muted w-16">CREWS:</span>
-                        <div class="flex flex-wrap gap-1">
-                            ${(installer.crews || []).map(crew => `
-                                <span class="px-2 py-1 text-xs bg-green-900 text-green-400 rounded border border-green-600">${crew}</span>
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
         }
 
         // Copy installer login link function
