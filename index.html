@@ -1901,12 +1901,16 @@
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
+                alert('❌ jobsList element not found!');
                 return;
             }
             
+            console.log('🔍 Found jobsList element:', jobsListEl);
+            console.log('🔍 Current jobsList content:', jobsListEl.innerHTML);
+            
             // This would load jobs specific to this installer
             // For now, show empty state
-            jobsListEl.innerHTML = `
+            const jobsHTML = `
                 <div class="terminal-card p-6 text-center">
                     <div class="scanline"></div>
                     <div class="text-4xl mb-4">📋</div>
@@ -1915,7 +1919,11 @@
                 </div>
             `;
             
-            console.log('🔍 Jobs list updated');
+            jobsListEl.innerHTML = jobsHTML;
+            console.log('🔍 Set jobsList HTML to:', jobsHTML);
+            console.log('🔍 New jobsList content:', jobsListEl.innerHTML);
+            
+            alert('🎉 Jobs loaded successfully! Check the page for jobs display.');
         }
 
         // Toggle installer status
