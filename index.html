@@ -1921,11 +1921,10 @@
             
             // Show proper jobs display - working version
             jobsListEl.innerHTML = `
-                <div class="terminal-card p-6 text-center">
-                    <div class="scanline"></div>
-                    <div class="text-4xl mb-4">📋</div>
-                    <div class="text-xl font-semibold text-terminal mb-2">> NO_JOBS_SCHEDULED</div>
-                    <div class="text-terminal-muted">CHECK_BACK_LATER...</div>
+                <div style="padding: 20px; text-align: center; border: 2px solid #333; background: #fff;">
+                    <div style="font-size: 32px; margin-bottom: 16px;">📋</div>
+                    <div style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">> NO_JOBS_SCHEDULED</div>
+                    <div style="color: #666;">CHECK_BACK_LATER...</div>
                 </div>
             `;
             
