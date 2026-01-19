@@ -1943,31 +1943,39 @@
             if (db && installer.id) {
                 console.log('🔍 Querying jobs for installer:', installer.id);
                 
-                // First, let's see what's in jobs collection
-                db.collection('jobs').get()
-                    .then(allJobsSnapshot => {
-                        const totalJobs = allJobsSnapshot.size;
-                        console.log('🔍 Total jobs in collection:', totalJobs);
-                        alert('🔍 Total jobs found: ' + totalJobs);
+                // First, check what collections exist
+                db.listCollections().then(collections => {
+                    console.log('🔍 Available collections:', collections.map(c => c.id));
+                    alert('🔍 Available collections: ' + collections.map(c => c.id).join(', '));
+                    
+                    // Check if jobs collection exists
+                    const jobsCollection = collections.find(c => c.id === 'jobs');
+                    if (!jobsCollection) {
+                        // Create jobs collection with sample data
+                        alert('🔍 Creating jobs collection with sample data...');
                         
-                        if (totalJobs === 0) {
-                            jobsListEl.innerHTML = '<span style="color: black !important; font-size: 24px !important; font-weight: bold !important;">❌ NO JOBS IN DATABASE</span>';
-                            return;
-                        }
+                        const sampleJob = {
+                            installerId: installer.id,
+                            installerName: installer.name,
+                            location: 'Sample Job Location',
+                            date: new Date().toISOString(),
+                            crew: installer.crews ? installer.crews.join(', ') : 'No crew',
+                            description: 'Sample job description',
+                            status: 'scheduled',
+                            createdAt: new Date().toISOString()
+                        };
                         
-                        let jobCount = 0;
-                        allJobsSnapshot.forEach(doc => {
-                            const job = doc.data();
-                            jobCount++;
-                            console.log('🔍 Job ' + jobCount + ':', doc.id, job);
-                            alert('🔍 Job ' + jobCount + ': ' + JSON.stringify(job, null, 2));
-                        });
-                        
-                        // Now query for this installer's jobs
-                        return db.collection('jobs')
-                            .where('installerId', '==', installer.id)
-                            .get();
-                    })
+                        return db.collection('jobs').add(sampleJob);
+                    } else {
+                        // Jobs collection exists, query it
+                        return db.collection('jobs').get();
+                    }
+                }).then(() => {
+                    // Now query for this installer's jobs
+                    return db.collection('jobs')
+                        .where('installerId', '==', installer.id)
+                        .get();
+                })
                     .then(snapshot => {
                         console.log('🔍 Jobs query result for installer:', snapshot.size, 'jobs found');
                         alert('🔍 Jobs for installer ' + installer.id + ': ' + snapshot.size);
