@@ -1677,6 +1677,11 @@
                 const decodedToken = atob(token);
                 const [tokenInstallerId, tokenEmail, tokenTimestamp] = decodedToken.split(':');
                 
+                console.log('🔍 Token verification debug:');
+                console.log('🔍 Token installer ID:', tokenInstallerId);
+                console.log('🔍 Token email:', tokenEmail);
+                console.log('🔍 Expected installer ID:', installerId);
+                
                 // Verify token matches installer ID
                 if (tokenInstallerId !== installerId) {
                     throw new Error('Token mismatch');
