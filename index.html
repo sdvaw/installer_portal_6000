@@ -1954,8 +1954,30 @@
                                 
                                 // Show ALL fields in the job document
                                 let jobFieldsHTML = '<strong>📄 Job ID: ' + doc.id + '</strong><br>';
+                                
+                                // Look for common field names that might contain customer/installer data
+                                const fieldsToCheck = [
+                                    'customer', 'customerName', 'client', 'clientName',
+                                    'installer', 'installerId', 'installerName', 'assignedTo', 'assignedInstaller',
+                                    'location', 'address', 'jobLocation', 'site',
+                                    'date', 'scheduledDate', 'jobDate', 'startDate',
+                                    'status', 'jobStatus',
+                                    'description', 'notes', 'jobDescription',
+                                    'crew', 'team', 'assignedCrew'
+                                ];
+                                
+                                fieldsToCheck.forEach(field => {
+                                    if (job.hasOwnProperty(field)) {
+                                        jobFieldsHTML += `🏷️ ${field}: ${JSON.stringify(job[field])}<br>`;
+                                    }
+                                });
+                                
+                                // Also show any other fields we didn't think of
+                                jobFieldsHTML += '<br><strong>🔍 OTHER FIELDS:</strong><br>';
                                 for (let field in job) {
-                                    jobFieldsHTML += `🏷️ ${field}: ${JSON.stringify(job[field])}<br>`;
+                                    if (!fieldsToCheck.includes(field)) {
+                                        jobFieldsHTML += `❓ ${field}: ${JSON.stringify(job[field])}<br>`;
+                                    }
                                 }
                                 
                                 allJobsHTML += `
@@ -1966,7 +1988,7 @@
                             });
                             allJobsHTML += '</div>';
                             jobsListEl.innerHTML = allJobsHTML;
-                            alert('🔍 Showing ALL job fields - check what field names actually exist!');
+                            alert('🔍 Showing ALL job fields - looking for customer and installer data!');
                             return Promise.resolve();
                         }
                     })
