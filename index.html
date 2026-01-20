@@ -1916,7 +1916,7 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                // Check what collections exist
+                // First check if jobs collection exists
                 db.listCollections().then(collections => {
                     alert('🔍 Collections found: ' + collections.map(c => c.id).join(', '));
                     
@@ -1937,24 +1937,25 @@
                         
                         return db.collection('jobs').add(sampleJob);
                     } else {
-                        alert('🔍 Jobs collection exists - querying...');
-                        // Jobs collection exists, query it
-                        return db.collection('jobs')
-                            .where('installerId', '==', installer.id)
-                            .get();
+                        alert('🔍 Jobs collection exists - querying for jobs...');
+                        // Jobs collection exists, just continue to query
+                        return Promise.resolve();
                     }
                 }).then(() => {
                     // Now query for this installer's jobs
+                    alert('🔍 Querying jobs for installer: ' + installer.id);
                     return db.collection('jobs')
                         .where('installerId', '==', installer.id)
                         .get();
                 })
                 .then(snapshot => {
-                    alert('🔍 Found ' + snapshot.size + ' jobs for installer');
+                    alert('🔍 Query complete - found ' + snapshot.size + ' jobs');
                     
                     if (snapshot.empty) {
+                        alert('🔍 No jobs found for installer');
                         jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">📋 No jobs scheduled</div>';
                     } else {
+                        alert('🔍 Processing ' + snapshot.size + ' jobs...');
                         let jobsHTML = '<div style="color: #333;">';
                         const jobs = [];
                         snapshot.forEach(doc => {
@@ -1983,7 +1984,9 @@
                         });
                         
                         jobsHTML += '</div>';
+                        alert('🔍 Setting jobs HTML...');
                         jobsListEl.innerHTML = jobsHTML;
+                        alert('🔍 Jobs HTML set complete!');
                     }
                 })
                 .catch(error => {
