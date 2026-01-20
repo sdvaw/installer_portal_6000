@@ -1623,21 +1623,14 @@
             
             // Copy link to clipboard
             navigator.clipboard.writeText(loginLink).then(() => {
-                // Simple success message - no popup
+                // Show success feedback
                 console.log('📋 Link copied to clipboard:', loginLink);
-                const button = event.target;
-                const originalText = button.textContent;
-                button.textContent = '✅ COPIED!';
-                button.classList.add('bg-green-600');
-                
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove('bg-green-600');
-                }, 2000);
+                const message = `✅ Login Link Copied!\n\nINSTALLER: ${name}\nEMAIL: ${email}\nPASSWORD: ${password}\n\nLink copied to clipboard!`;
+                alert(message);
             }).catch(err => {
                 console.error('❌ Failed to copy link:', err);
-                // Fallback: show link in console
-                console.log('📋 Copy this link manually:', loginLink);
+                // Fallback: show link in alert
+                alert(`📋 Copy this link manually:\n\n${loginLink}\n\nInstaller: ${name}\nEmail: ${email}\nPassword: ${password}`);
             });
         }
 
@@ -1767,7 +1760,7 @@
                     loginMethod: 'EMAIL_LINK',
                     loginToken: token,
                     loginStatus: 'SUCCESS',
-                    password: password // Store the password that worked
+                    password: password
                 };
                 
                 db.collection('installers').doc(installer.id).update(loginData)
@@ -1790,7 +1783,12 @@
                     })
                     .catch(error => {
                         console.error('❌ Error updating installer login:', error);
-                        alert('❌ Login failed. Please try again.');
+                        // Don't show error alert - let the login proceed anyway
+                        console.log('⚠️ Login update failed but proceeding...');
+                        
+                        // Hide login modal and show portal anyway
+                        document.getElementById('installerLoginModal').classList.add('hidden');
+                        showInstallerPortal(installer);
                     });
             }
         }
