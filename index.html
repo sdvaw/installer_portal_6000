@@ -1919,55 +1919,116 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Getting ALL jobs from TeamUp to see what fields are available...');
+                alert('🔍 Checking ALL collections in database to find proper TeamUp data...');
                 
-                // Get ALL jobs to see complete TeamUp data structure
-                db.collection('jobs').get()
-                    .then(allJobsSnapshot => {
-                        alert('🔍 Found ' + allJobsSnapshot.size + ' total jobs from TeamUp');
-                        
-                        if (allJobsSnapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">📋 No jobs found in database</div>';
-                            return;
-                        }
-                        
-                        // Show complete TeamUp data for first few jobs
-                        let teamupHTML = '<div style="color: #333;"><h3>🔍 TEAMUP DATA STRUCTURE (First 5 jobs):</h3>';
-                        let count = 0;
-                        allJobsSnapshot.forEach(doc => {
-                            if (count >= 5) return; // Only show first 5 for readability
-                            
-                            const job = doc.data();
-                            teamupHTML += `
-                                <div style="border: 3px solid purple; margin: 15px 0; padding: 20px; background: #f0f0ff; border-radius: 8px;">
-                                    <h4>📄 Job ${count + 1}: ${doc.id}</h4>
-                                    <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                                        <strong>🔍 COMPLETE TEAMUP DATA:</strong><br>
-                                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
-${JSON.stringify(job, null, 2)}
-                                        </pre>
-                                    </div>
-                                </div>
-                            `;
-                            count++;
-                        });
-                        
-                        if (allJobsSnapshot.size > 5) {
-                            teamupHTML += `<div style="text-align: center; padding: 20px; color: #666;">
-                                ... and ${allJobsSnapshot.size - 5} more jobs
-                            </div>`;
-                        }
-                        
-                        teamupHTML += '</div>';
-                        jobsListEl.innerHTML = teamupHTML;
-                        
-                        alert('🔍 TeamUp data displayed - check what installer assignment fields exist!');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error loading jobs: ' + error.message);
-                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
+                // First, let's see what collections exist
+                db.listCollections().then(collections => {
+                    alert('🔍 Collections found: ' + collections.map(c => c.id).join(', '));
+                    
+                    let html = '<div style="color: #333;"><h3>🔍 DATABASE COLLECTIONS:</h3>';
+                    
+                    collections.forEach(collection => {
+                        html += `
+                            <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
+                                <strong>📁 Collection: ${collection.id}</strong>
+                                <button onclick="inspectCollection('${collection.id}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    🔍 INSPECT
+                                </button>
+                            </div>
+                        `;
                     });
+                    
+                    html += '</div>';
+                    jobsListEl.innerHTML = html;
+                    
+                    // Add the inspect function to window
+                    window.inspectCollection = function(collectionName) {
+                        alert('🔍 Inspecting collection: ' + collectionName);
+                        
+                        db.collection(collectionName).limit(3).get()
+                            .then(snapshot => {
+                                alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
+                                
+                                let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
+                                
+                                snapshot.forEach(doc => {
+                                    const data = doc.data();
+                                    inspectHTML += `
+                                        <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
+                                            <h4>📄 Document ID: ${doc.id}</h4>
+                                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+${JSON.stringify(data, null, 2)}
+                                            </pre>
+                                        </div>
+                                    `;
+                                });
+                                
+                                inspectHTML += '</div>';
+                                jobsListEl.innerHTML = inspectHTML;
+                            })
+                            .catch(error => {
+                                alert('❌ Error inspecting ' + collectionName + ': ' + error.message);
+                            });
+                    };
+                    
+                    alert('🔍 Collections displayed - click INSPECT to check each collection!');
+                })
+                .catch(error => {
+                    alert('❌ Error listing collections: ' + error.message);
+                    
+                    // Fallback: try common collection names
+                    const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule'];
+                    let fallbackHTML = '<div style="color: #333;"><h3>🔍 TRYING COMMON COLLECTION NAMES:</h3>';
+                    
+                    possibleCollections.forEach(collectionName => {
+                        fallbackHTML += `
+                            <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
+                                <strong>📁 Trying: ${collectionName}</strong>
+                                <button onclick="inspectCollection('${collectionName}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    🔍 CHECK
+                                </button>
+                            </div>
+                        `;
+                    });
+                    
+                    fallbackHTML += '</div>';
+                    jobsListEl.innerHTML = fallbackHTML;
+                    
+                    // Re-add the inspect function
+                    window.inspectCollection = function(collectionName) {
+                        alert('🔍 Checking collection: ' + collectionName);
+                        
+                        db.collection(collectionName).limit(3).get()
+                            .then(snapshot => {
+                                if (snapshot.empty) {
+                                    alert('🔍 Collection ' + collectionName + ' is empty or does not exist');
+                                    return;
+                                }
+                                
+                                alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
+                                
+                                let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
+                                
+                                snapshot.forEach(doc => {
+                                    const data = doc.data();
+                                    inspectHTML += `
+                                        <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
+                                            <h4>📄 Document ID: ${doc.id}</h4>
+                                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+${JSON.stringify(data, null, 2)}
+                                            </pre>
+                                        </div>
+                                    `;
+                                });
+                                
+                                inspectHTML += '</div>';
+                                jobsListEl.innerHTML = inspectHTML;
+                            })
+                            .catch(error => {
+                                alert('❌ Error checking ' + collectionName + ': ' + error.message);
+                            });
+                    };
+                });
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
