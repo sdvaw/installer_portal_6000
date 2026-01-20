@@ -1902,6 +1902,9 @@
                 return;
             }
             
+            // Check if db and installer.id exist
+            alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
+            
             // Clean styling
             jobsListEl.className = '';
             jobsListEl.style.cssText = `
@@ -2013,7 +2016,7 @@
                         jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
                     });
             } else {
-                alert('❌ Database not available');
+                alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
             }
         }
