@@ -1916,84 +1916,102 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                // First check if jobs collection exists
-                db.listCollections().then(collections => {
-                    alert('🔍 Collections found: ' + collections.map(c => c.id).join(', '));
-                    
-                    const jobsCollection = collections.find(c => c.id === 'jobs');
-                    if (!jobsCollection) {
-                        alert('🔍 No jobs collection - creating sample job...');
-                        // Create jobs collection with sample data
-                        const sampleJob = {
-                            installerId: installer.id,
-                            installerName: installer.name,
-                            location: 'Sample Job Location',
-                            date: new Date().toISOString().split('T')[0],
-                            crew: installer.crews ? installer.crews.join(', ') : 'No crew',
-                            description: 'Sample job description',
-                            status: 'scheduled',
-                            createdAt: new Date().toISOString()
-                        };
+                alert('🔍 Querying jobs for installer: ' + installer.id);
+                
+                // Query for this installer's jobs
+                db.collection('jobs')
+                    .where('installerId', '==', installer.id)
+                    .get()
+                    .then(snapshot => {
+                        alert('🔍 Query complete - found ' + snapshot.size + ' jobs');
                         
-                        return db.collection('jobs').add(sampleJob);
-                    } else {
-                        alert('🔍 Jobs collection exists - querying for jobs...');
-                        // Jobs collection exists, just continue to query
-                        return Promise.resolve();
-                    }
-                }).then(() => {
-                    // Now query for this installer's jobs
-                    alert('🔍 Querying jobs for installer: ' + installer.id);
-                    return db.collection('jobs')
-                        .where('installerId', '==', installer.id)
-                        .get();
-                })
-                .then(snapshot => {
-                    alert('🔍 Query complete - found ' + snapshot.size + ' jobs');
-                    
-                    if (snapshot.empty) {
-                        alert('🔍 No jobs found for installer');
-                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">📋 No jobs scheduled</div>';
-                    } else {
-                        alert('🔍 Processing ' + snapshot.size + ' jobs...');
-                        let jobsHTML = '<div style="color: #333;">';
-                        const jobs = [];
-                        snapshot.forEach(doc => {
-                            const job = doc.data();
-                            jobs.push(job);
-                            alert('🔍 Job found: ' + JSON.stringify(job, null, 2));
-                        });
-                        
-                        // Sort by date manually
-                        jobs.sort((a, b) => {
-                            const dateA = new Date(a.date || 0);
-                            const dateB = new Date(b.date || 0);
-                            return dateA - dateB;
-                        });
-                        
-                        // Display sorted jobs
-                        jobs.forEach(job => {
-                            jobsHTML += `
-                                <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
-                                    <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
-                                    📅 ${job.date || 'No Date'}<br>
-                                    👥 ${job.crew || 'No Crew Assigned'}<br>
-                                    📝 ${job.description || 'No Description'}
-                                </div>
-                            `;
-                        });
-                        
-                        jobsHTML += '</div>';
-                        alert('🔍 Setting jobs HTML...');
-                        jobsListEl.innerHTML = jobsHTML;
-                        alert('🔍 Jobs HTML set complete!');
-                    }
-                })
-                .catch(error => {
-                    console.error('❌ Error loading jobs:', error);
-                    alert('❌ Error loading jobs: ' + error.message);
-                    jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
-                });
+                        if (snapshot.empty) {
+                            alert('🔍 No jobs found - creating sample job...');
+                            // Create sample job
+                            const sampleJob = {
+                                installerId: installer.id,
+                                installerName: installer.name,
+                                location: 'Sample Job Location',
+                                date: new Date().toISOString().split('T')[0],
+                                crew: installer.crews ? installer.crews.join(', ') : 'No crew',
+                                description: 'Sample job description',
+                                status: 'scheduled',
+                                createdAt: new Date().toISOString()
+                            };
+                            
+                            return db.collection('jobs').add(sampleJob)
+                                .then(() => {
+                                    alert('🔍 Sample job created! Querying again...');
+                                    // Query again after creating sample job
+                                    return db.collection('jobs')
+                                        .where('installerId', '==', installer.id)
+                                        .get();
+                                });
+                        } else {
+                            alert('🔍 Processing ' + snapshot.size + ' jobs...');
+                            let jobsHTML = '<div style="color: #333;">';
+                            const jobs = [];
+                            snapshot.forEach(doc => {
+                                const job = doc.data();
+                                jobs.push(job);
+                                alert('🔍 Job found: ' + JSON.stringify(job, null, 2));
+                            });
+                            
+                            // Sort by date manually
+                            jobs.sort((a, b) => {
+                                const dateA = new Date(a.date || 0);
+                                const dateB = new Date(b.date || 0);
+                                return dateA - dateB;
+                            });
+                            
+                            // Display sorted jobs
+                            jobs.forEach(job => {
+                                jobsHTML += `
+                                    <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
+                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
+                                        📅 ${job.date || 'No Date'}<br>
+                                        👥 ${job.crew || 'No Crew Assigned'}<br>
+                                        📝 ${job.description || 'No Description'}
+                                    </div>
+                                `;
+                            });
+                            
+                            jobsHTML += '</div>';
+                            alert('🔍 Setting jobs HTML...');
+                            jobsListEl.innerHTML = jobsHTML;
+                            alert('🔍 Jobs HTML set complete!');
+                            return Promise.resolve();
+                        }
+                    })
+                    .then((snapshot) => {
+                        if (snapshot) {
+                            // This is the second query after creating sample job
+                            alert('🔍 Second query complete - found ' + snapshot.size + ' jobs');
+                            
+                            let jobsHTML = '<div style="color: #333;">';
+                            snapshot.forEach(doc => {
+                                const job = doc.data();
+                                jobsHTML += `
+                                    <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
+                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
+                                        📅 ${job.date || 'No Date'}<br>
+                                        👥 ${job.crew || 'No Crew Assigned'}<br>
+                                        📝 ${job.description || 'No Description'}
+                                    </div>
+                                `;
+                            });
+                            
+                            jobsHTML += '</div>';
+                            alert('🔍 Setting sample job HTML...');
+                            jobsListEl.innerHTML = jobsHTML;
+                            alert('🔍 Sample job HTML set complete!');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error loading jobs:', error);
+                        alert('❌ Error loading jobs: ' + error.message);
+                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
+                    });
             } else {
                 alert('❌ Database not available');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
