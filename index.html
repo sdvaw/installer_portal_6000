@@ -1919,116 +1919,62 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Checking ALL collections in database to find proper TeamUp data...');
+                alert('🔍 Checking common collection names to find proper TeamUp data...');
                 
-                // First, let's see what collections exist
-                db.listCollections().then(collections => {
-                    alert('🔍 Collections found: ' + collections.map(c => c.id).join(', '));
-                    
-                    let html = '<div style="color: #333;"><h3>🔍 DATABASE COLLECTIONS:</h3>';
-                    
-                    collections.forEach(collection => {
-                        html += `
-                            <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
-                                <strong>📁 Collection: ${collection.id}</strong>
-                                <button onclick="inspectCollection('${collection.id}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    🔍 INSPECT
-                                </button>
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div>';
-                    jobsListEl.innerHTML = html;
-                    
-                    // Add the inspect function to window
-                    window.inspectCollection = function(collectionName) {
-                        alert('🔍 Inspecting collection: ' + collectionName);
-                        
-                        db.collection(collectionName).limit(3).get()
-                            .then(snapshot => {
-                                alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
-                                
-                                let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
-                                
-                                snapshot.forEach(doc => {
-                                    const data = doc.data();
-                                    inspectHTML += `
-                                        <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
-                                            <h4>📄 Document ID: ${doc.id}</h4>
-                                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
-${JSON.stringify(data, null, 2)}
-                                            </pre>
-                                        </div>
-                                    `;
-                                });
-                                
-                                inspectHTML += '</div>';
-                                jobsListEl.innerHTML = inspectHTML;
-                            })
-                            .catch(error => {
-                                alert('❌ Error inspecting ' + collectionName + ': ' + error.message);
-                            });
-                    };
-                    
-                    alert('🔍 Collections displayed - click INSPECT to check each collection!');
-                })
-                .catch(error => {
-                    alert('❌ Error listing collections: ' + error.message);
-                    
-                    // Fallback: try common collection names
-                    const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule'];
-                    let fallbackHTML = '<div style="color: #333;"><h3>🔍 TRYING COMMON COLLECTION NAMES:</h3>';
-                    
-                    possibleCollections.forEach(collectionName => {
-                        fallbackHTML += `
-                            <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
-                                <strong>📁 Trying: ${collectionName}</strong>
-                                <button onclick="inspectCollection('${collectionName}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    🔍 CHECK
-                                </button>
-                            </div>
-                        `;
-                    });
-                    
-                    fallbackHTML += '</div>';
-                    jobsListEl.innerHTML = fallbackHTML;
-                    
-                    // Re-add the inspect function
-                    window.inspectCollection = function(collectionName) {
-                        alert('🔍 Checking collection: ' + collectionName);
-                        
-                        db.collection(collectionName).limit(3).get()
-                            .then(snapshot => {
-                                if (snapshot.empty) {
-                                    alert('🔍 Collection ' + collectionName + ' is empty or does not exist');
-                                    return;
-                                }
-                                
-                                alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
-                                
-                                let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
-                                
-                                snapshot.forEach(doc => {
-                                    const data = doc.data();
-                                    inspectHTML += `
-                                        <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
-                                            <h4>📄 Document ID: ${doc.id}</h4>
-                                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
-${JSON.stringify(data, null, 2)}
-                                            </pre>
-                                        </div>
-                                    `;
-                                });
-                                
-                                inspectHTML += '</div>';
-                                jobsListEl.innerHTML = inspectHTML;
-                            })
-                            .catch(error => {
-                                alert('❌ Error checking ' + collectionName + ': ' + error.message);
-                            });
-                    };
+                // Try common collection names directly (no listCollections!)
+                const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 'teamup_events', 'appointments'];
+                let html = '<div style="color: #333;"><h3>🔍 CHECKING COLLECTIONS FOR TEAMUP DATA:</h3>';
+                
+                possibleCollections.forEach(collectionName => {
+                    html += `
+                        <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
+                            <strong>📁 Collection: ${collectionName}</strong>
+                            <button onclick="inspectCollection('${collectionName}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                🔍 CHECK
+                            </button>
+                        </div>
+                    `;
                 });
+                
+                html += '</div>';
+                jobsListEl.innerHTML = html;
+                
+                // Add the inspect function to window
+                window.inspectCollection = function(collectionName) {
+                    alert('🔍 Checking collection: ' + collectionName);
+                    
+                    db.collection(collectionName).limit(3).get()
+                        .then(snapshot => {
+                            if (snapshot.empty) {
+                                alert('🔍 Collection ' + collectionName + ' is empty or does not exist');
+                                return;
+                            }
+                            
+                            alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
+                            
+                            let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
+                            
+                            snapshot.forEach(doc => {
+                                const data = doc.data();
+                                inspectHTML += `
+                                    <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
+                                        <h4>📄 Document ID: ${doc.id}</h4>
+                                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+${JSON.stringify(data, null, 2)}
+                                        </pre>
+                                    </div>
+                                `;
+                            });
+                            
+                            inspectHTML += '</div>';
+                            jobsListEl.innerHTML = inspectHTML;
+                        })
+                        .catch(error => {
+                            alert('❌ Error checking ' + collectionName + ': ' + error.message);
+                        });
+                };
+                
+                alert('🔍 Collection checker displayed - click CHECK buttons to find proper TeamUp data!');
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
