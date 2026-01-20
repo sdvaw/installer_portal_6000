@@ -1898,6 +1898,7 @@
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
+                alert('❌ jobsList element not found!');
                 return;
             }
             
@@ -1917,8 +1918,11 @@
             if (db && installer.id) {
                 // Check what collections exist
                 db.listCollections().then(collections => {
+                    alert('🔍 Collections found: ' + collections.map(c => c.id).join(', '));
+                    
                     const jobsCollection = collections.find(c => c.id === 'jobs');
                     if (!jobsCollection) {
+                        alert('🔍 No jobs collection - creating sample job...');
                         // Create jobs collection with sample data
                         const sampleJob = {
                             installerId: installer.id,
@@ -1933,6 +1937,7 @@
                         
                         return db.collection('jobs').add(sampleJob);
                     } else {
+                        alert('🔍 Jobs collection exists - querying...');
                         // Jobs collection exists, query it
                         return db.collection('jobs')
                             .where('installerId', '==', installer.id)
@@ -1945,6 +1950,8 @@
                         .get();
                 })
                 .then(snapshot => {
+                    alert('🔍 Found ' + snapshot.size + ' jobs for installer');
+                    
                     if (snapshot.empty) {
                         jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">📋 No jobs scheduled</div>';
                     } else {
@@ -1953,6 +1960,7 @@
                         snapshot.forEach(doc => {
                             const job = doc.data();
                             jobs.push(job);
+                            alert('🔍 Job found: ' + JSON.stringify(job, null, 2));
                         });
                         
                         // Sort by date manually
@@ -1980,9 +1988,11 @@
                 })
                 .catch(error => {
                     console.error('❌ Error loading jobs:', error);
+                    alert('❌ Error loading jobs: ' + error.message);
                     jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
                 });
             } else {
+                alert('❌ Database not available');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
             }
         }
