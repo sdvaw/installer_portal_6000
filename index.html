@@ -1919,65 +1919,49 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Querying jobs for installer: ' + installer.id + ' using assignedInstaller field');
+                alert('🔍 Getting ALL jobs from TeamUp to see what fields are available...');
                 
-                // Query for this installer's jobs using CORRECT field name
-                db.collection('jobs')
-                    .where('assignedInstaller', '==', installer.id)
-                    .get()
-                    .then(snapshot => {
-                        alert('🔍 Query complete - found ' + snapshot.size + ' jobs');
+                // Get ALL jobs to see complete TeamUp data structure
+                db.collection('jobs').get()
+                    .then(allJobsSnapshot => {
+                        alert('🔍 Found ' + allJobsSnapshot.size + ' total jobs from TeamUp');
                         
-                        if (snapshot.empty) {
-                            alert('🔍 No jobs found for this installer - showing ALL jobs to debug...');
-                            
-                            // Show ALL jobs to see what's there
-                            return db.collection('jobs').get();
-                        } else {
-                            alert('🔍 Processing ' + snapshot.size + ' jobs for this installer...');
-                            let jobsHTML = '<div style="color: #333;"><h3>🎯 JOBS FOR THIS INSTALLER:</h3>';
-                            snapshot.forEach(doc => {
-                                const job = doc.data();
-                                jobsHTML += `
-                                    <div style="border: 2px solid green; margin: 10px 0; padding: 15px; background: lightgreen;">
-                                        <strong>📄 Job ID: ${doc.id}</strong><br>
-                                        👤 Customer: ${job.customer || 'NULL'}<br>
-                                        📍 Address: ${job.address || 'NULL'}<br>
-                                        📅 Date: ${job.scheduledDate ? new Date(job.scheduledDate.seconds * 1000).toLocaleDateString() : 'NULL'}<br>
-                                        🏷️ Status: ${job.status || 'NULL'}<br>
-                                        📝 Notes: ${job.notes || 'NULL'}
-                                    </div>
-                                `;
-                            });
-                            jobsHTML += '</div>';
-                            jobsListEl.innerHTML = jobsHTML;
-                            alert('🔍 Jobs displayed successfully!');
-                            return Promise.resolve();
+                        if (allJobsSnapshot.empty) {
+                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">📋 No jobs found in database</div>';
+                            return;
                         }
-                    })
-                    .then((allJobsSnapshot) => {
-                        if (allJobsSnapshot && allJobsSnapshot.docs) {
-                            alert('🔍 Showing ALL ' + allJobsSnapshot.size + ' jobs in database:');
+                        
+                        // Show complete TeamUp data for first few jobs
+                        let teamupHTML = '<div style="color: #333;"><h3>🔍 TEAMUP DATA STRUCTURE (First 5 jobs):</h3>';
+                        let count = 0;
+                        allJobsSnapshot.forEach(doc => {
+                            if (count >= 5) return; // Only show first 5 for readability
                             
-                            let allJobsHTML = '<div style="color: #333;"><h3>🔍 ALL JOBS IN DATABASE:</h3>';
-                            allJobsSnapshot.forEach(doc => {
-                                const job = doc.data();
-                                allJobsHTML += `
-                                    <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: lightblue;">
-                                        <strong>📄 Job ID: ${doc.id}</strong><br>
-                                        👤 Customer: ${job.customer || 'NULL'}<br>
-                                        🔧 Assigned To: ${job.assignedInstaller || 'NULL'}<br>
-                                        📍 Address: ${job.address || 'NULL'}<br>
-                                        📅 Date: ${job.scheduledDate ? new Date(job.scheduledDate.seconds * 1000).toLocaleDateString() : 'NULL'}<br>
-                                        🏷️ Status: ${job.status || 'NULL'}<br>
-                                        📝 Notes: ${job.notes || 'NULL'}
+                            const job = doc.data();
+                            teamupHTML += `
+                                <div style="border: 3px solid purple; margin: 15px 0; padding: 20px; background: #f0f0ff; border-radius: 8px;">
+                                    <h4>📄 Job ${count + 1}: ${doc.id}</h4>
+                                    <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                                        <strong>🔍 COMPLETE TEAMUP DATA:</strong><br>
+                                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+${JSON.stringify(job, null, 2)}
+                                        </pre>
                                     </div>
-                                `;
-                            });
-                            allJobsHTML += '</div>';
-                            jobsListEl.innerHTML = allJobsHTML;
-                            alert('🔍 All jobs displayed - check assignedInstaller values!');
+                                </div>
+                            `;
+                            count++;
+                        });
+                        
+                        if (allJobsSnapshot.size > 5) {
+                            teamupHTML += `<div style="text-align: center; padding: 20px; color: #666;">
+                                ... and ${allJobsSnapshot.size - 5} more jobs
+                            </div>`;
                         }
+                        
+                        teamupHTML += '</div>';
+                        jobsListEl.innerHTML = teamupHTML;
+                        
+                        alert('🔍 TeamUp data displayed - check what installer assignment fields exist!');
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
