@@ -1919,17 +1919,15 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Querying jobs for installer: ' + installer.id);
+                alert('🔍 First, lets see ALL jobs in database...');
                 
-                // Query for this installer's jobs
-                db.collection('jobs')
-                    .where('installerId', '==', installer.id)
-                    .get()
-                    .then(snapshot => {
-                        alert('🔍 Query complete - found ' + snapshot.size + ' jobs');
+                // First, get ALL jobs to see what's there
+                db.collection('jobs').get()
+                    .then(allJobsSnapshot => {
+                        alert('🔍 Total jobs in database: ' + allJobsSnapshot.size);
                         
-                        if (snapshot.empty) {
-                            alert('🔍 No jobs found - creating sample job...');
+                        if (allJobsSnapshot.empty) {
+                            alert('🔍 NO JOBS AT ALL in database - creating sample job...');
                             // Create sample job
                             const sampleJob = {
                                 installerId: installer.id,
@@ -1946,68 +1944,65 @@
                                 .then(() => {
                                     alert('🔍 Sample job created! Querying again...');
                                     // Query again after creating sample job
-                                    return db.collection('jobs')
-                                        .where('installerId', '==', installer.id)
-                                        .get();
+                                    return db.collection('jobs').get();
                                 });
                         } else {
-                            alert('🔍 Processing ' + snapshot.size + ' jobs...');
-                            let jobsHTML = '<div style="color: #333;">';
-                            const jobs = [];
-                            snapshot.forEach(doc => {
+                            // Show all jobs data
+                            let allJobsHTML = '<div style="color: #333;"><h3>🔍 ALL JOBS IN DATABASE:</h3>';
+                            allJobsSnapshot.forEach(doc => {
                                 const job = doc.data();
-                                jobs.push(job);
-                                alert('🔍 Job found: ' + JSON.stringify(job, null, 2));
-                            });
-                            
-                            // Sort by date manually
-                            jobs.sort((a, b) => {
-                                const dateA = new Date(a.date || 0);
-                                const dateB = new Date(b.date || 0);
-                                return dateA - dateB;
-                            });
-                            
-                            // Display sorted jobs
-                            jobs.forEach(job => {
-                                jobsHTML += `
-                                    <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
-                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
-                                        📅 ${job.date || 'No Date'}<br>
-                                        👥 ${job.crew || 'No Crew Assigned'}<br>
-                                        📝 ${job.description || 'No Description'}
+                                allJobsHTML += `
+                                    <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: lightblue;">
+                                        <strong>📄 Job ID: ${doc.id}</strong><br>
+                                        🔧 InstallerId: ${job.installerId || 'NULL'}<br>
+                                        👤 InstallerName: ${job.installerName || 'NULL'}<br>
+                                        📍 Location: ${job.location || 'NULL'}<br>
+                                        📅 Date: ${job.date || 'NULL'}<br>
+                                        👥 Crew: ${job.crew || 'NULL'}<br>
+                                        📝 Description: ${job.description || 'NULL'}<br>
+                                        🏷️ Status: ${job.status || 'NULL'}<br>
+                                        ⏰ Created: ${job.createdAt || 'NULL'}
                                     </div>
                                 `;
                             });
-                            
-                            jobsHTML += '</div>';
-                            alert('🔍 Setting jobs HTML...');
-                            jobsListEl.innerHTML = jobsHTML;
-                            alert('🔍 Jobs HTML set complete!');
+                            allJobsHTML += '</div>';
+                            jobsListEl.innerHTML = allJobsHTML;
+                            alert('🔍 Showing ALL jobs data - check what installerId values exist!');
                             return Promise.resolve();
                         }
                     })
-                    .then((snapshot) => {
+                    .then((allJobsSnapshot) => {
+                        if (allJobsSnapshot) {
+                            alert('🔍 Now querying for THIS installer: ' + installer.id);
+                            
+                            // Now query for this installer's jobs
+                            return db.collection('jobs')
+                                .where('installerId', '==', installer.id)
+                                .get();
+                        }
+                    })
+                    .then(snapshot => {
                         if (snapshot) {
-                            // This is the second query after creating sample job
-                            alert('🔍 Second query complete - found ' + snapshot.size + ' jobs');
+                            alert('🔍 Query complete - found ' + snapshot.size + ' jobs for this installer');
                             
-                            let jobsHTML = '<div style="color: #333;">';
-                            snapshot.forEach(doc => {
-                                const job = doc.data();
-                                jobsHTML += `
-                                    <div style="border: 1px solid #ddd; margin: 10px 0; padding: 15px; background: white; border-radius: 4px;">
-                                        <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
-                                        📅 ${job.date || 'No Date'}<br>
-                                        👥 ${job.crew || 'No Crew Assigned'}<br>
-                                        📝 ${job.description || 'No Description'}
-                                    </div>
-                                `;
-                            });
-                            
-                            jobsHTML += '</div>';
-                            alert('🔍 Setting sample job HTML...');
-                            jobsListEl.innerHTML = jobsHTML;
-                            alert('🔍 Sample job HTML set complete!');
+                            if (snapshot.empty) {
+                                jobsListEl.innerHTML += '<div style="text-align: center; padding: 20px; color: red;">📋 NO JOBS FOUND FOR THIS INSTALLER</div>';
+                            } else {
+                                let jobsHTML = '<div style="color: #333;"><h3>🎯 JOBS FOR THIS INSTALLER:</h3>';
+                                snapshot.forEach(doc => {
+                                    const job = doc.data();
+                                    jobsHTML += `
+                                        <div style="border: 2px solid green; margin: 10px 0; padding: 15px; background: lightgreen;">
+                                            <strong>📍 ${job.location || 'Unknown Location'}</strong><br>
+                                            📅 ${job.date || 'No Date'}<br>
+                                            👥 ${job.crew || 'No Crew Assigned'}<br>
+                                            📝 ${job.description || 'No Description'}
+                                        </div>
+                                    `;
+                                });
+                                jobsHTML += '</div>';
+                                jobsListEl.innerHTML += jobsHTML;
+                            }
                         }
                     })
                     .catch(error => {
