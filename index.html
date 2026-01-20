@@ -1951,23 +1951,22 @@
                             let allJobsHTML = '<div style="color: #333;"><h3>🔍 ALL JOBS IN DATABASE:</h3>';
                             allJobsSnapshot.forEach(doc => {
                                 const job = doc.data();
+                                
+                                // Show ALL fields in the job document
+                                let jobFieldsHTML = '<strong>📄 Job ID: ' + doc.id + '</strong><br>';
+                                for (let field in job) {
+                                    jobFieldsHTML += `🏷️ ${field}: ${JSON.stringify(job[field])}<br>`;
+                                }
+                                
                                 allJobsHTML += `
                                     <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: lightblue;">
-                                        <strong>📄 Job ID: ${doc.id}</strong><br>
-                                        🔧 InstallerId: ${job.installerId || 'NULL'}<br>
-                                        👤 InstallerName: ${job.installerName || 'NULL'}<br>
-                                        📍 Location: ${job.location || 'NULL'}<br>
-                                        📅 Date: ${job.date || 'NULL'}<br>
-                                        👥 Crew: ${job.crew || 'NULL'}<br>
-                                        📝 Description: ${job.description || 'NULL'}<br>
-                                        🏷️ Status: ${job.status || 'NULL'}<br>
-                                        ⏰ Created: ${job.createdAt || 'NULL'}
+                                        ${jobFieldsHTML}
                                     </div>
                                 `;
                             });
                             allJobsHTML += '</div>';
                             jobsListEl.innerHTML = allJobsHTML;
-                            alert('🔍 Showing ALL jobs data - check what installerId values exist!');
+                            alert('🔍 Showing ALL job fields - check what field names actually exist!');
                             return Promise.resolve();
                         }
                     })
