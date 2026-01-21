@@ -1910,82 +1910,97 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Querying jobs using CORRECT field: installerId = ' + installer.id);
+                alert('🔍 Looking for REAL TeamUp data - checking ALL possible collections...');
                 
-                // Query using CORRECT field name: installerId (not assignedInstaller!)
-                db.collection('jobs')
-                    .where('installerId', '==', installer.id)
-                    .get()
-                    .then(snapshot => {
-                        alert('🔍 Query complete - found ' + snapshot.size + ' jobs for this installer');
-                        
-                        if (snapshot.empty) {
-                            // Show all jobs to compare installer IDs
-                            alert('🔍 No jobs for this installer - showing ALL jobs to compare installer IDs...');
-                            
-                            return db.collection('jobs').get()
-                                .then(allSnapshot => {
-                                    alert('🔍 Found ' + allSnapshot.size + ' total jobs - comparing installer IDs...');
+                // Check MANY possible collection names for real TeamUp data
+                const possibleCollections = [
+                    'jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 
+                    'teamup_events', 'appointments', 'teamup_calendar', 'work_orders',
+                    'service_calls', 'job_schedules', 'installer_jobs', 'teamup_data',
+                    'calendar_events', 'work_orders', 'service_appointments'
+                ];
+                
+                let html = '<div style="color: #333; background: yellow; padding: 20px;"><h3>🔍 SEARCHING FOR REAL TEAMUP DATA:</h3>';
+                html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Checking ' + possibleCollections.length + ' possible collections...</strong></div>';
+                
+                jobsListEl.innerHTML = html;
+                
+                let checkedCount = 0;
+                let foundData = false;
+                
+                // Check each collection
+                possibleCollections.forEach((collectionName, index) => {
+                    setTimeout(() => {
+                        db.collection(collectionName).limit(1).get()
+                            .then(snapshot => {
+                                checkedCount++;
+                                
+                                if (!snapshot.empty) {
+                                    foundData = true;
+                                    alert('🔍 FOUND DATA in collection: ' + collectionName + ' (' + snapshot.size + ' records)');
                                     
-                                    let html = '<div style="color: #333; background: lightyellow; padding: 20px;"><h3>🔍 COMPARING INSTALLER IDs:</h3>';
-                                    html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Your installer ID: ' + installer.id + '</strong></div>';
+                                    // Get a sample record to show structure
+                                    let sampleHTML = '<div style="color: #333; background: lightgreen; padding: 20px; margin-top: 10px;">';
+                                    sampleHTML += '<h3>🎯 FOUND IN: ' + collectionName.toUpperCase() + '</h3>';
                                     
-                                    allSnapshot.forEach((doc, index) => {
-                                        const job = doc.data();
-                                        const isMatch = job.installerId === installer.id;
-                                        html += `
-                                            <div style="border: 3px solid ${isMatch ? 'green' : 'red'}; margin: 10px 0; padding: 15px; background: ${isMatch ? '#e8f5e8' : '#ffe6e6'};">
-                                                <h4>📄 JOB ${index + 1}: ${doc.id}</h4>
-                                                <div style="background: white; padding: 10px; border-radius: 4px;">
-                                                    <strong>🔧 installerId: ${job.installerId || 'NULL'}</strong> ${isMatch ? '✅ MATCH' : '❌ NO MATCH'}<br>
-                                                    <strong>👤 installerName: ${job.installerName || 'NULL'}</strong><br>
-                                                    <strong>📍 location: ${job.location || 'NULL'}</strong><br>
-                                                    <strong>📅 date: ${job.date || 'NULL'}</strong><br>
-                                                    <strong>🏷️ status: ${job.status || 'NULL'}</strong><br>
-                                                    <strong>📝 description: ${job.description || 'NULL'}</strong>
+                                    snapshot.forEach(doc => {
+                                        const data = doc.data();
+                                        sampleHTML += `
+                                            <div style="border: 3px solid green; margin: 10px 0; padding: 15px; background: white; border-radius: 8px;">
+                                                <h4>📄 Sample Record: ${doc.id}</h4>
+                                                <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px;">
+                                                    <strong>🔍 LOOKING FOR:</strong><br>
+                                                    🔧 Installer assignments (Installer - Barbaro, etc)<br>
+                                                    📅 Calendar field<br>
+                                                    👤 Customer names<br>
+                                                    📍 Real addresses/locations<br><br>
+                                                    <strong>🔍 ACTUAL DATA:</strong><br>
+                                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 11px;">
+${JSON.stringify(data, null, 2)}
+                                                    </pre>
                                                 </div>
                                             </div>
                                         `;
                                     });
                                     
-                                    html += '</div>';
-                                    jobsListEl.innerHTML = html;
+                                    sampleHTML += '</div>';
+                                    jobsListEl.innerHTML = sampleHTML;
+                                } else {
+                                    console.log('🔍 Empty collection: ' + collectionName);
                                     
-                                    alert('🔍 Installer ID comparison complete - check which jobs match your installer!');
-                                });
-                        } else {
-                            alert('🔍 Found ' + snapshot.size + ' jobs for this installer - displaying them...');
-                            
-                            let html = '<div style="color: #333; background: lightgreen; padding: 20px;"><h3>🎯 YOUR JOBS (' + snapshot.size + ' found):</h3>';
-                            
-                            snapshot.forEach((doc, index) => {
-                                const job = doc.data();
-                                html += `
-                                    <div style="border: 3px solid green; margin: 10px 0; padding: 15px; background: white; border-radius: 8px;">
-                                        <h4>📄 JOB ${index + 1}: ${doc.id}</h4>
-                                        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px;">
-                                            <strong>👤 Installer:</strong> ${job.installerName || 'Unknown'}<br>
-                                            <strong>📍 Location:</strong> ${job.location || 'Unknown'}<br>
-                                            <strong>📅 Date:</strong> ${job.date || 'Unknown'}<br>
-                                            <strong>👥 Crew:</strong> ${job.crew || 'Unknown'}<br>
-                                            <strong>🏷️ Status:</strong> ${job.status || 'Unknown'}<br>
-                                            <strong>📝 Description:</strong> ${job.description || 'No description'}
-                                        </div>
-                                    </div>
-                                `;
+                                    if (checkedCount === possibleCollections.length) {
+                                        if (!foundData) {
+                                            alert('🔍 NO REAL TEAMUP DATA FOUND in any collection!');
+                                            jobsListEl.innerHTML = `
+                                                <div style="color: #333; background: #ffe6e6; padding: 20px; text-align: center;">
+                                                    <h3>❌ NO REAL TEAMUP DATA FOUND</h3>
+                                                    <p>Checked ${possibleCollections.length} collections but found no real TeamUp data.</p>
+                                                    <p><strong>Possible issues:</strong></p>
+                                                    <ul style="text-align: left; display: inline-block;">
+                                                        <li>TeamUp data not synced to Firebase</li>
+                                                        <li>Data in different collection name</li>
+                                                        <li>Data structure completely different</li>
+                                                        <li>Need to import TeamUp data first</li>
+                                                    </ul>
+                                                </div>
+                                            `;
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('❌ Error checking ' + collectionName + ':', error);
+                                checkedCount++;
+                                
+                                if (checkedCount === possibleCollections.length) {
+                                    if (!foundData) {
+                                        alert('🔍 Errors checking all collections - no real data found');
+                                    }
+                                }
                             });
-                            
-                            html += '</div>';
-                            jobsListEl.innerHTML = html;
-                            
-                            alert('🔍 Your jobs displayed successfully!');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error loading jobs: ' + error.message);
-                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Error loading jobs</div>';
-                    });
+                    }, index * 200); // Stagger requests to avoid overwhelming
+                });
+                
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
