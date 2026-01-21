@@ -1906,69 +1906,108 @@
             alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading ALL Firebase data...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 SHOWING ALL DATA FROM ALL COLLECTIONS...');
+                alert('🔍 Found the issue! Jobs have assignedInstaller: null. Let me check for other assignment fields...');
                 
-                // Check ALL possible collections for ANY data
-                const allCollections = [
-                    'jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 
-                    'teamup_events', 'appointments', 'teamup_calendar', 'work_orders',
-                    'service_calls', 'job_schedules', 'installer_jobs', 'teamup_data',
-                    'calendar_events', 'service_appointments', 'calendars', 'subcalendars',
-                    'installer_calendars', 'work_calendars', 'teamup_appointments', 'calendar_appointments',
-                    'users', 'installers', 'customers', 'projects', 'tasks', 'schedules',
-                    'work_orders', 'maintenance', 'inspections', 'reports', 'logs'
-                ];
-                
-                let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                calendarHTML += '<h2>🔍 ALL FIREBASE DATA - Installer: ' + installer.name + '</h2>';
-                calendarHTML += '<div style="background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px;">🔍 Checking ' + allCollections.length + ' collections for ANY data...</div>';
-                
-                jobsListEl.innerHTML = calendarHTML;
-                
-                let checkedCount = 0;
-                let totalRecords = 0;
-                let allFoundData = [];
-                
-                // Check each collection for ANY data
-                allCollections.forEach((collectionName, index) => {
-                    setTimeout(() => {
-                        db.collection(collectionName).limit(5).get()
-                            .then(snapshot => {
-                                checkedCount++;
-                                
-                                if (!snapshot.empty) {
-                                    totalRecords += snapshot.size;
-                                    alert('🎯 FOUND DATA in: ' + collectionName + ' (' + snapshot.size + ' records)');
-                                    
-                                    // Store all data found
-                                    snapshot.forEach(doc => {
-                                        allFoundData.push({
-                                            collection: collectionName,
-                                            id: doc.id,
-                                            data: doc.data()
-                                        });
-                                    });
-                                }
-                                
-                                // When all collections checked, display ALL results
-                                if (checkedCount === allCollections.length) {
-                                    displayAllData(allFoundData, installer, jobsListEl, totalRecords);
-                                }
-                            })
-                            .catch(error => {
-                                console.error('❌ Error checking ' + collectionName + ':', error);
-                                checkedCount++;
-                                
-                                if (checkedCount === allCollections.length) {
-                                    displayAllData(allFoundData, installer, jobsListEl, totalRecords);
+                // Get ALL jobs from JOBS collection to see full structure
+                db.collection('jobs').get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
+                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
+                            return;
+                        }
+                        
+                        let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
+                        calendarHTML += '<h2>📅 ' + installer.name + ' - All Jobs (FIXING ASSIGNMENTS)</h2>';
+                        
+                        calendarHTML += '<div style="background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px;">';
+                        calendarHTML += '🔍 Found ' + snapshot.size + ' total jobs. Looking for installer assignment fields...';
+                        calendarHTML += '</div>';
+                        
+                        // Display all jobs with assignment status
+                        snapshot.forEach((doc, index) => {
+                            const data = doc.data();
+                            
+                            // Check all possible assignment fields
+                            const assignmentFields = [
+                                'assignedInstaller',
+                                'installerId', 
+                                'installer',
+                                'calendar',
+                                'subcalendar',
+                                'teamupCalendar',
+                                'assignedTo',
+                                'crew',
+                                'technician'
+                            ];
+                            
+                            let hasAssignment = false;
+                            let assignmentInfo = '';
+                            
+                            assignmentFields.forEach(field => {
+                                if (data[field] !== null && data[field] !== undefined && data[field] !== '') {
+                                    hasAssignment = true;
+                                    assignmentInfo += field + ': ' + JSON.stringify(data[field]) + '\n';
                                 }
                             });
-                    }, index * 100); // Faster stagger
-                });
+                            
+                            // Convert scheduledDate to readable format
+                            let scheduledDate = 'No date';
+                            if (data.scheduledDate && data.scheduledDate.seconds) {
+                                scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
+                            }
+                            
+                            calendarHTML += `
+                                <div style="border: ${hasAssignment ? '2px solid #4CAF50' : '2px solid #ff9800'}; padding: 15px; background: white; border-radius: 8px; margin: 10px 0;">
+                                    <div style="font-weight: bold; color: ${hasAssignment ? '#4CAF50' : '#ff9800'}; margin-bottom: 10px;">
+                                        📋 ${data.title || 'No Title'} ${hasAssignment ? '✅' : '❌ UNASSIGNED'}
+                                    </div>
+                                    <div style="color: #666; font-size: 14px;">
+                                        👤 Customer: ${data.customer || 'No customer'}<br>
+                                        📍 Address: ${data.address || 'No address'}<br>
+                                        📅 Date: ${scheduledDate}<br>
+                                        📞 Phone: ${data.phone || 'No phone'}<br>
+                                        📧 Email: ${data.email || 'No email'}<br>
+                                        🔄 Status: ${data.status || 'No status'}<br>
+                                        🔗 Source: ${data.source || 'No source'}
+                                    </div>
+                                    ${hasAssignment ? 
+                                        `<div style="background: #e8f5e8; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 12px;">
+                                            <strong>Assignment Fields Found:</strong><br>
+                                            <pre style="white-space: pre-wrap;">${assignmentInfo}</pre>
+                                        </div>` :
+                                        `<div style="background: #fff3cd; padding: 10px; margin-top: 10px; border-radius: 4px; font-size: 12px;">
+                                            <strong>❌ No assignment fields found</strong><br>
+                                            assignedInstaller: ${data.assignedInstaller}<br>
+                                            Need to assign this job to installer: ${installer.name} (ID: ${installer.id})
+                                        </div>`
+                                    }
+                                    <div style="margin-top: 10px;">
+                                        <button onclick="assignJobToInstaller('${doc.id}', '${installer.id}')" 
+                                                style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
+                                            🔧 Assign to ${installer.name}
+                                        </button>
+                                        <button onclick="showJobDetails('${doc.id}', 'jobs')" 
+                                                style="background: #2196F3; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin-left: 5px;">
+                                            📋 Details
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        calendarHTML += '</div>';
+                        jobsListEl.innerHTML = calendarHTML;
+                        
+                        alert('📅 Jobs loaded! Click "Assign to Installer" to fix assignments.');
+                    })
+                    .catch(error => {
+                        console.error('❌ Error loading jobs:', error);
+                        alert('❌ Error loading jobs: ' + error.message);
+                    });
                 
             } else {
                 alert('❌ Database not available or installer ID missing');
@@ -1976,68 +2015,45 @@
             }
         }
         
-        // Display ALL data found
-        function displayAllData(allFoundData, installer, jobsListEl, totalRecords) {
-            let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-            calendarHTML += '<h2>🔍 ALL FIREBASE DATA - Installer: ' + installer.name + '</h2>';
+        // Assign job to installer
+        function assignJobToInstaller(jobId, installerId) {
+            alert('🔧 Assigning job ' + jobId + ' to installer ' + installerId);
             
-            if (allFoundData.length === 0) {
-                calendarHTML += `
-                    <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
-                        <h3>❌ NO DATA FOUND ANYWHERE</h3>
-                        <p>No data found in any of the ${allFoundData.length} collections checked.</p>
-                        <p><strong> Firebase appears to be empty or collections don't exist!</strong></p>
-                    </div>
-                `;
-            } else {
-                calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
-                calendarHTML += '🎯 Found ' + totalRecords + ' total records in ' + new Set(allFoundData.map(d => d.collection)).size + ' collections';
-                calendarHTML += '</div>';
-                
-                // Group data by collection
-                const dataByCollection = {};
-                allFoundData.forEach(item => {
-                    if (!dataByCollection[item.collection]) {
-                        dataByCollection[item.collection] = [];
+            if (db) {
+                db.collection('jobs').doc(jobId).update({
+                    assignedInstaller: installerId
+                })
+                .then(() => {
+                    alert('✅ Job assigned successfully!');
+                    // Reload the jobs to show the updated assignment
+                    if (window.installerData) {
+                        loadInstallerJobs(window.installerData);
                     }
-                    dataByCollection[item.collection].push(item);
-                });
-                
-                // Display ALL data by collection
-                Object.keys(dataByCollection).forEach(collectionName => {
-                    calendarHTML += `
-                        <div style="margin: 20px 0; padding: 15px; border: 2px solid #2196F3; border-radius: 8px; background: #f9f9f9;">
-                            <h3>📁 ${collectionName.toUpperCase()} (${dataByCollection[collectionName].length} records)</h3>
-                    `;
-                    
-                    dataByCollection[collectionName].forEach((item, index) => {
-                        const data = item.data;
-                        
-                        calendarHTML += `
-                            <div style="border: 1px solid #ddd; padding: 15px; background: white; border-radius: 8px; margin: 10px 0;">
-                                <div style="font-weight: bold; color: #2196F3; margin-bottom: 10px;">
-                                    📄 Record ${index + 1}: ${item.id}
-                                </div>
-                                <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
-                                    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">
-                                        🔍 Looking for installer assignments for: <strong>${installer.name}</strong> (ID: ${installer.id})
-                                    </div>
-                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 10px; max-height: 300px; overflow-y: auto;">
-${JSON.stringify(data, null, 2)}
-                                    </pre>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    calendarHTML += '</div>';
+                })
+                .catch(error => {
+                    alert('❌ Error assigning job: ' + error.message);
                 });
             }
+        }
+        
+        // Show job details
+        function showJobDetails(jobId, collectionName) {
+            alert('🔍 Loading details for Job: ' + jobId + ' from ' + collectionName);
             
-            calendarHTML += '</div>';
-            jobsListEl.innerHTML = calendarHTML;
-            
-            alert('🔍 ALL DATA LOADED! Found ' + totalRecords + ' records. Check for installer assignments in the data!');
+            if (db) {
+                db.collection(collectionName).doc(jobId).get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            alert('📋 JOB DETAILS:\n\n' + JSON.stringify(data, null, 2));
+                        } else {
+                            alert('❌ Job not found');
+                        }
+                    })
+                    .catch(error => {
+                        alert('❌ Error loading job details: ' + error.message);
+                    });
+            }
         }
 
         // Toggle installer status
