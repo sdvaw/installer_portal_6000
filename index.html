@@ -1984,6 +1984,104 @@
             }
         }
         
+        // SQL-like Firebase Query Tool
+        function queryFirebaseSQL() {
+            const collection = prompt('Enter collection name (like a table):\nExamples: jobs, installers, teamup');
+            
+            if (!collection) {
+                alert('❌ Collection name required');
+                return;
+            }
+            
+            const queryType = prompt('Query type:\n1. SELECT * (get all)\n2. WHERE field = value\n3. COUNT(*)\n4. Get specific document by ID');
+            
+            if (db) {
+                if (queryType === '1') {
+                    // SELECT * FROM collection
+                    console.log(`🔍 SELECT * FROM ${collection}`);
+                    db.collection(collection).get()
+                        .then(snapshot => {
+                            console.log(`📊 Found ${snapshot.size} documents`);
+                            snapshot.forEach(doc => {
+                                console.log(`📄 Row ${doc.id}:`, doc.data());
+                            });
+                            alert(`✅ Found ${snapshot.size} documents. Check console (F12) for all data.`);
+                        })
+                        .catch(error => {
+                            alert('❌ Error: ' + error.message);
+                        });
+                        
+                } else if (queryType === '2') {
+                    // WHERE field = value
+                    const field = prompt('Enter field name (like column name):\nExamples: assignedInstaller, customer, status');
+                    const value = prompt('Enter value to match:\nExamples: Installer - Edy, Warehouse, scheduled');
+                    
+                    if (field && value) {
+                        console.log(`🔍 SELECT * FROM ${collection} WHERE ${field} = '${value}'`);
+                        db.collection(collection).where(field, '==', value).get()
+                            .then(snapshot => {
+                                console.log(`📊 Found ${snapshot.size} matching documents`);
+                                snapshot.forEach(doc => {
+                                    console.log(`📄 Row ${doc.id}:`, doc.data());
+                                });
+                                alert(`✅ Found ${snapshot.size} documents where ${field} = '${value}'. Check console for data.`);
+                            })
+                            .catch(error => {
+                                alert('❌ Error: ' + error.message);
+                            });
+                    }
+                    
+                } else if (queryType === '3') {
+                    // COUNT(*)
+                    console.log(`🔍 COUNT(*) FROM ${collection}`);
+                    db.collection(collection).get()
+                        .then(snapshot => {
+                            console.log(`📊 Total count: ${snapshot.size}`);
+                            alert(`✅ ${collection} has ${snapshot.size} total documents.`);
+                        })
+                        .catch(error => {
+                            alert('❌ Error: ' + error.message);
+                        });
+                        
+                } else if (queryType === '4') {
+                    // Get specific document by ID
+                    const docId = prompt('Enter document ID (like primary key):\nExample: 1972391004-rid-1770289200');
+                    if (docId) {
+                        console.log(`🔍 SELECT * FROM ${collection} WHERE id = '${docId}'`);
+                        db.collection(collection).doc(docId).get()
+                            .then(doc => {
+                                if (doc.exists) {
+                                    console.log(`📄 Document ${doc.id}:`, doc.data());
+                                    alert(`✅ Document found. Check console for complete data.`);
+                                } else {
+                                    alert('❌ Document not found');
+                                }
+                            })
+                            .catch(error => {
+                                alert('❌ Error: ' + error.message);
+                            });
+                    }
+                }
+            } else {
+                alert('❌ Firebase not available');
+            }
+        }
+        
+        // Show all collections (like SHOW TABLES)
+        function showAllCollections() {
+            console.log('🔍 SHOW COLLECTIONS (like SHOW TABLES)');
+            
+            // Common collections to check
+            const collections = ['jobs', 'installers', 'teamup', 'events', 'appointments', 'calendar', 'subcalendars'];
+            
+            console.log('📋 Available collections:');
+            collections.forEach(name => {
+                console.log(`📁 ${name}`);
+            });
+            
+            alert('📋 Common collections: jobs, installers, teamup, events, appointments, calendar, subcalendars\n\nUse queryFirebaseSQL() to explore any collection.');
+        }
+        
         // Firebase Query Tool - Direct database access
         function queryFirebase() {
             const collection = prompt('Enter collection name (e.g., jobs, installers):');
@@ -3427,17 +3525,24 @@
                 
                             <!-- Firebase Query Tool -->
                             <div style="background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                                <h3 style="color: #1976d2; margin-bottom: 10px;">🔍 Firebase Query Tool</h3>
-                                <p style="color: #666; margin-bottom: 10px;">Query Firebase database directly to inspect data structure and fields.</p>
-                                <button onclick="queryFirebase()" 
-                                        style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                    🔍 Open Firebase Query Tool
-                                </button>
+                                <h3 style="color: #1976d2; margin-bottom: 10px;">🔍 Firebase Query Tool (SQL-like)</h3>
+                                <p style="color: #666; margin-bottom: 10px;">Query Firebase database using familiar SQL-like commands.</p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button onclick="queryFirebaseSQL()" 
+                                            style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                        📊 SQL Query
+                                    </button>
+                                    <button onclick="showAllCollections()" 
+                                            style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                        📋 SHOW TABLES
+                                    </button>
+                                </div>
                                 <div style="font-size: 12px; color: #666; margin-top: 10px;">
-                                    <strong>Options:</strong><br>
-                                    1. Get all documents in collection<br>
-                                    2. Get specific document by ID<br>
-                                    3. Count documents in collection<br>
+                                    <strong>SQL-like Options:</strong><br>
+                                    1. SELECT * FROM collection<br>
+                                    2. WHERE field = 'value'<br>
+                                    3. COUNT(*) FROM collection<br>
+                                    4. Get specific document by ID<br>
                                     <br>
                                     <strong>Results appear in browser console (F12)</strong>
                                 </div>
