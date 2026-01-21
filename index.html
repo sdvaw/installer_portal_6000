@@ -1984,6 +1984,46 @@
             }
         }
         
+        // Debug TeamUp API Response
+        function debugTeamUpAPI() {
+            alert('🔍 Testing TeamUp API to see all available fields...');
+            
+            // You'll need to enter your TeamUp API details
+            const apiKey = prompt('Enter TeamUp API Key:');
+            const calendarId = prompt('Enter TeamUp Calendar ID:');
+            
+            if (!apiKey || !calendarId) {
+                alert('❌ API Key and Calendar ID required');
+                return;
+            }
+            
+            fetch(`https://api.teamup.com/${calendarId}/events?limit=3`, {
+                headers: {
+                    'Teamup-Token': apiKey,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('🔍 RAW TEAMUP API RESPONSE:', data);
+                
+                if (data.events && data.events.length > 0) {
+                    const firstEvent = data.events[0];
+                    console.log('📋 FIRST EVENT ALL FIELDS:', Object.keys(firstEvent));
+                    console.log('📄 COMPLETE FIRST EVENT:', firstEvent);
+                    
+                    // Show all fields in an alert
+                    const allFields = Object.keys(firstEvent).sort();
+                    alert(`📋 TeamUp Event Fields:\n\n${allFields.join('\n')}\n\n🔍 Check console (F12) for complete event data.`);
+                } else {
+                    alert('❌ No events found in TeamUp response');
+                }
+            })
+            .catch(error => {
+                alert('❌ Error: ' + error.message);
+            });
+        }
+        
         // SQL-like Firebase Query Tool
         function queryFirebaseSQL() {
             const collection = prompt('Enter collection name (like a table):\nExamples: jobs, installers, teamup');
@@ -3524,14 +3564,20 @@
                             <div class="space-y-3">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Job ID</label>
-                                    <div class="text-lg font-mono">${job.id}</div>
-                                            style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                        📊 SQL Query
-                                    </button>
-                                    <button onclick="showAllCollections()" 
-                                            style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                        📋 SHOW TABLES
-                                    </button>
+                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                        <button onclick="queryFirebaseSQL()" 
+                                                style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                            📊 SQL Query
+                                        </button>
+                                        <button onclick="showAllCollections()" 
+                                                style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                            📋 SHOW TABLES
+                                        </button>
+                                        <button onclick="debugTeamUpAPI()" 
+                                                style="background: #FF9800; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                            🔍 DEBUG TEAMUP API
+                                        </button>
+                                    </div>
                                 </div>
                                 <div style="font-size: 12px; color: #666; margin-top: 10px;">
                                     <strong>SQL-like Options:</strong><br>
