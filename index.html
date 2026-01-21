@@ -1905,21 +1905,12 @@
             // Check if db and installer.id exist
             alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
             
-            // Clean styling
-            jobsListEl.className = '';
-            jobsListEl.style.cssText = `
-                border: 2px solid #ddd;
-                background-color: #f9f9f9;
-                padding: 20px;
-                border-radius: 8px;
-            `;
-            
-            // Show loading state
+            // Show loading state first
             jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Checking common collection names to find proper TeamUp data...');
+                alert('🔍 About to show collection checker...');
                 
                 // Try common collection names directly (no listCollections!)
                 const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 'teamup_events', 'appointments'];
@@ -1937,6 +1928,8 @@
                 });
                 
                 html += '</div>';
+                
+                alert('🔍 Setting HTML content...');
                 jobsListEl.innerHTML = html;
                 
                 // Add the inspect function to window
@@ -1974,7 +1967,7 @@ ${JSON.stringify(data, null, 2)}
                         });
                 };
                 
-                alert('🔍 Collection checker displayed - click CHECK buttons to find proper TeamUp data!');
+                alert('🔍 Collection checker displayed - you should see orange boxes now!');
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
