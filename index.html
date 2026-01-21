@@ -1910,50 +1910,51 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Looking for REAL TeamUp data - checking ALL possible collections...');
+                alert('🔍 Looking for TeamUp calendar data with installer assignments...');
                 
-                // Check MANY possible collection names for real TeamUp data
-                const possibleCollections = [
-                    'jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 
-                    'teamup_events', 'appointments', 'teamup_calendar', 'work_orders',
-                    'service_calls', 'job_schedules', 'installer_jobs', 'teamup_data',
-                    'calendar_events', 'work_orders', 'service_appointments'
+                // Check calendar-related collections for TeamUp data
+                const calendarCollections = [
+                    'calendar', 'calendars', 'teamup_calendar', 'teamup_calendars',
+                    'events', 'teamup_events', 'calendar_events', 'schedule_events',
+                    'subcalendars', 'installer_calendars', 'work_calendars',
+                    'appointments', 'teamup_appointments', 'calendar_appointments'
                 ];
                 
-                let html = '<div style="color: #333; background: yellow; padding: 20px;"><h3>🔍 SEARCHING FOR REAL TEAMUP DATA:</h3>';
-                html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Checking ' + possibleCollections.length + ' possible collections...</strong></div>';
+                let html = '<div style="color: #333; background: yellow; padding: 20px;"><h3>🔍 SEARCHING TEAMUP CALENDAR DATA:</h3>';
+                html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Looking for installer assignments like "Installer - Barbaro" in calendar data...</strong></div>';
                 
                 jobsListEl.innerHTML = html;
                 
                 let checkedCount = 0;
                 let foundData = false;
                 
-                // Check each collection
-                possibleCollections.forEach((collectionName, index) => {
+                // Check each calendar collection
+                calendarCollections.forEach((collectionName, index) => {
                     setTimeout(() => {
-                        db.collection(collectionName).limit(1).get()
+                        db.collection(collectionName).limit(5).get()
                             .then(snapshot => {
                                 checkedCount++;
-                                
+                                 
                                 if (!snapshot.empty) {
                                     foundData = true;
-                                    alert('🔍 FOUND DATA in collection: ' + collectionName + ' (' + snapshot.size + ' records)');
+                                    alert('🔍 FOUND CALENDAR DATA in: ' + collectionName + ' (' + snapshot.size + ' records)');
                                     
-                                    // Get a sample record to show structure
+                                    // Get sample records to show structure
                                     let sampleHTML = '<div style="color: #333; background: lightgreen; padding: 20px; margin-top: 10px;">';
-                                    sampleHTML += '<h3>🎯 FOUND IN: ' + collectionName.toUpperCase() + '</h3>';
+                                    sampleHTML += '<h3>🎯 CALENDAR DATA FOUND IN: ' + collectionName.toUpperCase() + '</h3>';
                                     
-                                    snapshot.forEach(doc => {
+                                    snapshot.forEach((doc, docIndex) => {
                                         const data = doc.data();
                                         sampleHTML += `
                                             <div style="border: 3px solid green; margin: 10px 0; padding: 15px; background: white; border-radius: 8px;">
-                                                <h4>📄 Sample Record: ${doc.id}</h4>
-                                                <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px;">
+                                                <h4>📅 Calendar Event ${docIndex + 1}: ${doc.id}</h4>
+                                                <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px;">
                                                     <strong>🔍 LOOKING FOR:</strong><br>
                                                     🔧 Installer assignments (Installer - Barbaro, etc)<br>
-                                                    📅 Calendar field<br>
+                                                    📅 Calendar field names<br>
                                                     👤 Customer names<br>
-                                                    📍 Real addresses/locations<br><br>
+                                                    📍 Real addresses/locations<br>
+                                                    🏷️ Event titles/subjects<br><br>
                                                     <strong>🔍 ACTUAL DATA:</strong><br>
                                                     <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 11px;">
 ${JSON.stringify(data, null, 2)}
@@ -1966,21 +1967,21 @@ ${JSON.stringify(data, null, 2)}
                                     sampleHTML += '</div>';
                                     jobsListEl.innerHTML = sampleHTML;
                                 } else {
-                                    console.log('🔍 Empty collection: ' + collectionName);
+                                    console.log('🔍 Empty calendar collection: ' + collectionName);
                                     
-                                    if (checkedCount === possibleCollections.length) {
+                                    if (checkedCount === calendarCollections.length) {
                                         if (!foundData) {
-                                            alert('🔍 NO REAL TEAMUP DATA FOUND in any collection!');
+                                            alert('🔍 NO CALENDAR DATA FOUND in any collection!');
                                             jobsListEl.innerHTML = `
                                                 <div style="color: #333; background: #ffe6e6; padding: 20px; text-align: center;">
-                                                    <h3>❌ NO REAL TEAMUP DATA FOUND</h3>
-                                                    <p>Checked ${possibleCollections.length} collections but found no real TeamUp data.</p>
+                                                    <h3>❌ NO TEAMUP CALENDAR DATA FOUND</h3>
+                                                    <p>Checked ${calendarCollections.length} calendar collections but found no TeamUp calendar data.</p>
                                                     <p><strong>Possible issues:</strong></p>
                                                     <ul style="text-align: left; display: inline-block;">
-                                                        <li>TeamUp data not synced to Firebase</li>
+                                                        <li>TeamUp calendar data not synced to Firebase</li>
+                                                        <li>Need to import TeamUp calendar data first</li>
                                                         <li>Data in different collection name</li>
-                                                        <li>Data structure completely different</li>
-                                                        <li>Need to import TeamUp data first</li>
+                                                        <li>Need to set up TeamUp API integration</li>
                                                     </ul>
                                                 </div>
                                             `;
@@ -1991,14 +1992,12 @@ ${JSON.stringify(data, null, 2)}
                             .catch(error => {
                                 console.error('❌ Error checking ' + collectionName + ':', error);
                                 checkedCount++;
-                                
-                                if (checkedCount === possibleCollections.length) {
-                                    if (!foundData) {
-                                        alert('🔍 Errors checking all collections - no real data found');
-                                    }
+                                 
+                                if (checkedCount === calendarCollections.length) {
+                                    alert('🔍 Errors checking all calendar collections');
                                 }
                             });
-                    }, index * 200); // Stagger requests to avoid overwhelming
+                    }, index * 300); // Stagger requests to avoid overwhelming
                 });
                 
             } else {
