@@ -1910,52 +1910,76 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Found JOBS collection with data - lets examine the 3 records...');
+                alert('🔍 Querying jobs using CORRECT field: installerId = ' + installer.id);
                 
-                // Get ALL records from JOBS collection to see what we have
-                db.collection('jobs').get()
+                // Query using CORRECT field name: installerId (not assignedInstaller!)
+                db.collection('jobs')
+                    .where('installerId', '==', installer.id)
+                    .get()
                     .then(snapshot => {
-                        alert('🔍 Found ' + snapshot.size + ' total records in JOBS collection');
+                        alert('🔍 Query complete - found ' + snapshot.size + ' jobs for this installer');
                         
                         if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">📋 No jobs found</div>';
-                            return;
-                        }
-                        
-                        let html = '<div style="color: #333; background: lightyellow; padding: 20px;"><h3>🔍 ALL JOBS COLLECTION RECORDS:</h3>';
-                        
-                        snapshot.forEach((doc, index) => {
-                            const data = doc.data();
-                            html += `
-                                <div style="border: 3px solid red; margin: 15px 0; padding: 20px; background: #ffe6e6;">
-                                    <h4>📄 RECORD ${index + 1}: ${doc.id}</h4>
-                                    <div style="background: white; padding: 15px; border-radius: 4px; margin-top: 10px;">
-                                        <strong>🔍 COMPLETE RECORD DATA:</strong><br>
-                                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 12px;">
-${JSON.stringify(data, null, 2)}
-                                        </pre>
-                                        
-                                        <div style="margin-top: 15px; padding: 10px; background: #e3f2fd; border-radius: 4px;">
-                                            <strong>🔍 KEY FIELDS CHECK:</strong><br>
-                                            🔧 assignedInstaller: ${JSON.stringify(data.assignedInstaller)}<br>
-                                            👤 customer: ${JSON.stringify(data.customer)}<br>
-                                            📍 location: ${JSON.stringify(data.location)}<br>
-                                            📅 date: ${JSON.stringify(data.date)}<br>
-                                            📅 scheduledDate: ${JSON.stringify(data.scheduledDate)}<br>
-                                            🏷️ status: ${JSON.stringify(data.status)}<br>
-                                            📝 notes: ${JSON.stringify(data.notes)}<br>
-                                            🔍 Calendar: ${JSON.stringify(data.Calendar)}<br>
-                                            🔍 installer: ${JSON.stringify(data.installer)}
+                            // Show all jobs to compare installer IDs
+                            alert('🔍 No jobs for this installer - showing ALL jobs to compare installer IDs...');
+                            
+                            return db.collection('jobs').get()
+                                .then(allSnapshot => {
+                                    alert('🔍 Found ' + allSnapshot.size + ' total jobs - comparing installer IDs...');
+                                    
+                                    let html = '<div style="color: #333; background: lightyellow; padding: 20px;"><h3>🔍 COMPARING INSTALLER IDs:</h3>';
+                                    html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Your installer ID: ' + installer.id + '</strong></div>';
+                                    
+                                    allSnapshot.forEach((doc, index) => {
+                                        const job = doc.data();
+                                        const isMatch = job.installerId === installer.id;
+                                        html += `
+                                            <div style="border: 3px solid ${isMatch ? 'green' : 'red'}; margin: 10px 0; padding: 15px; background: ${isMatch ? '#e8f5e8' : '#ffe6e6'};">
+                                                <h4>📄 JOB ${index + 1}: ${doc.id}</h4>
+                                                <div style="background: white; padding: 10px; border-radius: 4px;">
+                                                    <strong>🔧 installerId: ${job.installerId || 'NULL'}</strong> ${isMatch ? '✅ MATCH' : '❌ NO MATCH'}<br>
+                                                    <strong>👤 installerName: ${job.installerName || 'NULL'}</strong><br>
+                                                    <strong>📍 location: ${job.location || 'NULL'}</strong><br>
+                                                    <strong>📅 date: ${job.date || 'NULL'}</strong><br>
+                                                    <strong>🏷️ status: ${job.status || 'NULL'}</strong><br>
+                                                    <strong>📝 description: ${job.description || 'NULL'}</strong>
+                                                </div>
+                                            </div>
+                                        `;
+                                    });
+                                    
+                                    html += '</div>';
+                                    jobsListEl.innerHTML = html;
+                                    
+                                    alert('🔍 Installer ID comparison complete - check which jobs match your installer!');
+                                });
+                        } else {
+                            alert('🔍 Found ' + snapshot.size + ' jobs for this installer - displaying them...');
+                            
+                            let html = '<div style="color: #333; background: lightgreen; padding: 20px;"><h3>🎯 YOUR JOBS (' + snapshot.size + ' found):</h3>';
+                            
+                            snapshot.forEach((doc, index) => {
+                                const job = doc.data();
+                                html += `
+                                    <div style="border: 3px solid green; margin: 10px 0; padding: 15px; background: white; border-radius: 8px;">
+                                        <h4>📄 JOB ${index + 1}: ${doc.id}</h4>
+                                        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 10px;">
+                                            <strong>👤 Installer:</strong> ${job.installerName || 'Unknown'}<br>
+                                            <strong>📍 Location:</strong> ${job.location || 'Unknown'}<br>
+                                            <strong>📅 Date:</strong> ${job.date || 'Unknown'}<br>
+                                            <strong>👥 Crew:</strong> ${job.crew || 'Unknown'}<br>
+                                            <strong>🏷️ Status:</strong> ${job.status || 'Unknown'}<br>
+                                            <strong>📝 Description:</strong> ${job.description || 'No description'}
                                         </div>
                                     </div>
-                                </div>
-                            `;
-                        });
-                        
-                        html += '</div>';
-                        jobsListEl.innerHTML = html;
-                        
-                        alert('🔍 All JOBS records displayed - check if any have installer data!');
+                                `;
+                            });
+                            
+                            html += '</div>';
+                            jobsListEl.innerHTML = html;
+                            
+                            alert('🔍 Your jobs displayed successfully!');
+                        }
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
