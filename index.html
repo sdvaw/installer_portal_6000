@@ -3557,27 +3557,27 @@
                                     🔄 Sync Now
                                 </button>
                 
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-4">Job Information</h3>
-                            <div class="space-y-3">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Job ID</label>
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                        <button onclick="queryFirebaseSQL()" 
-                                                style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                            📊 SQL Query
-                                        </button>
-                                        <button onclick="showAllCollections()" 
-                                                style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                            📋 SHOW TABLES
-                                        </button>
-                                        <button onclick="debugTeamUpAPI()" 
-                                                style="background: #FF9800; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                                            🔍 DEBUG TEAMUP API
-                                        </button>
-                                    </div>
+                <!-- Sync Status -->
+                        <div class="bg-white shadow-sm rounded-lg p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-4">🔧 Admin Dashboard</h2>
+                
+                            <!-- Firebase Query Tool -->
+                            <div style="background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <h3 style="color: #1976d2; margin-bottom: 10px;">🔍 Firebase Query Tool (SQL-like)</h3>
+                                <p style="color: #666; margin-bottom: 10px;">Query Firebase database using familiar SQL-like commands.</p>
+                                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button onclick="queryFirebaseSQL()" 
+                                            style="background: #2196f3; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                        📊 SQL Query
+                                    </button>
+                                    <button onclick="showAllCollections()" 
+                                            style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                        📋 SHOW TABLES
+                                    </button>
+                                    <button onclick="debugTeamUpAPI()" 
+                                            style="background: #FF9800; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                                        🔍 DEBUG TEAMUP API
+                                    </button>
                                 </div>
                                 <div style="font-size: 12px; color: #666; margin-top: 10px;">
                                     <strong>SQL-like Options:</strong><br>
@@ -3605,7 +3605,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
                 `;
                 
                 // Load current sync status
