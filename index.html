@@ -2986,7 +2986,11 @@
                 email: event.location?.notes || '',
                 address: event.location?.address || '',
                 scheduledDate: new Date(event.start_dt),
-                assignedInstaller: event.who?.[0]?.name || null,
+                // CAPTURE THE CALENDAR ASSIGNMENT DATA!
+                subcalendar_id: event.subcalendar_id || '',
+                subcalendar_name: event.subcalendar_name || '',
+                calendar_name: event.subcalendar_name || '', // For easier access
+                assignedInstaller: event.subcalendar_name || null, // Use subcalendar_name directly
                 status: mapTeamUpStatus(event.status),
                 notes: event.notes || '',
                 estimatedDuration: formatDuration(event.end_dt - event.start_dt),
