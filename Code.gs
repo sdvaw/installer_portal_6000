@@ -435,7 +435,11 @@ function processTeamUpEvents(events, calendarKey) {
     location: event.location || '',
     notes: event.notes || '',
     status: 'Scheduled',
-    installerEmail: '', // Will be mapped based on calendar key
+    // CAPTURE THE CALENDAR ASSIGNMENT DATA!
+    subcalendar_id: event.subcalendar_id || '',
+    subcalendar_name: event.subcalendar_name || '',
+    calendar_name: event.subcalendar_name || '', // For easier access
+    installerEmail: '', // Will be mapped based on subcalendar_name
     customerInfo: extractCustomerInfo(event),
     jobRequirements: extractJobRequirements(event),
     createdAt: new Date()

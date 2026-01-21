@@ -948,7 +948,15 @@
             renderInstallerDashboard();
             
             console.log('=== INSTALLER LOGIN COMPLETED ===');
-            showPortal();
+        }
+
+        // Show installer portal
+        function showInstallerPortal(installer) {
+            document.getElementById('portal').classList.remove('hidden');
+            document.getElementById('installerName').textContent = installer.name;
+            
+            // Use the new calendar-based job loading
+            loadInstallerJobsWithCalendar(installer);
         }
 
         // Show portal function
@@ -1891,6 +1899,116 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
+        // Load installer jobs using subcalendar_name field
+        function loadInstallerJobsWithCalendar(installer) {
+            console.log('🔍 Loading jobs for installer using calendar field:', installer.name);
+            
+            const jobsListEl = document.getElementById('jobsList');
+            if (!jobsListEl) {
+                console.error('❌ jobsList element not found');
+                alert('❌ jobsList element not found!');
+                return;
+            }
+            
+            // Show loading state first
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs for ' + installer.name + '...</div>';
+            
+            // Load actual jobs from Firestore
+            if (db && installer.id) {
+                alert('🔧 Matching installer name to subcalendar_name field: ' + installer.name);
+                
+                // Query jobs where subcalendar_name matches installer name
+                db.collection('jobs').get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
+                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
+                            return;
+                        }
+                        
+                        let matchedJobs = [];
+                        
+                        snapshot.forEach(doc => {
+                            const jobData = doc.data();
+                            
+                            // Check if subcalendar_name field matches this installer
+                            if (jobData.subcalendar_name && jobData.subcalendar_name.includes(installer.name)) {
+                                matchedJobs.push({
+                                    id: doc.id,
+                                    data: jobData
+                                });
+                                console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
+                            }
+                        });
+                        
+                        // Display matched jobs
+                        let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
+                        calendarHTML += '<h2>📅 ' + installer.name + ' - Assigned Jobs</h2>';
+                        
+                        if (matchedJobs.length === 0) {
+                            calendarHTML += `
+                                <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
+                                    <h3>❌ No Jobs Found</h3>
+                                    <p>No jobs found for installer: <strong>${installer.name}</strong></p>
+                                    <p>Looking for subcalendar_name field containing: "${installer.name}"</p>
+                                    <p>Available subcalendar_name fields in jobs:</p>
+                                    <div style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                                        ${snapshot.docs.map(doc => {
+                                            const subcalendar = doc.data().subcalendar_name || 'No subcalendar_name field';
+                                            return `• ${subcalendar}`;
+                                        }).join('<br>')}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
+                            calendarHTML += '🎯 Found ' + matchedJobs.length + ' jobs for ' + installer.name + ' (matched by subcalendar_name field)';
+                            calendarHTML += '</div>';
+                            
+                            matchedJobs.forEach(job => {
+                                const data = job.data;
+                                
+                                // Convert scheduledDate to readable format
+                                let scheduledDate = 'No date';
+                                if (data.scheduledDate && data.scheduledDate.seconds) {
+                                    scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
+                                }
+                                
+                                calendarHTML += `
+                                    <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
+                                         onclick="showJobDetails('${job.id}', 'jobs')">
+                                        <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
+                                            📋 ${data.title || 'No Title'} ✅
+                                        </div>
+                                        <div style="color: #666; font-size: 14px;">
+                                            👤 Customer: ${data.customer || 'No customer'}<br>
+                                            📍 Address: ${data.address || 'No address'}<br>
+                                            📅 Date: ${scheduledDate}<br>
+                                            📞 Phone: ${data.phone || 'No phone'}<br>
+                                            📧 Email: ${data.email || 'No email'}<br>
+                                            🔄 Status: ${data.status || 'No status'}<br>
+                                            📅 Calendar: ${data.subcalendar_name || 'No Calendar'}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                        
+                        calendarHTML += '</div>';
+                        jobsListEl.innerHTML = calendarHTML;
+                        
+                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
+                    })
+                    .catch(error => {
+                        console.error('❌ Error loading jobs:', error);
+                        alert('❌ Error loading jobs: ' + error.message);
+                    });
+                
+            } else {
+                alert('❌ Database not available or installer ID missing');
+                jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
+            }
+        }
+        
         // Load installer jobs
         function loadInstallerJobs(installer) {
             console.log('🔍 Loading jobs for installer:', installer.name);
