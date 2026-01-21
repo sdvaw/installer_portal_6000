@@ -1984,6 +1984,63 @@
             }
         }
         
+        // Firebase Query Tool - Direct database access
+        function queryFirebase() {
+            const collection = prompt('Enter collection name (e.g., jobs, installers):');
+            const queryType = prompt('Query type:\n1. Get all documents\n2. Get specific document\n3. Count documents');
+            
+            if (!collection) {
+                alert('❌ Collection name required');
+                return;
+            }
+            
+            if (db) {
+                if (queryType === '1') {
+                    // Get all documents
+                    db.collection(collection).get()
+                        .then(snapshot => {
+                            console.log('Collection:', collection, 'Documents:', snapshot.size);
+                            snapshot.forEach(doc => {
+                                console.log('Document ID:', doc.id, 'Data:', doc.data());
+                            });
+                            alert(`✅ Found ${snapshot.size} documents in ${collection} collection. Check console for details.`);
+                        })
+                        .catch(error => {
+                            alert('❌ Error: ' + error.message);
+                        });
+                        
+                } else if (queryType === '2') {
+                    // Get specific document
+                    const docId = prompt('Enter document ID:');
+                    if (docId) {
+                        db.collection(collection).doc(docId).get()
+                            .then(doc => {
+                                if (doc.exists) {
+                                    console.log('Document:', doc.id, 'Data:', doc.data());
+                                    alert(`✅ Document found. Check console for data.`);
+                                } else {
+                                    alert('❌ Document not found');
+                                }
+                            })
+                            .catch(error => {
+                                alert('❌ Error: ' + error.message);
+                            });
+                    }
+                } else if (queryType === '3') {
+                    // Count documents
+                    db.collection(collection).get()
+                        .then(snapshot => {
+                            alert(`✅ ${collection} collection has ${snapshot.size} documents`);
+                        })
+                        .catch(error => {
+                            alert('❌ Error: ' + error.message);
+                        });
+                }
+            } else {
+                alert('❌ Firebase not available');
+            }
+        }
+        
         // Show job details
         function showJobDetails(jobId, collectionName) {
             alert('🔍 Loading details for Job: ' + jobId + ' from ' + collectionName);
