@@ -1906,79 +1906,173 @@
             alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading real TeamUp data...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Creating weekly calendar view for installer...');
+                alert('🔍 Loading REAL TeamUp data for calendar view...');
                 
-                // Create weekly calendar HTML
+                // Check ALL possible collections for real TeamUp data
+                const allCollections = [
+                    'jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 
+                    'teamup_events', 'appointments', 'teamup_calendar', 'work_orders',
+                    'service_calls', 'job_schedules', 'installer_jobs', 'teamup_data',
+                    'calendar_events', 'service_appointments', 'calendars', 'subcalendars',
+                    'installer_calendars', 'work_calendars', 'teamup_appointments', 'calendar_appointments'
+                ];
+                
                 let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                calendarHTML += '<h2>📅 ' + installer.name + ' - Weekly Schedule</h2>';
-                
-                // Create calendar grid (7 days x time slots)
-                calendarHTML += '<div style="display: grid; grid-template-columns: 80px 1fr; gap: 10px; margin-top: 20px; border: 2px solid #ddd; padding: 15px; background: #f9f9f9; border-radius: 8px;">';
-                
-                // Day headers
-                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const today = new Date().toLocaleDateString();
-                
-                days.forEach((day, index) => {
-                    const isToday = false; // We'll highlight today later
-                    calendarHTML += `
-                        <div style="background: ${isToday ? '#4CAF50' : '#f3f4f6'}; color: white; padding: 10px; text-align: center; border-radius: 4px; font-weight: bold;">
-                            ${day}
-                        </div>
-                    `;
-                });
-                
-                // Time slots (morning, afternoon, evening)
-                const timeSlots = ['Morning', 'Afternoon', 'Evening'];
-                
-                // Create calendar cells for each time slot
-                timeSlots.forEach(timeSlot => {
-                    calendarHTML += `
-                        <div style="background: #e5e7eb; color: #333; padding: 8px; text-align: center; border-radius: 4px; font-size: 12px; font-weight: bold;">
-                            ${timeSlot}
-                        </div>
-                    `;
-                });
-                
-                calendarHTML += '</div>'; // Close calendar grid
-                
-                // Add sample jobs for demonstration
-                calendarHTML += `
-                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
-                        <h3>📋 Sample Jobs This Week</h3>
-                        <div style="display: grid; gap: 10px;">
-                            <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #123')">
-                                <div style="font-weight: bold; color: #4CAF50;">Job #123</div>
-                                <div style="color: #666; font-size: 14px;">Customer Home - Main Street</div>
-                                <div style="color: #999; font-size: 12px;">${today}</div>
-                            </div>
-                            <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #456')">
-                                <div style="font-weight: bold; color: #4CAF50;">Job #456</div>
-                                <div style="color: #666; font-size: 14px;">Office Building - Suite 200</div>
-                                <div style="color: #999; font-size: 12px;">${today}</div>
-                            </div>
-                            <div style="border: 2px solid #ddd; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #789')">
-                                <div style="font-weight: bold; color: #666;">Job #789</div>
-                                <div style="color: #666; font-size: 14px;">Warehouse - Industrial Park</div>
-                                <div style="color: #999; font-size: 12px;">${today}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                calendarHTML += '</div>';
+                calendarHTML += '<h2>📅 ' + installer.name + ' - Weekly Schedule (REAL DATA)</h2>';
+                calendarHTML += '<div style="background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px;">🔍 Searching ' + allCollections.length + ' collections for TeamUp data...</div>';
                 
                 jobsListEl.innerHTML = calendarHTML;
                 
-                alert('📅 Weekly calendar view created - click jobs to see details!');
+                let checkedCount = 0;
+                let foundJobs = [];
+                let foundData = false;
+                
+                // Check each collection for real TeamUp data
+                allCollections.forEach((collectionName, index) => {
+                    setTimeout(() => {
+                        db.collection(collectionName).limit(10).get()
+                            .then(snapshot => {
+                                checkedCount++;
+                                
+                                if (!snapshot.empty) {
+                                    foundData = true;
+                                    alert('🎯 FOUND DATA in: ' + collectionName + ' (' + snapshot.size + ' records)');
+                                    
+                                    // Look for jobs assigned to this installer
+                                    snapshot.forEach(doc => {
+                                        const data = doc.data();
+                                        
+                                        // Check if this job is assigned to current installer
+                                        const isAssignedToInstaller = 
+                                            data.installerId === installer.id ||
+                                            data.assignedInstaller === installer.id ||
+                                            data.installer === installer.id ||
+                                            (data.calendar && data.calendar.includes(installer.name)) ||
+                                            (data.title && data.title.includes(installer.name)) ||
+                                            (data.calendar && data.calendar.includes('Installer')) ||
+                                            (data.subcalendar && data.subcalendar.name && data.subcalendar.name.includes(installer.name));
+                                        
+                                        if (isAssignedToInstaller || snapshot.size <= 3) { // Show all if few records
+                                            foundJobs.push({
+                                                collection: collectionName,
+                                                id: doc.id,
+                                                data: data,
+                                                assigned: isAssignedToInstaller
+                                            });
+                                        }
+                                    });
+                                }
+                                
+                                // When all collections checked, display results
+                                if (checkedCount === allCollections.length) {
+                                    displayRealJobs(foundJobs, installer, jobsListEl);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('❌ Error checking ' + collectionName + ':', error);
+                                checkedCount++;
+                                
+                                if (checkedCount === allCollections.length) {
+                                    displayRealJobs(foundJobs, installer, jobsListEl);
+                                }
+                            });
+                    }, index * 150); // Stagger requests
+                });
                 
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
+            }
+        }
+        
+        // Display real jobs found in collections
+        function displayRealJobs(foundJobs, installer, jobsListEl) {
+            let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
+            calendarHTML += '<h2>📅 ' + installer.name + ' - Weekly Schedule (REAL DATA)</h2>';
+            
+            if (foundJobs.length === 0) {
+                calendarHTML += `
+                    <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
+                        <h3>❌ NO JOBS FOUND</h3>
+                        <p>No jobs assigned to ${installer.name} found in any collection.</p>
+                        <p><strong>Checked collections:</strong> ${foundJobs.length} collections</p>
+                    </div>
+                `;
+            } else {
+                calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
+                calendarHTML += '🎯 Found ' + foundJobs.length + ' jobs in ' + new Set(foundJobs.map(j => j.collection)).size + ' collections';
+                calendarHTML += '</div>';
+                
+                // Group jobs by collection
+                const jobsByCollection = {};
+                foundJobs.forEach(job => {
+                    if (!jobsByCollection[job.collection]) {
+                        jobsByCollection[job.collection] = [];
+                    }
+                    jobsByCollection[job.collection].push(job);
+                });
+                
+                // Display jobs by collection
+                Object.keys(jobsByCollection).forEach(collectionName => {
+                    calendarHTML += `
+                        <div style="margin: 20px 0; padding: 15px; border: 2px solid #4CAF50; border-radius: 8px; background: #f9f9f9;">
+                            <h3>📁 ${collectionName.toUpperCase()} (${jobsByCollection[collectionName].length} jobs)</h3>
+                    `;
+                    
+                    jobsByCollection[collectionName].forEach((job, index) => {
+                        const isAssigned = job.assigned;
+                        const jobData = job.data;
+                        
+                        // Extract job info from data
+                        const jobTitle = jobData.title || jobData.name || jobData.subject || `Job ${job.id}`;
+                        const location = jobData.location || jobData.address || jobData.customer || 'Location TBD';
+                        const date = jobData.start_date || jobData.date || jobData.scheduled_date || new Date().toLocaleDateString();
+                        
+                        calendarHTML += `
+                            <div style="border: ${isAssigned ? '2px solid #4CAF50' : '1px solid #ddd'}; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
+                                 onclick="showJobDetails('${job.id}', '${collectionName}')"
+                                 style="${isAssigned ? 'background: #e8f5e8;' : ''}">
+                                <div style="font-weight: bold; color: ${isAssigned ? '#4CAF50' : '#666'};">
+                                    ${jobTitle} ${isAssigned ? '✅' : '❓'}
+                                </div>
+                                <div style="color: #666; font-size: 14px;">${location}</div>
+                                <div style="color: #999; font-size: 12px;">${date}</div>
+                                <div style="color: #999; font-size: 10px; margin-top: 5px;">Collection: ${collectionName}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    calendarHTML += '</div>';
+                });
+            }
+            
+            calendarHTML += '</div>';
+            jobsListEl.innerHTML = calendarHTML;
+            
+            alert('📅 Real data loaded! Found ' + foundJobs.length + ' jobs. Click jobs to see details.');
+        }
+        
+        // Show job details
+        function showJobDetails(jobId, collectionName) {
+            alert('🔍 Loading details for Job: ' + jobId + ' from ' + collectionName);
+            
+            if (db) {
+                db.collection(collectionName).doc(jobId).get()
+                    .then(doc => {
+                        if (doc.exists) {
+                            const data = doc.data();
+                            alert('📋 JOB DETAILS:\n\n' + JSON.stringify(data, null, 2));
+                        } else {
+                            alert('❌ Job not found');
+                        }
+                    })
+                    .catch(error => {
+                        alert('❌ Error loading job details: ' + error.message);
+                    });
             }
         }
 
