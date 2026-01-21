@@ -1912,62 +1912,68 @@
             if (db && installer.id) {
                 alert('🔍 About to show collection checker...');
                 
-                // Try common collection names directly (no listCollections!)
-                const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 'teamup_events', 'appointments'];
-                let html = '<div style="color: #333;"><h3>🔍 CHECKING COLLECTIONS FOR TEAMUP DATA:</h3>';
+                // Simple test first - make sure we can set HTML
+                jobsListEl.innerHTML = '<div style="background: red; color: white; padding: 20px; font-size: 24px; font-weight: bold;">🔍 TEST: Can you see this red box?</div>';
                 
-                possibleCollections.forEach(collectionName => {
-                    html += `
-                        <div style="border: 2px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0;">
-                            <strong>📁 Collection: ${collectionName}</strong>
-                            <button onclick="inspectCollection('${collectionName}')" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                🔍 CHECK
-                            </button>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-                
-                alert('🔍 Setting HTML content...');
-                jobsListEl.innerHTML = html;
-                
-                // Add the inspect function to window
-                window.inspectCollection = function(collectionName) {
-                    alert('🔍 Checking collection: ' + collectionName);
+                // Wait a moment then show collection checker
+                setTimeout(() => {
+                    // Try common collection names directly (no listCollections!)
+                    const possibleCollections = ['jobs', 'teamup', 'calendar', 'events', 'installations', 'schedule', 'teamup_events', 'appointments'];
+                    let html = '<div style="color: #333; background: yellow; padding: 20px;"><h3>🔍 CHECKING COLLECTIONS FOR TEAMUP DATA:</h3>';
                     
-                    db.collection(collectionName).limit(3).get()
-                        .then(snapshot => {
-                            if (snapshot.empty) {
-                                alert('🔍 Collection ' + collectionName + ' is empty or does not exist');
-                                return;
-                            }
-                            
-                            alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
-                            
-                            let inspectHTML = '<div style="color: #333;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
-                            
-                            snapshot.forEach(doc => {
-                                const data = doc.data();
-                                inspectHTML += `
-                                    <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
-                                        <h4>📄 Document ID: ${doc.id}</h4>
-                                        <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+                    possibleCollections.forEach(collectionName => {
+                        html += `
+                            <div style="border: 3px solid orange; margin: 10px 0; padding: 15px; background: #fff3e0; font-weight: bold;">
+                                📁 Collection: ${collectionName}
+                                <button onclick="inspectCollection('${collectionName}')" style="margin-left: 10px; padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+                                    🔍 CHECK
+                                </button>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    
+                    alert('🔍 Setting collection checker HTML...');
+                    jobsListEl.innerHTML = html;
+                    
+                    // Add inspect function to window
+                    window.inspectCollection = function(collectionName) {
+                        alert('🔍 Checking collection: ' + collectionName);
+                        
+                        db.collection(collectionName).limit(3).get()
+                            .then(snapshot => {
+                                if (snapshot.empty) {
+                                    alert('🔍 Collection ' + collectionName + ' is empty or does not exist');
+                                    return;
+                                }
+                                
+                                alert('🔍 Found ' + snapshot.size + ' documents in ' + collectionName);
+                                
+                                let inspectHTML = '<div style="color: #333; background: lightblue; padding: 20px;"><h3>🔍 COLLECTION: ' + collectionName + '</h3>';
+                                
+                                snapshot.forEach(doc => {
+                                    const data = doc.data();
+                                    inspectHTML += `
+                                        <div style="border: 2px solid blue; margin: 10px 0; padding: 15px; background: #e3f2fd;">
+                                            <h4>📄 Document ID: ${doc.id}</h4>
+                                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
 ${JSON.stringify(data, null, 2)}
-                                        </pre>
-                                    </div>
-                                `;
+                                            </pre>
+                                        </div>
+                                    `;
+                                });
+                                
+                                inspectHTML += '</div>';
+                                jobsListEl.innerHTML = inspectHTML;
+                            })
+                            .catch(error => {
+                                alert('❌ Error checking ' + collectionName + ': ' + error.message);
                             });
-                            
-                            inspectHTML += '</div>';
-                            jobsListEl.innerHTML = inspectHTML;
-                        })
-                        .catch(error => {
-                            alert('❌ Error checking ' + collectionName + ': ' + error.message);
-                        });
-                };
-                
-                alert('🔍 Collection checker displayed - you should see orange boxes now!');
+                    };
+                    
+                    alert('🔍 Collection checker displayed - you should see YELLOW background and ORANGE boxes!');
+                }, 1000);
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
