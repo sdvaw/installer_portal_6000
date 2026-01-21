@@ -1910,95 +1910,71 @@
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔍 Looking for TeamUp calendar data with installer assignments...');
+                alert('🔍 Creating weekly calendar view for installer...');
                 
-                // Check calendar-related collections for TeamUp data
-                const calendarCollections = [
-                    'calendar', 'calendars', 'teamup_calendar', 'teamup_calendars',
-                    'events', 'teamup_events', 'calendar_events', 'schedule_events',
-                    'subcalendars', 'installer_calendars', 'work_calendars',
-                    'appointments', 'teamup_appointments', 'calendar_appointments'
-                ];
+                // Create weekly calendar HTML
+                let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
+                calendarHTML += '<h2>📅 ' + installer.name + ' - Weekly Schedule</h2>';
                 
-                let html = '<div style="color: #333; background: yellow; padding: 20px;"><h3>🔍 SEARCHING TEAMUP CALENDAR DATA:</h3>';
-                html += '<div style="background: white; padding: 15px; margin-top: 10px;"><strong>Looking for installer assignments like "Installer - Barbaro" in calendar data...</strong></div>';
+                // Create calendar grid (7 days x time slots)
+                calendarHTML += '<div style="display: grid; grid-template-columns: 80px 1fr; gap: 10px; margin-top: 20px; border: 2px solid #ddd; padding: 15px; background: #f9f9f9; border-radius: 8px;">';
                 
-                jobsListEl.innerHTML = html;
+                // Day headers
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const today = new Date().toLocaleDateString();
                 
-                let checkedCount = 0;
-                let foundData = false;
-                
-                // Check each calendar collection
-                calendarCollections.forEach((collectionName, index) => {
-                    setTimeout(() => {
-                        db.collection(collectionName).limit(5).get()
-                            .then(snapshot => {
-                                checkedCount++;
-                                 
-                                if (!snapshot.empty) {
-                                    foundData = true;
-                                    alert('🔍 FOUND CALENDAR DATA in: ' + collectionName + ' (' + snapshot.size + ' records)');
-                                    
-                                    // Get sample records to show structure
-                                    let sampleHTML = '<div style="color: #333; background: lightgreen; padding: 20px; margin-top: 10px;">';
-                                    sampleHTML += '<h3>🎯 CALENDAR DATA FOUND IN: ' + collectionName.toUpperCase() + '</h3>';
-                                    
-                                    snapshot.forEach((doc, docIndex) => {
-                                        const data = doc.data();
-                                        sampleHTML += `
-                                            <div style="border: 3px solid green; margin: 10px 0; padding: 15px; background: white; border-radius: 8px;">
-                                                <h4>📅 Calendar Event ${docIndex + 1}: ${doc.id}</h4>
-                                                <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                                                    <strong>🔍 LOOKING FOR:</strong><br>
-                                                    🔧 Installer assignments (Installer - Barbaro, etc)<br>
-                                                    📅 Calendar field names<br>
-                                                    👤 Customer names<br>
-                                                    📍 Real addresses/locations<br>
-                                                    🏷️ Event titles/subjects<br><br>
-                                                    <strong>🔍 ACTUAL DATA:</strong><br>
-                                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; font-size: 11px;">
-${JSON.stringify(data, null, 2)}
-                                                    </pre>
-                                                </div>
-                                            </div>
-                                        `;
-                                    });
-                                    
-                                    sampleHTML += '</div>';
-                                    jobsListEl.innerHTML = sampleHTML;
-                                } else {
-                                    console.log('🔍 Empty calendar collection: ' + collectionName);
-                                    
-                                    if (checkedCount === calendarCollections.length) {
-                                        if (!foundData) {
-                                            alert('🔍 NO CALENDAR DATA FOUND in any collection!');
-                                            jobsListEl.innerHTML = `
-                                                <div style="color: #333; background: #ffe6e6; padding: 20px; text-align: center;">
-                                                    <h3>❌ NO TEAMUP CALENDAR DATA FOUND</h3>
-                                                    <p>Checked ${calendarCollections.length} calendar collections but found no TeamUp calendar data.</p>
-                                                    <p><strong>Possible issues:</strong></p>
-                                                    <ul style="text-align: left; display: inline-block;">
-                                                        <li>TeamUp calendar data not synced to Firebase</li>
-                                                        <li>Need to import TeamUp calendar data first</li>
-                                                        <li>Data in different collection name</li>
-                                                        <li>Need to set up TeamUp API integration</li>
-                                                    </ul>
-                                                </div>
-                                            `;
-                                        }
-                                    }
-                                }
-                            })
-                            .catch(error => {
-                                console.error('❌ Error checking ' + collectionName + ':', error);
-                                checkedCount++;
-                                 
-                                if (checkedCount === calendarCollections.length) {
-                                    alert('🔍 Errors checking all calendar collections');
-                                }
-                            });
-                    }, index * 300); // Stagger requests to avoid overwhelming
+                days.forEach((day, index) => {
+                    const isToday = false; // We'll highlight today later
+                    calendarHTML += `
+                        <div style="background: ${isToday ? '#4CAF50' : '#f3f4f6'}; color: white; padding: 10px; text-align: center; border-radius: 4px; font-weight: bold;">
+                            ${day}
+                        </div>
+                    `;
                 });
+                
+                // Time slots (morning, afternoon, evening)
+                const timeSlots = ['Morning', 'Afternoon', 'Evening'];
+                
+                // Create calendar cells for each time slot
+                timeSlots.forEach(timeSlot => {
+                    calendarHTML += `
+                        <div style="background: #e5e7eb; color: #333; padding: 8px; text-align: center; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                            ${timeSlot}
+                        </div>
+                    `;
+                });
+                
+                calendarHTML += '</div>'; // Close calendar grid
+                
+                // Add sample jobs for demonstration
+                calendarHTML += `
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+                        <h3>📋 Sample Jobs This Week</h3>
+                        <div style="display: grid; gap: 10px;">
+                            <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #123')">
+                                <div style="font-weight: bold; color: #4CAF50;">Job #123</div>
+                                <div style="color: #666; font-size: 14px;">Customer Home - Main Street</div>
+                                <div style="color: #999; font-size: 12px;">${today}</div>
+                            </div>
+                            <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #456')">
+                                <div style="font-weight: bold; color: #4CAF50;">Job #456</div>
+                                <div style="color: #666; font-size: 14px;">Office Building - Suite 200</div>
+                                <div style="color: #999; font-size: 12px;">${today}</div>
+                            </div>
+                            <div style="border: 2px solid #ddd; padding: 15px; background: white; border-radius: 8px; cursor: pointer;" onclick="alert('Job details for: Job #789')">
+                                <div style="font-weight: bold; color: #666;">Job #789</div>
+                                <div style="color: #666; font-size: 14px;">Warehouse - Industrial Park</div>
+                                <div style="color: #999; font-size: 12px;">${today}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                calendarHTML += '</div>';
+                
+                jobsListEl.innerHTML = calendarHTML;
+                
+                alert('📅 Weekly calendar view created - click jobs to see details!');
                 
             } else {
                 alert('❌ Database not available or installer ID missing');
