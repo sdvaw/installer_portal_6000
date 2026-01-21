@@ -1906,216 +1906,102 @@
             alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Auto-assigning jobs based on calendar names...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs for ' + installer.name + '...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔧 Auto-matching calendar names to installer: ' + installer.name);
+                alert('🔧 Matching installer name to Calendar field: ' + installer.name);
                 
-                // First, get all installers to build a name-to-ID mapping
-                db.collection('installers').get()
-                    .then(installersSnapshot => {
-                        const installerMap = {};
-                        installersSnapshot.forEach(doc => {
-                            const installerData = doc.data();
-                            installerMap[installerData.name] = doc.id;
-                        });
-                        
-                        console.log('🔍 Installer name-to-ID map:', installerMap);
-                        
-                        // Now get all jobs and auto-assign based on calendar/teamup data
-                        return db.collection('jobs').get();
-                    })
-                    .then(jobsSnapshot => {
-                        if (jobsSnapshot.empty) {
+                // Query jobs where Calendar field matches installer name
+                db.collection('jobs').get()
+                    .then(snapshot => {
+                        if (snapshot.empty) {
                             jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
                             return;
                         }
                         
-                        let assignedCount = 0;
-                        let totalJobs = jobsSnapshot.size;
-                        let assignmentPromises = [];
+                        let matchedJobs = [];
                         
-                        jobsSnapshot.forEach(doc => {
+                        snapshot.forEach(doc => {
                             const jobData = doc.data();
                             
-                            // Skip if already assigned
-                            if (jobData.assignedInstaller) {
-                                return;
-                            }
-                            
-                            // Look for installer name in various fields
-                            let matchedInstallerId = null;
-                            
-                            // Check common fields that might contain installer/calendar names
-                            const fieldsToCheck = [
-                                'calendar',
-                                'subcalendar', 
-                                'teamupCalendar',
-                                'calendarName',
-                                'subcalendarName',
-                                'title',
-                                'notes',
-                                'who',
-                                'assignedTo'
-                            ];
-                            
-                            fieldsToCheck.forEach(field => {
-                                if (jobData[field]) {
-                                    const fieldValue = typeof jobData[field] === 'string' ? 
-                                        jobData[field] : 
-                                        (jobData[field].name || jobData[field].title || '');
-                                    
-                                    // Check if this field contains any installer name
-                                    Object.keys(installerMap).forEach(installerName => {
-                                        if (fieldValue.includes(installerName)) {
-                                            matchedInstallerId = installerMap[installerName];
-                                            console.log('🎯 Matched job ' + doc.id + ' to installer ' + installerName + ' via field ' + field);
-                                        }
-                                    });
-                                }
-                            });
-                            
-                            // If we found a match, assign the job
-                            if (matchedInstallerId) {
-                                assignedCount++;
-                                assignmentPromises.push(
-                                    db.collection('jobs').doc(doc.id).update({
-                                        assignedInstaller: matchedInstallerId,
-                                        autoAssigned: true,
-                                        autoAssignedDate: new Date().toISOString()
-                                    })
-                                );
+                            // Check if Calendar field matches this installer
+                            if (jobData.Calendar && jobData.Calendar.includes(installer.name)) {
+                                matchedJobs.push({
+                                    id: doc.id,
+                                    data: jobData
+                                });
+                                console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.Calendar);
                             }
                         });
                         
-                        // Execute all assignments
-                        return Promise.all(assignmentPromises);
-                    })
-                    .then(() => {
-                        alert('✅ Auto-assignment complete! Assigned ' + assignedCount + ' jobs.');
+                        // Display matched jobs
+                        let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
+                        calendarHTML += '<h2>📅 ' + installer.name + ' - Assigned Jobs</h2>';
                         
-                        // Now load the properly assigned jobs for this installer
-                        loadAssignedJobsForInstaller(installer, jobsListEl);
+                        if (matchedJobs.length === 0) {
+                            calendarHTML += `
+                                <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
+                                    <h3>❌ No Jobs Found</h3>
+                                    <p>No jobs found for installer: <strong>${installer.name}</strong></p>
+                                    <p>Looking for Calendar field containing: "${installer.name}"</p>
+                                    <p>Available Calendar fields in jobs:</p>
+                                    <div style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                                        ${snapshot.docs.map(doc => {
+                                            const calendar = doc.data().Calendar || 'No Calendar field';
+                                            return `• ${calendar}`;
+                                        }).join('<br>')}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
+                            calendarHTML += '🎯 Found ' + matchedJobs.length + ' jobs for ' + installer.name + ' (matched by Calendar field)';
+                            calendarHTML += '</div>';
+                            
+                            matchedJobs.forEach(job => {
+                                const data = job.data;
+                                
+                                // Convert scheduledDate to readable format
+                                let scheduledDate = 'No date';
+                                if (data.scheduledDate && data.scheduledDate.seconds) {
+                                    scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
+                                }
+                                
+                                calendarHTML += `
+                                    <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
+                                         onclick="showJobDetails('${job.id}', 'jobs')">
+                                        <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
+                                            📋 ${data.title || 'No Title'} ✅
+                                        </div>
+                                        <div style="color: #666; font-size: 14px;">
+                                            👤 Customer: ${data.customer || 'No customer'}<br>
+                                            📍 Address: ${data.address || 'No address'}<br>
+                                            📅 Date: ${scheduledDate}<br>
+                                            📞 Phone: ${data.phone || 'No phone'}<br>
+                                            📧 Email: ${data.email || 'No email'}<br>
+                                            🔄 Status: ${data.status || 'No status'}<br>
+                                            📅 Calendar: ${data.Calendar || 'No Calendar'}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                        
+                        calendarHTML += '</div>';
+                        jobsListEl.innerHTML = calendarHTML;
+                        
+                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by Calendar field!');
                     })
                     .catch(error => {
-                        console.error('❌ Error in auto-assignment:', error);
-                        alert('❌ Error in auto-assignment: ' + error.message);
-                        
-                        // Fallback to manual assignment view
-                        loadManualAssignmentView(installer, jobsListEl);
+                        console.error('❌ Error loading jobs:', error);
+                        alert('❌ Error loading jobs: ' + error.message);
                     });
                 
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
             }
-        }
-        
-        // Load jobs assigned to this specific installer
-        function loadAssignedJobsForInstaller(installer, jobsListEl) {
-            db.collection('jobs').where('assignedInstaller', '==', installer.id).get()
-                .then(snapshot => {
-                    let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                    calendarHTML += '<h2>📅 ' + installer.name + ' - Assigned Jobs</h2>';
-                    
-                    if (snapshot.empty) {
-                        calendarHTML += `
-                            <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
-                                <h3>❌ No Jobs Assigned</h3>
-                                <p>No jobs assigned to ${installer.name}.</p>
-                                <p>Jobs may need to be auto-assigned based on calendar names.</p>
-                            </div>
-                        `;
-                    } else {
-                        calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
-                        calendarHTML += '🎯 Found ' + snapshot.size + ' jobs assigned to ' + installer.name;
-                        calendarHTML += '</div>';
-                        
-                        snapshot.forEach(doc => {
-                            const data = doc.data();
-                            
-                            // Convert scheduledDate to readable format
-                            let scheduledDate = 'No date';
-                            if (data.scheduledDate && data.scheduledDate.seconds) {
-                                scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
-                            }
-                            
-                            calendarHTML += `
-                                <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
-                                     onclick="showJobDetails('${doc.id}', 'jobs')">
-                                    <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
-                                        📋 ${data.title || 'No Title'} ✅
-                                    </div>
-                                    <div style="color: #666; font-size: 14px;">
-                                        👤 Customer: ${data.customer || 'No customer'}<br>
-                                        📍 Address: ${data.address || 'No address'}<br>
-                                        📅 Date: ${scheduledDate}<br>
-                                        📞 Phone: ${data.phone || 'No phone'}<br>
-                                        📧 Email: ${data.email || 'No email'}<br>
-                                        🔄 Status: ${data.status || 'No status'}
-                                    </div>
-                                    ${data.autoAssigned ? 
-                                        `<div style="background: #e3f2fd; padding: 5px; margin-top: 10px; border-radius: 4px; font-size: 11px; color: #1976d2;">
-                                            🤖 Auto-assigned based on calendar name match
-                                        </div>` : ''
-                                    }
-                                </div>
-                            `;
-                        });
-                    }
-                    
-                    calendarHTML += '</div>';
-                    jobsListEl.innerHTML = calendarHTML;
-                    
-                    alert('📅 Loaded ' + snapshot.size + ' assigned jobs for ' + installer.name);
-                })
-                .catch(error => {
-                    console.error('❌ Error loading assigned jobs:', error);
-                    alert('❌ Error loading assigned jobs: ' + error.message);
-                });
-        }
-        
-        // Fallback manual assignment view
-        function loadManualAssignmentView(installer, jobsListEl) {
-            db.collection('jobs').get()
-                .then(snapshot => {
-                    let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                    calendarHTML += '<h2>📅 ' + installer.name + ' - Manual Assignment Required</h2>';
-                    calendarHTML += '<div style="background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px;">';
-                    calendarHTML += '⚠️ Auto-assignment failed. Please assign jobs manually.';
-                    calendarHTML += '</div>';
-                    
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        let scheduledDate = 'No date';
-                        if (data.scheduledDate && data.scheduledDate.seconds) {
-                            scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
-                        }
-                        
-                        calendarHTML += `
-                            <div style="border: 2px solid #ff9800; padding: 15px; background: white; border-radius: 8px; margin: 10px 0;">
-                                <div style="font-weight: bold; color: #ff9800; margin-bottom: 10px;">
-                                    📋 ${data.title || 'No Title'} ❌ UNASSIGNED
-                                </div>
-                                <div style="color: #666; font-size: 14px;">
-                                    👤 Customer: ${data.customer || 'No customer'}<br>
-                                    📍 Address: ${data.address || 'No address'}<br>
-                                    📅 Date: ${scheduledDate}
-                                </div>
-                                <div style="margin-top: 10px;">
-                                    <button onclick="assignJobToInstaller('${doc.id}', '${installer.id}')" 
-                                            style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
-                                        🔧 Assign to ${installer.name}
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    calendarHTML += '</div>';
-                    jobsListEl.innerHTML = calendarHTML;
-                });
         }
         
         // Assign job to installer
