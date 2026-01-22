@@ -1966,9 +1966,16 @@
                             }
                         });
                         
-                        // Display matched jobs
-                        let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                        calendarHTML += '<h2>📅 ' + installer.name + ' - Assigned Jobs</h2>';
+                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
+                        
+                        // Display matched jobs in mobile-optimized week calendar view
+                        let calendarHTML = '<div style="color: #333; background: white; padding: 10px; max-width: 100%; margin: 0 auto;">';
+                        calendarHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">';
+                        calendarHTML += '<h2 style="margin: 0; font-size: 18px;">📅 ' + installer.name + ' - Jobs</h2>';
+                        calendarHTML += '<div style="display: flex; gap: 10px;">';
+                        calendarHTML += '<button onclick="changeWeek(-1)" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px;">◀ Prev</button>';
+                        calendarHTML += '<button onclick="changeWeek(1)" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px;">Next ▶</button>';
+                        calendarHTML += '</div></div>';
                         
                         if (matchedJobs.length === 0) {
                             calendarHTML += `
@@ -1976,7 +1983,6 @@
                                     <h3>❌ No Jobs Found</h3>
                                     <p>No jobs found for installer: <strong>${installer.name}</strong></p>
                                     <p>Looking for subcalendar_name field containing: "${installer.name}"</p>
-                                    <p>Available subcalendar_name fields in jobs:</p>
                                     <div style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 10px;">
                                         ${snapshot.docs.map(doc => {
                                             const subcalendar = doc.data().subcalendar_name || 'No subcalendar_name field';
@@ -1986,55 +1992,61 @@
                                 </div>
                             `;
                         } else {
-                            calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px;">';
-                            calendarHTML += '🎯 Found ' + matchedJobs.length + ' jobs for ' + installer.name + ' (matched by subcalendar_name field)';
+                            calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 14px;">';
+                            calendarHTML += '🎯 Found ' + matchedJobs.length + ' jobs for ' + installer.name + ' (tap to expand)';
                             calendarHTML += '</div>';
                             
+                            // Group jobs by date for calendar view
+                            const jobsByDate = {};
                             matchedJobs.forEach(job => {
                                 const data = job.data;
-                                
-                                // Convert scheduledDate to readable format
-                                let scheduledDate = 'No date';
+                                let dateKey = 'No date';
                                 if (data.scheduledDate && data.scheduledDate.seconds) {
-                                    scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
+                                    dateKey = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
                                 }
+                                if (!jobsByDate[dateKey]) jobsByDate[dateKey] = [];
+                                jobsByDate[dateKey].push(job);
+                            });
+                            
+                            // Display calendar with expandable jobs
+                            Object.keys(jobsByDate).sort().forEach(date => {
+                                calendarHTML += '<div style="margin-bottom: 20px;">';
+                                calendarHTML += '<div style="background: #2196F3; color: white; padding: 10px; border-radius: 5px 5px 0 0; font-weight: bold;">📅 ' + date + '</div>';
                                 
-                                // Parse address from title if address field is empty
-                                let displayAddress = data.address || '';
-                                let displayCustomer = data.customer || '';
-                                
-                                // If title looks like an address and customer is missing/placeholder, use title as address
-                                if ((!displayAddress || displayCustomer === 'NO MAX' || !displayCustomer) && 
-                                    data.title && data.title.match(/^\d+\s+\w+/)) {
-                                    displayAddress = data.title;
-                                    displayCustomer = 'Customer';
-                                }
-                                
-                                calendarHTML += `
-                                    <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
-                                         onclick="showJobDetails('${job.id}', 'jobs')">
-                                        <div style="font-weight: bold; color: #4CAF50; margin-bottom: 10px;">
-                                            📋 ${data.title || 'No Title'} ✅
+                                jobsByDate[date].forEach(job => {
+                                    const data = job.data;
+                                    const jobId = job.id;
+                                    
+                                    calendarHTML += `
+                                        <div style="border: 1px solid #ddd; border-top: none; padding: 12px; background: white; cursor: pointer;" 
+                                             onclick="toggleJobDetails('${jobId}')">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                                                <div style="font-weight: bold; color: #2196F3; font-size: 16px;">
+                                                    📋 ${data.title || 'No Title'}
+                                                </div>
+                                                <div style="color: #666; font-size: 12px;">
+                                                    ${data.windowDoorCounts || 'N/A'}
+                                                </div>
+                                            </div>
+                                            
+                                            <div id="job-details-${jobId}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14px; color: #666;">
+                                                <div><strong>👤 Customer:</strong> ${data.customer || 'Customer'}</div>
+                                                <div><strong>📍 Address:</strong> ${data.address || 'No address'}</div>
+                                                <div><strong>📞 Phone:</strong> ${data.phone || 'No phone'}</div>
+                                                <div><strong>📧 Email:</strong> ${data.email || 'No email'}</div>
+                                                <div><strong>🔄 Status:</strong> ${data.status || 'No status'}</div>
+                                                <div><strong>📅 Calendar:</strong> ${data.subcalendar_name || 'No Calendar'}</div>
+                                            </div>
                                         </div>
-                                        <div style="color: #666; font-size: 14px;">
-                                            👤 Customer: ${displayCustomer || 'Customer'}<br>
-                                            📍 Address: ${displayAddress || 'No address'}<br>
-                                            🪟 Windows/Doors: ${data.windowDoorCounts || 'N/A'}<br>
-                                            📅 Date: ${scheduledDate}<br>
-                                            📞 Phone: ${data.phone || 'No phone'}<br>
-                                            📧 Email: ${data.email || 'No email'}<br>
-                                            🔄 Status: ${data.status || 'No status'}<br>
-                                            📅 Calendar: ${data.subcalendar_name || 'No Calendar'}
-                                        </div>
-                                    </div>
-                                `;
+                                    `;
+                                });
+                                
+                                calendarHTML += '</div>';
                             });
                         }
                         
                         calendarHTML += '</div>';
                         jobsListEl.innerHTML = calendarHTML;
-                        
-                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
@@ -2044,6 +2056,25 @@
             } else {
                 alert('❌ Database not available or installer ID missing');
                 jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
+            }
+        }
+        
+        // Week navigation functions
+        function changeWeek(direction) {
+            currentWeekOffset += direction;
+            console.log('🗓️ Changing week by:', direction, 'New offset:', currentWeekOffset);
+            // Reload jobs with new week offset
+            if (window.installerData) {
+                loadInstallerJobsWithCalendar(window.installerData);
+            }
+        }
+        
+        function toggleJobDetails(jobId) {
+            const detailsEl = document.getElementById('job-details-' + jobId);
+            if (detailsEl) {
+                const isVisible = detailsEl.style.display !== 'none';
+                detailsEl.style.display = isVisible ? 'none' : 'block';
+                console.log('🔄 Toggled job details for:', jobId, 'Now visible:', !isVisible);
             }
         }
         
