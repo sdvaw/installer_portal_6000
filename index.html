@@ -1891,8 +1891,8 @@
                 console.log('🔍 Updated crew info:', (installer.crews || []).join(', ') || 'No crew assigned');
             }
             
-            console.log('🔍 About to call loadInstallerJobs...');
-            loadInstallerJobs(installer);
+            console.log('🔍 About to call loadInstallerJobsWithCalendar...');
+            loadInstallerJobsWithCalendar(installer);
             
             console.log('🔧 Installer portal loaded for:', installer.name);
         }
