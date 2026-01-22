@@ -3190,6 +3190,9 @@
                 const calendarName = getCalendarName(event.subcalendar_id);
                 
                 console.log('🔍 Processing event:', event.id, 'subcalendar_id:', event.subcalendar_id, '→ calendarName:', calendarName);
+                console.log('🔍 All event fields:', Object.keys(event));
+                console.log('🔍 Event location data:', event.location);
+                console.log('🔍 Event "where" field:', event.where);
                 
                 return {
                     id: event.id,
@@ -3197,7 +3200,7 @@
                     customer: extractCustomerFromTitle(event.title),
                     phone: event.location?.phone || '',
                     email: event.location?.notes || '',
-                    address: event.location?.address || '',
+                    address: event.location?.address || event.where || '', // Try both location.address and where field
                     scheduledDate: new Date(event.start_dt),
                     // USE THE CORRECT TEAMUP FIELD NAMES!
                     subcalendar_id: event.subcalendar_id || '',
