@@ -3235,7 +3235,7 @@
                 return {
                     id: event.id,
                     title: event.title,
-                    customer: extractCustomerFromTitle(event.title),
+                    customer: event.who || '', // Use TeamUp 'who' field for customer name
                     phone: extractPhoneFromNotes(event.notes), // Extract phone from notes
                     email: extractEmailFromNotes(event.notes), // Extract email from notes
                     address: event.location || '', // location is a string with full address
