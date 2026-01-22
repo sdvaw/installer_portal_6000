@@ -1967,6 +1967,7 @@
                         });
                         
                         alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
+                        console.log('🔍 Alert shown, now processing jobs for display...');
                         
                         // Display matched jobs in compact mobile view
                         let calendarHTML = '<div style="color: #333; background: white; padding: 5px; max-width: 100%; margin: 0 auto;">';
@@ -1980,6 +1981,8 @@
                         if (matchedJobs.length === 0) {
                             calendarHTML += '<div style="text-align: center; padding: 20px; color: #666;">No jobs found</div>';
                         } else {
+                            console.log('🔍 Processing', matchedJobs.length, 'matched jobs for display');
+                            
                             // Group jobs by date
                             const jobsByDate = {};
                             matchedJobs.forEach(job => {
@@ -2001,6 +2004,8 @@
                                     const data = job.data;
                                     const jobId = job.id;
                                     
+                                    console.log('🔍 Creating job element for:', jobId, data.title);
+                                    
                                     calendarHTML += `
                                         <div style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
                                              onclick="showJobPopup('${jobId}', '${encodeURIComponent(JSON.stringify(job.data))}')">
@@ -2020,6 +2025,7 @@
                         
                         calendarHTML += '</div>';
                         jobsListEl.innerHTML = calendarHTML;
+                        console.log('🔍 Job list HTML updated successfully');
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
