@@ -2003,19 +2003,13 @@
                                     
                                     calendarHTML += `
                                         <div style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
-                                             onclick="toggleJobDetails('${jobId}')">
+                                             onclick="showJobPopup('${jobId}', '${encodeURIComponent(JSON.stringify(job.data))}')">
                                             <div style="font-weight: bold; color: #2196F3; font-size: 14px;">
                                                 ${data.title || 'No Title'}
                                             </div>
                                             <div style="color: #999; font-size: 11px;">
                                                 ${data.windowDoorCounts || ''}
                                             </div>
-                                        </div>
-                                        
-                                        <div id="job-details-${jobId}" style="display: none; padding: 8px; background: #f9f9f9; font-size: 12px; color: #666;">
-                                            <div><strong>Customer:</strong> ${data.customer || ''}</div>
-                                            <div><strong>Address:</strong> ${data.address || ''}</div>
-                                            <div><strong>Phone:</strong> ${data.phone || ''}</div>
                                         </div>
                                     `;
                                 });
@@ -2054,6 +2048,108 @@
                 const isVisible = detailsEl.style.display !== 'none';
                 detailsEl.style.display = isVisible ? 'none' : 'block';
                 console.log('🔄 Toggled job details for:', jobId, 'Now visible:', !isVisible);
+            }
+        }
+        
+        // Job popup modal functions
+        function showJobPopup(jobId, jobDataEncoded) {
+            try {
+                const jobData = JSON.parse(decodeURIComponent(jobDataEncoded));
+                console.log('🔍 Showing job popup for:', jobId, jobData);
+                
+                // Create modal HTML
+                const modalHTML = `
+                    <div id="jobModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                                <h3 style="margin: 0; color: #2196F3;">📋 ${jobData.title || 'Job Details'}</h3>
+                                <button onclick="closeJobPopup()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">👤 Customer</div>
+                                <div style="color: #666; margin-bottom: 15px;">${jobData.customer || 'N/A'}</div>
+                                
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📍 Address</div>
+                                <div style="color: #666; margin-bottom: 15px;">${jobData.address || 'N/A'}</div>
+                                
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📞 Phone</div>
+                                <div style="color: #666; margin-bottom: 15px;">${jobData.phone || 'N/A'}</div>
+                                
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">🪟 Windows/Doors</div>
+                                <div style="color: #666; margin-bottom: 15px;">${jobData.windowDoorCounts || 'N/A'}</div>
+                                
+                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📅 Scheduled Date</div>
+                                <div style="color: #666; margin-bottom: 15px;">${jobData.scheduledDate ? new Date(jobData.scheduledDate.seconds * 1000).toLocaleDateString() : 'N/A'}</div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
+                                <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
+                                <button onclick="updateJobStatus('${jobId}')" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
+                                <button onclick="getDirections('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Get Directions</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add modal to page
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+            } catch (error) {
+                console.error('❌ Error showing job popup:', error);
+                alert('❌ Error showing job details: ' + error.message);
+            }
+        }
+        
+        function closeJobPopup() {
+            const modal = document.getElementById('jobModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function capturePhoto(jobId) {
+            alert('📷 Photo capture coming soon for job: ' + jobId);
+            // TODO: Implement photo capture functionality
+        }
+        
+        function updateJobStatus(jobId) {
+            const newStatus = prompt('Enter new status for this job:');
+            if (newStatus && db) {
+                db.collection('jobs').doc(jobId).update({
+                    status: newStatus,
+                    statusUpdated: new Date().toISOString()
+                })
+                .then(() => {
+                    alert('✅ Status updated successfully!');
+                    closeJobPopup();
+                    // Reload jobs to show updated status
+                    if (window.installerData) {
+                        loadInstallerJobsWithCalendar(window.installerData);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error updating status: ' + error.message);
+                });
+            }
+        }
+        
+        function getDirections(jobId) {
+            if (db) {
+                db.collection('jobs').doc(jobId).get()
+                .then(doc => {
+                    const jobData = doc.data();
+                    if (jobData.address) {
+                        // Open Google Maps with the address
+                        const mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(jobData.address);
+                        window.open(mapsUrl, '_blank');
+                    } else {
+                        alert('❌ No address available for this job');
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error getting job details: ' + error.message);
+                });
             }
         }
         
