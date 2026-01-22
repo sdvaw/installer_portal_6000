@@ -4997,7 +4997,7 @@
                 await jobRef.update({
                     status: newStatus,
                     statusUpdatedAt: new Date(),
-                    statusUpdatedBy: installerData.uid
+                    statusUpdatedBy: window.installerData ? window.installerData.id : 'Unknown Installer'
                 });
 
                 console.log(`Job ${jobId} status updated to: ${newStatus}`);
