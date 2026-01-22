@@ -2979,17 +2979,17 @@
         let subcalendarCache = {};
         
         // Cache subcalendars for calendar name lookup
-        async function cacheSubcalendars() {
+        async function cacheSubcalendars(forceRefresh = false) {
             if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
                 console.log('⚠️ TeamUp not configured - skipping subcalendar cache');
                 return;
             }
             
             try {
-                console.log('📋 Caching TeamUp subcalendars...');
+                console.log('📋 Caching TeamUp subcalendars...', forceRefresh ? '(FORCE REFRESH)' : '');
                 
-                // First, try to load from Firebase cache
-                if (db) {
+                // First, try to load from Firebase cache (unless force refresh)
+                if (db && !forceRefresh) {
                     const cachedSnapshot = await db.collection('teamup_subcalendars').limit(1).get();
                     if (!cachedSnapshot.empty) {
                         console.log('📋 Loading subcalendars from Firebase cache...');
@@ -3004,7 +3004,7 @@
                     }
                 }
                 
-                // If no cache, fetch from TeamUp API
+                // If no cache or force refresh, fetch from TeamUp API
                 console.log('📋 Fetching subcalendars from TeamUp API...');
                 const response = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/subcalendars`, {
                     headers: {
@@ -3027,6 +3027,18 @@
                     // Save to Firebase for future use
                     if (db) {
                         console.log('💾 Saving subcalendars to Firebase cache...');
+                        
+                        // Clear existing cache if force refresh
+                        if (forceRefresh) {
+                            const existingSnapshot = await db.collection('teamup_subcalendars').get();
+                            const deleteBatch = db.batch();
+                            existingSnapshot.forEach(doc => {
+                                deleteBatch.delete(doc.ref);
+                            });
+                            await deleteBatch.commit();
+                            console.log('🗑️ Cleared existing calendar cache');
+                        }
+                        
                         const batch = db.batch();
                         subcalendars.forEach(subcalendar => {
                             const docRef = db.collection('teamup_subcalendars').doc(subcalendar.id.toString());
@@ -3062,8 +3074,8 @@
             
             console.log('🔄 Syncing with TeamUp...');
             
-            // First, cache subcalendars
-            return cacheSubcalendars().then(() => {
+            // First, cache subcalendars with force refresh
+            return cacheSubcalendars(true).then(() => {
                 // Calculate date range - current week + next 3 weeks
                 const now = new Date();
                 const currentWeekStart = getWeekStart(now);
