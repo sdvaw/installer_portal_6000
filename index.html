@@ -1191,15 +1191,23 @@
                         </div>
                     `).join('') : '<div class="text-sm text-gray-500">No recent activity</div>';
                     
-                    document.getElementById('recentActivity').innerHTML = activityHtml;
+                    const recentActivityElement = document.getElementById('recentActivity');
+                    if (recentActivityElement) {
+                        recentActivityElement.innerHTML = activityHtml;
+                    }
                 }
                 
             } catch (error) {
                 console.error('❌ Failed to load dashboard stats:', error);
-                document.getElementById('totalInstallersCount').textContent = 'Error';
-                document.getElementById('activeInstallersCount').textContent = 'Error';
-                document.getElementById('pendingProvisionCount').textContent = 'Error';
-                document.getElementById('lastSyncStatus').textContent = 'Error';
+                const totalInstallersElement = document.getElementById('totalInstallersCount');
+                const activeInstallersElement = document.getElementById('activeInstallersCount');
+                const pendingProvisionElement = document.getElementById('pendingProvisionCount');
+                const lastSyncElement = document.getElementById('lastSyncStatus');
+                
+                if (totalInstallersElement) totalInstallersElement.textContent = 'Error';
+                if (activeInstallersElement) activeInstallersElement.textContent = 'Error';
+                if (pendingProvisionElement) pendingProvisionElement.textContent = 'Error';
+                if (lastSyncElement) lastSyncElement.textContent = 'Error';
             }
         }
 
