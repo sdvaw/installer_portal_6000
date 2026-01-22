@@ -3190,9 +3190,14 @@
                 const calendarName = getCalendarName(event.subcalendar_id);
                 
                 console.log('🔍 Processing event:', event.id, 'subcalendar_id:', event.subcalendar_id, '→ calendarName:', calendarName);
-                console.log('🔍 All event fields:', Object.keys(event));
+                console.log('🔍 ALL TEAMUP EVENT FIELDS:');
+                console.log('📋 Complete event object:', JSON.stringify(event, null, 2));
                 console.log('🔍 Event location data:', event.location);
                 console.log('🔍 Event "where" field:', event.where);
+                console.log('🔍 Event "notes" field:', event.notes);
+                console.log('🔍 Event "title" field:', event.title);
+                console.log('🔍 Event "who" field:', event.who);
+                console.log('🔍 Event "description" field:', event.description);
                 
                 return {
                     id: event.id,
