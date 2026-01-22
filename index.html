@@ -3198,9 +3198,9 @@
                     id: event.id,
                     title: event.title,
                     customer: extractCustomerFromTitle(event.title),
-                    phone: event.location?.phone || '',
-                    email: event.location?.notes || '',
-                    address: event.location?.address || event.where || '', // Try both location.address and where field
+                    phone: '', // TeamUp location doesn't have phone field
+                    email: '', // TeamUp location doesn't have email field  
+                    address: event.location || '', // location is a string with full address
                     scheduledDate: new Date(event.start_dt),
                     // USE THE CORRECT TEAMUP FIELD NAMES!
                     subcalendar_id: event.subcalendar_id || '',
