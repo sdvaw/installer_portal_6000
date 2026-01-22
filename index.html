@@ -1949,6 +1949,12 @@
                                 const calendarName = jobData.subcalendar_name.toLowerCase();
                                 const installerName = installer.name.toLowerCase();
                                 
+                                console.log('🔍 Matching check:');
+                                console.log('  Calendar name:', jobData.subcalendar_name);
+                                console.log('  Installer name:', installer.name);
+                                console.log('  calendarName.includes(installerName):', calendarName.includes(installerName));
+                                console.log('  calendarName.includes("installer - " + installerName):', calendarName.includes('installer - ' + installerName));
+                                
                                 // Match if calendar contains installer name OR "Installer - [installer name]"
                                 if (calendarName.includes(installerName) || 
                                     calendarName.includes('installer - ' + installerName)) {
@@ -1957,6 +1963,8 @@
                                         data: jobData
                                     });
                                     console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
+                                } else {
+                                    console.log('❌ No match for ' + installer.name + ' with calendar:', jobData.subcalendar_name);
                                 }
                             }
                         });
