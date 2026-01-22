@@ -2019,6 +2019,7 @@
                                         <div style="color: #666; font-size: 14px;">
                                             👤 Customer: ${displayCustomer || 'Customer'}<br>
                                             📍 Address: ${displayAddress || 'No address'}<br>
+                                            🪟 Windows/Doors: ${data.windowDoorCounts || 'N/A'}<br>
                                             📅 Date: ${scheduledDate}<br>
                                             📞 Phone: ${data.phone || 'No phone'}<br>
                                             📧 Email: ${data.email || 'No email'}<br>
@@ -3232,6 +3233,39 @@
                     return emailMatch ? emailMatch[0] : '';
                 }
                 
+                // Extract window and door counts from notes
+                function extractWindowDoorCounts(notes) {
+                    if (!notes) return '';
+                    
+                    const counts = [];
+                    
+                    // Look for window counts
+                    const windowMatch = notes.match(/(\d+)\s*(?:windows?|window)/i);
+                    if (windowMatch) counts.push(`Windows ${windowMatch[1]}`);
+                    
+                    // Look for ED (Entry Door) counts
+                    const edMatch = notes.match(/(\d+)\s*ED/i);
+                    if (edMatch) counts.push(`ED ${edMatch[1]}`);
+                    
+                    // Look for SGD (Sliding Glass Door) counts
+                    const sgdMatch = notes.match(/(\d+)\s*SGD/i);
+                    if (sgdMatch) counts.push(`SGD ${sgdMatch[1]}`);
+                    
+                    // Look for door counts
+                    const doorMatch = notes.match(/(\d+)\s*(?:doors?|door)/i);
+                    if (doorMatch && !edMatch && !sgdMatch) counts.push(`Doors ${doorMatch[1]}`);
+                    
+                    // Look for SH (Single Hung) counts
+                    const shMatch = notes.match(/(\d+)\s*SH/i);
+                    if (shMatch) counts.push(`SH ${shMatch[1]}`);
+                    
+                    // Look for Picture Window counts
+                    const pictureMatch = notes.match(/(\d+)\s*(?:picture\s*)?window/i);
+                    if (pictureMatch && !windowMatch) counts.push(`Picture Window ${pictureMatch[1]}`);
+                    
+                    return counts.join(' | ');
+                }
+                
                 return {
                     id: event.id,
                     title: event.title,
@@ -3239,6 +3273,7 @@
                     phone: extractPhoneFromNotes(event.notes), // Extract phone from notes
                     email: extractEmailFromNotes(event.notes), // Extract email from notes
                     address: event.location || '', // location is a string with full address
+                    windowDoorCounts: extractWindowDoorCounts(event.notes), // Extract window/door counts
                     scheduledDate: new Date(event.start_dt),
                     // USE THE CORRECT TEAMUP FIELD NAMES!
                     subcalendar_id: event.subcalendar_id || '',
