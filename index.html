@@ -3204,6 +3204,12 @@
                     console.log('🚨 MAX JOB WITH EMPTY LOCATION:', event.title, event.id);
                 }
                 
+                // Skip placeholder jobs with no meaningful data
+                if (!event.location && !event.notes && (!event.title || event.title === 'NO MAX' || event.title === '')) {
+                    console.log('⏭️ Skipping placeholder job:', event.title, event.id);
+                    return null; // Skip this job
+                }
+                
                 return {
                     id: event.id,
                     title: event.title,
@@ -3223,7 +3229,7 @@
                     priority: mapTeamUpPriority(event.title),
                     source: 'teamup'
                 };
-            });
+            }).filter(job => job !== null); // Filter out null jobs
             
             // Save to Firebase
             if (db) {
