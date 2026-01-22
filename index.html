@@ -1968,35 +1968,19 @@
                         
                         alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
                         
-                        // Display matched jobs in mobile-optimized week calendar view
-                        let calendarHTML = '<div style="color: #333; background: white; padding: 10px; max-width: 100%; margin: 0 auto;">';
-                        calendarHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">';
-                        calendarHTML += '<h2 style="margin: 0; font-size: 18px;">📅 ' + installer.name + ' - Jobs</h2>';
-                        calendarHTML += '<div style="display: flex; gap: 10px;">';
-                        calendarHTML += '<button onclick="changeWeek(-1)" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px;">◀ Prev</button>';
-                        calendarHTML += '<button onclick="changeWeek(1)" style="background: #2196F3; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; font-size: 14px;">Next ▶</button>';
+                        // Display matched jobs in compact mobile view
+                        let calendarHTML = '<div style="color: #333; background: white; padding: 5px; max-width: 100%; margin: 0 auto;">';
+                        calendarHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">';
+                        calendarHTML += '<h2 style="margin: 0; font-size: 16px;">📅 ' + installer.name + '</h2>';
+                        calendarHTML += '<div style="display: flex; gap: 8px;">';
+                        calendarHTML += '<button onclick="changeWeek(-1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">◀</button>';
+                        calendarHTML += '<button onclick="changeWeek(1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">▶</button>';
                         calendarHTML += '</div></div>';
                         
                         if (matchedJobs.length === 0) {
-                            calendarHTML += `
-                                <div style="background: #ffe6e6; padding: 20px; text-align: center; border-radius: 8px; margin-top: 20px;">
-                                    <h3>❌ No Jobs Found</h3>
-                                    <p>No jobs found for installer: <strong>${installer.name}</strong></p>
-                                    <p>Looking for subcalendar_name field containing: "${installer.name}"</p>
-                                    <div style="text-align: left; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 10px;">
-                                        ${snapshot.docs.map(doc => {
-                                            const subcalendar = doc.data().subcalendar_name || 'No subcalendar_name field';
-                                            return `• ${subcalendar}`;
-                                        }).join('<br>')}
-                                    </div>
-                                </div>
-                            `;
+                            calendarHTML += '<div style="text-align: center; padding: 20px; color: #666;">No jobs found</div>';
                         } else {
-                            calendarHTML += '<div style="background: #e8f5e8; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 14px;">';
-                            calendarHTML += '🎯 Found ' + matchedJobs.length + ' jobs for ' + installer.name + ' (tap to expand)';
-                            calendarHTML += '</div>';
-                            
-                            // Group jobs by date for calendar view
+                            // Group jobs by date
                             const jobsByDate = {};
                             matchedJobs.forEach(job => {
                                 const data = job.data;
@@ -2008,35 +1992,30 @@
                                 jobsByDate[dateKey].push(job);
                             });
                             
-                            // Display calendar with expandable jobs
+                            // Display compact job list
                             Object.keys(jobsByDate).sort().forEach(date => {
-                                calendarHTML += '<div style="margin-bottom: 20px;">';
-                                calendarHTML += '<div style="background: #2196F3; color: white; padding: 10px; border-radius: 5px 5px 0 0; font-weight: bold;">📅 ' + date + '</div>';
+                                calendarHTML += '<div style="margin-bottom: 15px;">';
+                                calendarHTML += '<div style="background: #f5f5f5; padding: 5px 8px; font-size: 12px; color: #666; border-bottom: 1px solid #ddd;">' + date + '</div>';
                                 
                                 jobsByDate[date].forEach(job => {
                                     const data = job.data;
                                     const jobId = job.id;
                                     
                                     calendarHTML += `
-                                        <div style="border: 1px solid #ddd; border-top: none; padding: 12px; background: white; cursor: pointer;" 
+                                        <div style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
                                              onclick="toggleJobDetails('${jobId}')">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                                                <div style="font-weight: bold; color: #2196F3; font-size: 16px;">
-                                                    📋 ${data.title || 'No Title'}
-                                                </div>
-                                                <div style="color: #666; font-size: 12px;">
-                                                    ${data.windowDoorCounts || 'N/A'}
-                                                </div>
+                                            <div style="font-weight: bold; color: #2196F3; font-size: 14px;">
+                                                ${data.title || 'No Title'}
                                             </div>
-                                            
-                                            <div id="job-details-${jobId}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-size: 14px; color: #666;">
-                                                <div><strong>👤 Customer:</strong> ${data.customer || 'Customer'}</div>
-                                                <div><strong>📍 Address:</strong> ${data.address || 'No address'}</div>
-                                                <div><strong>📞 Phone:</strong> ${data.phone || 'No phone'}</div>
-                                                <div><strong>📧 Email:</strong> ${data.email || 'No email'}</div>
-                                                <div><strong>🔄 Status:</strong> ${data.status || 'No status'}</div>
-                                                <div><strong>📅 Calendar:</strong> ${data.subcalendar_name || 'No Calendar'}</div>
+                                            <div style="color: #999; font-size: 11px;">
+                                                ${data.windowDoorCounts || ''}
                                             </div>
+                                        </div>
+                                        
+                                        <div id="job-details-${jobId}" style="display: none; padding: 8px; background: #f9f9f9; font-size: 12px; color: #666;">
+                                            <div><strong>Customer:</strong> ${data.customer || ''}</div>
+                                            <div><strong>Address:</strong> ${data.address || ''}</div>
+                                            <div><strong>Phone:</strong> ${data.phone || ''}</div>
                                         </div>
                                     `;
                                 });
