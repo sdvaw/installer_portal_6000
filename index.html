@@ -3157,6 +3157,9 @@
         function processTeamUpEvents(events) {
             // Convert TeamUp events to job format
             const teamUpJobs = events.map(event => {
+                // Log the FULL event object to see what fields we actually have
+                console.log('🔍 FULL EVENT OBJECT:', event);
+                
                 // Use the CORRECT TeamUp field names!
                 const calendarName = event.calendar_name || '';
                 
