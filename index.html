@@ -1946,18 +1946,15 @@
                             
                             // Check if subcalendar_name field matches this installer
                             if (jobData.subcalendar_name) {
-                                const calendarName = jobData.subcalendar_name.toLowerCase();
-                                const installerName = installer.name.toLowerCase();
+                                const calendarName = jobData.subcalendar_name;
+                                const installerName = installer.name;
                                 
                                 console.log('🔍 Matching check:');
-                                console.log('  Calendar name:', jobData.subcalendar_name);
-                                console.log('  Installer name:', installer.name);
-                                console.log('  calendarName.includes(installerName):', calendarName.includes(installerName));
-                                console.log('  calendarName.includes("installer - " + installerName):', calendarName.includes('installer - ' + installerName));
+                                console.log('  Calendar name:', calendarName);
+                                console.log('  Installer name:', installerName);
                                 
-                                // Match if calendar contains installer name OR "Installer - [installer name]"
-                                if (calendarName.includes(installerName) || 
-                                    calendarName.includes('installer - ' + installerName)) {
+                                // Simple match: if installer name is in calendar name, they get all jobs from that calendar
+                                if (calendarName.includes(installerName)) {
                                     matchedJobs.push({
                                         id: doc.id,
                                         data: jobData
