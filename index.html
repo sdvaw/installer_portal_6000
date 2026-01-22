@@ -2135,7 +2135,18 @@
                 if (response.ok) {
                     const eventData = await response.json();
                     console.log('📄 Full TeamUp event data:', eventData);
-                    alert(`📄 Event ${eventId} data:\n\nCalendar: ${eventData.calendar_name || 'EMPTY'}\nCalendar ID: ${eventData.calendar_id || 'EMPTY'}\n\nCheck console for full data!`);
+                    console.log('📄 Event keys:', Object.keys(eventData.event || {}));
+                    console.log('📄 Event object:', eventData.event);
+                    
+                    // Look for calendar-related fields
+                    const event = eventData.event;
+                    const calendarFields = Object.keys(event).filter(key => 
+                        key.toLowerCase().includes('calendar') || 
+                        key.toLowerCase().includes('subcalendar')
+                    );
+                    console.log('📅 Calendar-related fields:', calendarFields);
+                    
+                    alert(`📄 Event ${eventId} data:\n\nCalendar fields found: ${calendarFields.join(', ') || 'NONE'}\n\nCheck console for full data!`);
                 } else {
                     console.error('❌ Failed to fetch event:', response.status);
                     alert(`❌ Failed to fetch event: ${response.status}`);
