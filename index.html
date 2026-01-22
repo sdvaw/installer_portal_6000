@@ -1216,12 +1216,15 @@
                             <h2 class="text-2xl font-bold text-gray-900">📅 Admin Calendar View</h2>
                             <p class="text-gray-600">View all installer schedules and TeamUp calendars</p>
                         </div>
-                        <div class="flex space-x-3">
-                            <button onclick="refreshAdminCalendar()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                                🔄 Refresh
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button onclick="queryFirebaseSQL()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                📊 SQL Query
                             </button>
-                            <button onclick="renderAdminDashboard()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                                ← Back to Dashboard
+                            <button onclick="showAllCollections()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                                📋 SHOW TABLES
+                            </button>
+                            <button onclick="debugCalendarData()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                🔍 DEBUG CALENDAR DATA
                             </button>
                         </div>
                     </div>
@@ -2226,6 +2229,47 @@
         }
         
         // Show all collections (like SHOW TABLES)
+        // Debug function to check all collections and look for calendar data
+        function debugCalendarData() {
+            if (!db) {
+                alert('❌ Database not available');
+                return;
+            }
+            
+            console.log('🔍 Checking all collections for calendar data...');
+            
+            // Common collection names that might contain calendar data
+            const possibleCollections = [
+                'calendars', 'subcalendars', 'teamup_calendars', 'teamup_subcalendars',
+                'calendar_settings', 'installer_calendars', 'schedule_calendars',
+                'settings', 'config', 'teamup_config', 'calendar_config'
+            ];
+            
+            let foundData = [];
+            
+            Promise.all(possibleCollections.map(collectionName => {
+                return db.collection(collectionName).limit(5).get()
+                    .then(snapshot => {
+                        if (!snapshot.empty) {
+                            console.log(`✅ Found data in collection: ${collectionName}`);
+                            snapshot.forEach(doc => {
+                                const data = doc.data();
+                                console.log(`📄 Document in ${collectionName}:`, data);
+                                foundData.push({ collection: collectionName, id: doc.id, data: data });
+                            });
+                        } else {
+                            console.log(`❌ No data in collection: ${collectionName}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.log(`❌ Error accessing ${collectionName}:`, error.message);
+                    });
+            })).then(() => {
+                console.log('🎯 SUMMARY - Found calendar data in:', foundData);
+                alert(`🔍 Found ${foundData.length} collections with data. Check console for details.`);
+            });
+        }
+        
         function showAllCollections() {
             console.log('🔍 SHOW COLLECTIONS (like SHOW TABLES)');
             
