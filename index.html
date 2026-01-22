@@ -2114,38 +2114,47 @@
         }
         
         function updateJobStatus(jobId) {
-            // Create status selection modal
-            const statusModalHTML = `
-                <div id="statusModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10001; display: flex; align-items: center; justify-content: center;">
-                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 350px; width: 90%;">
-                        <h3 style="margin: 0 0 15px 0; color: #2196F3; text-align: center;">🔄 Update Job Status</h3>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Status:</label>
-                            <select id="statusSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
-                                <option value="">Choose status...</option>
-                                <option value="Completed Ready For Inspection - Collected">✅ Completed Ready For Inspection - Collected</option>
-                                <option value="Completed Ready for Inspection - Not Collected">🔍 Completed Ready for Inspection - Not Collected</option>
-                                <option value="Not Complete">❌ Not Complete</option>
-                            </select>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notes (optional):</label>
-                            <textarea id="statusNotes" placeholder="Add any notes about this status update..." 
-                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
-                        </div>
-                        
-                        <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="saveJobStatus('${jobId}')" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; flex: 1;">💾 Save Status</button>
-                            <button onclick="closeStatusModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;">❌ Cancel</button>
+            console.log('🔍 Opening status modal for job:', jobId);
+            
+            try {
+                // Create status selection modal with higher z-index
+                const statusModalHTML = `
+                    <div id="statusModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; display: flex; align-items: center; justify-content: center;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 350px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                            <h3 style="margin: 0 0 15px 0; color: #2196F3; text-align: center;">🔄 Update Job Status</h3>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Status:</label>
+                                <select id="statusSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                    <option value="">Choose status...</option>
+                                    <option value="Completed Ready For Inspection - Collected">✅ Completed Ready For Inspection - Collected</option>
+                                    <option value="Completed Ready for Inspection - Not Collected">🔍 Completed Ready for Inspection - Not Collected</option>
+                                    <option value="Not Complete">❌ Not Complete</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notes (optional):</label>
+                                <textarea id="statusNotes" placeholder="Add any notes about this status update..." 
+                                    style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; justify-content: center;">
+                                <button onclick="saveJobStatus('${jobId}')" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; flex: 1;">💾 Save Status</button>
+                                <button onclick="closeStatusModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;">❌ Cancel</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-            
-            // Add status modal to page
-            document.body.insertAdjacentHTML('beforeend', statusModalHTML);
+                `;
+                
+                console.log('🔍 Adding status modal to page');
+                document.body.insertAdjacentHTML('beforeend', statusModalHTML);
+                console.log('🔍 Status modal added successfully');
+                
+            } catch (error) {
+                console.error('❌ Error creating status modal:', error);
+                alert('❌ Error opening status modal: ' + error.message);
+            }
         }
         
         function closeStatusModal() {
