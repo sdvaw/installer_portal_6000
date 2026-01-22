@@ -1353,7 +1353,7 @@
                                     </span>
                                 </div>
                                 <div class="text-sm text-gray-600">
-                                    <p><strong>Who:</strong> ${event.who?.map(w => w.name).join(', ') || 'Unassigned'}</p>
+                                    <p><strong>Who:</strong> ${Array.isArray(event.who) ? event.who.map(w => w.name).join(', ') : (event.who?.name || 'Unassigned')}</p>
                                     <p><strong>Where:</strong> ${event.location?.name || 'No location'}</p>
                                     ${event.notes ? `<p><strong>Notes:</strong> ${event.notes}</p>` : ''}
                                 </div>
