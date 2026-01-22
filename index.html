@@ -2156,11 +2156,24 @@
         }
         
         function saveJobStatus(jobId) {
+            console.log('🔍 Saving status for job:', jobId);
+            
             const statusSelect = document.getElementById('statusSelect');
             const statusNotes = document.getElementById('statusNotes');
             
-            const newStatus = statusSelect ? statusSelect.value : '';
+            console.log('🔍 Found statusSelect:', statusSelect);
+            console.log('🔍 Found statusNotes:', statusNotes);
+            
+            if (!statusSelect) {
+                alert('❌ Status selection not found');
+                return;
+            }
+            
+            const newStatus = statusSelect.value;
             const notes = statusNotes ? statusNotes.value.trim() : '';
+            
+            console.log('🔍 Selected status:', newStatus);
+            console.log('🔍 Notes:', notes);
             
             if (!newStatus) {
                 alert('❌ Please select a status');
@@ -2179,8 +2192,11 @@
                     updateData.statusNotes = notes;
                 }
                 
+                console.log('🔍 Updating job with data:', updateData);
+                
                 db.collection('jobs').doc(jobId).update(updateData)
                 .then(() => {
+                    console.log('✅ Status updated successfully!');
                     alert('✅ Status updated successfully!');
                     closeStatusModal();
                     closeJobPopup();
@@ -2190,8 +2206,12 @@
                     }
                 })
                 .catch(error => {
+                    console.error('❌ Error updating status:', error);
                     alert('❌ Error updating status: ' + error.message);
                 });
+            } else {
+                console.error('❌ Database not available');
+                alert('❌ Database not available');
             }
         }
         
