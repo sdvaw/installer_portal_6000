@@ -1994,6 +1994,17 @@
                                     scheduledDate = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
                                 }
                                 
+                                // Parse address from title if address field is empty
+                                let displayAddress = data.address || '';
+                                let displayCustomer = data.customer || '';
+                                
+                                // If title looks like an address and customer is missing/placeholder, use title as address
+                                if ((!displayAddress || displayCustomer === 'NO MAX' || !displayCustomer) && 
+                                    data.title && data.title.match(/^\d+\s+\w+/)) {
+                                    displayAddress = data.title;
+                                    displayCustomer = 'Customer';
+                                }
+                                
                                 calendarHTML += `
                                     <div style="border: 2px solid #4CAF50; padding: 15px; background: white; border-radius: 8px; margin: 10px 0; cursor: pointer;" 
                                          onclick="showJobDetails('${job.id}', 'jobs')">
@@ -2001,8 +2012,8 @@
                                             📋 ${data.title || 'No Title'} ✅
                                         </div>
                                         <div style="color: #666; font-size: 14px;">
-                                            👤 Customer: ${data.customer || 'No customer'}<br>
-                                            📍 Address: ${data.address || 'No address'}<br>
+                                            👤 Customer: ${displayCustomer || 'Customer'}<br>
+                                            📍 Address: ${displayAddress || 'No address'}<br>
                                             📅 Date: ${scheduledDate}<br>
                                             📞 Phone: ${data.phone || 'No phone'}<br>
                                             📧 Email: ${data.email || 'No email'}<br>
