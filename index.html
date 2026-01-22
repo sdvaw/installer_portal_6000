@@ -3210,12 +3210,29 @@
                     return null; // Skip this job
                 }
                 
+                // Extract phone number from notes if available
+                function extractPhoneFromNotes(notes) {
+                    if (!notes) return '';
+                    const phoneMatch = notes.match(/tel:\d+[\d\-\(\)\s]+/g);
+                    if (phoneMatch) {
+                        return phoneMatch[0].replace(/tel:/, '').trim();
+                    }
+                    return '';
+                }
+                
+                // Extract email from notes if available  
+                function extractEmailFromNotes(notes) {
+                    if (!notes) return '';
+                    const emailMatch = notes.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+                    return emailMatch ? emailMatch[0] : '';
+                }
+                
                 return {
                     id: event.id,
                     title: event.title,
                     customer: extractCustomerFromTitle(event.title),
-                    phone: '', // TeamUp location doesn't have phone field
-                    email: '', // TeamUp location doesn't have email field  
+                    phone: extractPhoneFromNotes(event.notes), // Extract phone from notes
+                    email: extractEmailFromNotes(event.notes), // Extract email from notes
                     address: event.location || '', // location is a string with full address
                     scheduledDate: new Date(event.start_dt),
                     // USE THE CORRECT TEAMUP FIELD NAMES!
