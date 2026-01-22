@@ -3128,6 +3128,8 @@
                 // Get calendar name from subcalendar ID using cache
                 const calendarName = getCalendarName(event.subcalendar_id);
                 
+                console.log('🔍 Processing event:', event.id, 'subcalendar_id:', event.subcalendar_id, '→ calendarName:', calendarName);
+                
                 return {
                     id: event.id,
                     title: event.title,
@@ -3164,6 +3166,7 @@
                     }
                 });
                 console.log('📅 Calendar assignments:', calendarAssignments);
+                console.log('🔍 Current subcalendarCache:', subcalendarCache);
             }
         }
 
