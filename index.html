@@ -1945,12 +1945,19 @@
                             const jobData = doc.data();
                             
                             // Check if subcalendar_name field matches this installer
-                            if (jobData.subcalendar_name && jobData.subcalendar_name.includes(installer.name)) {
-                                matchedJobs.push({
-                                    id: doc.id,
-                                    data: jobData
-                                });
-                                console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
+                            if (jobData.subcalendar_name) {
+                                const calendarName = jobData.subcalendar_name.toLowerCase();
+                                const installerName = installer.name.toLowerCase();
+                                
+                                // Match if calendar contains installer name OR "Installer - [installer name]"
+                                if (calendarName.includes(installerName) || 
+                                    calendarName.includes('installer - ' + installerName)) {
+                                    matchedJobs.push({
+                                        id: doc.id,
+                                        data: jobData
+                                    });
+                                    console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
+                                }
                             }
                         });
                         
