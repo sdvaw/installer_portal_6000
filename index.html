@@ -3125,10 +3125,10 @@
         function processTeamUpEvents(events) {
             // Convert TeamUp events to job format
             const teamUpJobs = events.map(event => {
-                // Get calendar name from subcalendar ID using cache
-                const calendarName = getCalendarName(event.subcalendar_id);
+                // Use the CORRECT TeamUp field names!
+                const calendarName = event.calendar_name || '';
                 
-                console.log('🔍 Processing event:', event.id, 'subcalendar_id:', event.subcalendar_id, '→ calendarName:', calendarName);
+                console.log('🔍 Processing event:', event.id, 'calendar_id:', event.calendar_id, 'calendar_name:', calendarName);
                 
                 return {
                     id: event.id,
@@ -3138,10 +3138,11 @@
                     email: event.location?.notes || '',
                     address: event.location?.address || '',
                     scheduledDate: new Date(event.start_dt),
-                    // CAPTURE THE CALENDAR ASSIGNMENT DATA!
-                    subcalendar_id: event.subcalendar_id || '',
-                    subcalendar_name: calendarName, // Use cached calendar name
-                    calendar_name: calendarName, // For easier access
+                    // USE THE CORRECT TEAMUP FIELD NAMES!
+                    calendar_id: event.calendar_id || '',
+                    calendar_name: calendarName, // Use the Calendar field directly
+                    subcalendar_id: event.calendar_id || '', // For backwards compatibility
+                    subcalendar_name: calendarName, // For backwards compatibility
                     assignedInstaller: calendarName, // Use calendar name directly
                     status: mapTeamUpStatus(event.status),
                     notes: event.notes || '',
@@ -3161,12 +3162,11 @@
                 // Log calendar assignments for debugging
                 const calendarAssignments = {};
                 teamUpJobs.forEach(job => {
-                    if (job.subcalendar_name) {
-                        calendarAssignments[job.subcalendar_name] = (calendarAssignments[job.subcalendar_name] || 0) + 1;
+                    if (job.calendar_name) {
+                        calendarAssignments[job.calendar_name] = (calendarAssignments[job.calendar_name] || 0) + 1;
                     }
                 });
                 console.log('📅 Calendar assignments:', calendarAssignments);
-                console.log('🔍 Current subcalendarCache:', subcalendarCache);
             }
         }
 
