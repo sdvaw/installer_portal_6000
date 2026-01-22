@@ -2090,8 +2090,8 @@
                             </div>
                             
                             <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
+                                <button onclick="console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}');" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
                                 <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
-                                <button onclick="updateJobStatus('${jobId}')" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
                                 <button onclick="getDirections('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Get Directions</button>
                             </div>
                         </div>
