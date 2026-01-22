@@ -2114,14 +2114,80 @@
         }
         
         function updateJobStatus(jobId) {
-            const newStatus = prompt('Enter new status for this job:');
-            if (newStatus && db) {
-                db.collection('jobs').doc(jobId).update({
+            // Create status selection modal
+            const statusModalHTML = `
+                <div id="statusModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10001; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 350px; width: 90%;">
+                        <h3 style="margin: 0 0 15px 0; color: #2196F3; text-align: center;">🔄 Update Job Status</h3>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Select Status:</label>
+                            <select id="statusSelect" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                                <option value="">Choose status...</option>
+                                <option value="Scheduled">📅 Scheduled</option>
+                                <option value="In Progress">🔧 In Progress</option>
+                                <option value="Completed">✅ Completed</option>
+                                <option value="Delayed">⏰ Delayed</option>
+                                <option value="Issue Reported">⚠️ Issue Reported</option>
+                                <option value="Customer Rescheduled">📞 Customer Rescheduled</option>
+                                <option value="Parts Ordered">📦 Parts Ordered</option>
+                                <option value="Waiting on Customer">⏳ Waiting on Customer</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notes (optional):</label>
+                            <textarea id="statusNotes" placeholder="Add any notes about this status update..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; min-height: 80px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="saveJobStatus('${jobId}')" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; flex: 1;">💾 Save Status</button>
+                            <button onclick="closeStatusModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add status modal to page
+            document.body.insertAdjacentHTML('beforeend', statusModalHTML);
+        }
+        
+        function closeStatusModal() {
+            const modal = document.getElementById('statusModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveJobStatus(jobId) {
+            const statusSelect = document.getElementById('statusSelect');
+            const statusNotes = document.getElementById('statusNotes');
+            
+            const newStatus = statusSelect ? statusSelect.value : '';
+            const notes = statusNotes ? statusNotes.value.trim() : '';
+            
+            if (!newStatus) {
+                alert('❌ Please select a status');
+                return;
+            }
+            
+            if (db) {
+                const updateData = {
                     status: newStatus,
-                    statusUpdated: new Date().toISOString()
-                })
+                    statusUpdated: new Date().toISOString(),
+                    statusUpdatedBy: window.installerData ? window.installerData.name : 'Unknown Installer'
+                };
+                
+                // Add notes if provided
+                if (notes) {
+                    updateData.statusNotes = notes;
+                }
+                
+                db.collection('jobs').doc(jobId).update(updateData)
                 .then(() => {
                     alert('✅ Status updated successfully!');
+                    closeStatusModal();
                     closeJobPopup();
                     // Reload jobs to show updated status
                     if (window.installerData) {
