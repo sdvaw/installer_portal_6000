@@ -2923,6 +2923,48 @@
         }
 
         // TeamUp Integration Functions
+        // Global subcalendar cache
+        let subcalendarCache = {};
+        
+        // Cache subcalendars for calendar name lookup
+        async function cacheSubcalendars() {
+            if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
+                console.log('⚠️ TeamUp not configured - skipping subcalendar cache');
+                return;
+            }
+            
+            try {
+                console.log('📋 Caching TeamUp subcalendars...');
+                const response = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/subcalendars`, {
+                    headers: {
+                        'Teamup-Token': teamupConfig.apiKey
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const subcalendars = data.subcalendars || [];
+                    
+                    // Create ID → name map
+                    subcalendarCache = {};
+                    subcalendars.forEach(subcalendar => {
+                        subcalendarCache[subcalendar.id] = subcalendar.name;
+                    });
+                    
+                    console.log('✅ Cached', subcalendars.length, 'subcalendars:', subcalendarCache);
+                } else {
+                    console.error('❌ Failed to fetch subcalendars:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Error caching subcalendars:', error);
+            }
+        }
+        
+        // Get calendar name from subcalendar ID
+        function getCalendarName(subcalendarId) {
+            return subcalendarCache[subcalendarId] || '';
+        }
+        
         function syncWithTeamUp() {
             if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
                 console.log('⚠️ TeamUp not configured - skipping sync');
@@ -2931,24 +2973,27 @@
             
             console.log('🔄 Syncing with TeamUp...');
             
-            // Calculate date range - current week + next 3 weeks
-            const now = new Date();
-            const currentWeekStart = getWeekStart(now);
-            const threeWeeksEnd = new Date(currentWeekStart.getTime() + (28 * 24 * 60 * 60 * 1000)); // 4 weeks total
-            
-            // Format dates for TeamUp API
-            const startDateStr = currentWeekStart.toISOString().split('T')[0];
-            const endDateStr = threeWeeksEnd.toISOString().split('T')[0];
-            
-            console.log(`📅 Syncing events from ${startDateStr} to ${endDateStr} (current week + 3 weeks)`);
-            
-            // TeamUp API call with optimized date range
-            const apiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
-            
-            return fetch(apiUrl, {
-                headers: {
-                    'Teamup-Token': teamupConfig.apiKey
-                }
+            // First, cache subcalendars
+            return cacheSubcalendars().then(() => {
+                // Calculate date range - current week + next 3 weeks
+                const now = new Date();
+                const currentWeekStart = getWeekStart(now);
+                const threeWeeksEnd = new Date(currentWeekStart.getTime() + (28 * 24 * 60 * 60 * 1000)); // 4 weeks total
+                
+                // Format dates for TeamUp API
+                const startDateStr = currentWeekStart.toISOString().split('T')[0];
+                const endDateStr = threeWeeksEnd.toISOString().split('T')[0];
+                
+                console.log(`📅 Syncing events from ${startDateStr} to ${endDateStr} (current week + 3 weeks)`);
+                
+                // TeamUp API call with optimized date range
+                const apiUrl = `https://api.teamup.com/${teamupConfig.calendarId}/events?startDate=${startDateStr}&endDate=${endDateStr}`;
+                
+                return fetch(apiUrl, {
+                    headers: {
+                        'Teamup-Token': teamupConfig.apiKey
+                    }
+                });
             })
             .then(response => response.json())
             .then(data => {
@@ -2978,25 +3023,30 @@
 
         function processTeamUpEvents(events) {
             // Convert TeamUp events to job format
-            const teamUpJobs = events.map(event => ({
-                id: event.id,
-                title: event.title,
-                customer: extractCustomerFromTitle(event.title),
-                phone: event.location?.phone || '',
-                email: event.location?.notes || '',
-                address: event.location?.address || '',
-                scheduledDate: new Date(event.start_dt),
-                // CAPTURE THE CALENDAR ASSIGNMENT DATA!
-                subcalendar_id: event.subcalendar_id || '',
-                subcalendar_name: event.subcalendar_name || '',
-                calendar_name: event.subcalendar_name || '', // For easier access
-                assignedInstaller: event.subcalendar_name || null, // Use subcalendar_name directly
-                status: mapTeamUpStatus(event.status),
-                notes: event.notes || '',
-                estimatedDuration: formatDuration(event.end_dt - event.start_dt),
-                priority: mapTeamUpPriority(event.title),
-                source: 'teamup'
-            }));
+            const teamUpJobs = events.map(event => {
+                // Get calendar name from subcalendar ID using cache
+                const calendarName = getCalendarName(event.subcalendar_id);
+                
+                return {
+                    id: event.id,
+                    title: event.title,
+                    customer: extractCustomerFromTitle(event.title),
+                    phone: event.location?.phone || '',
+                    email: event.location?.notes || '',
+                    address: event.location?.address || '',
+                    scheduledDate: new Date(event.start_dt),
+                    // CAPTURE THE CALENDAR ASSIGNMENT DATA!
+                    subcalendar_id: event.subcalendar_id || '',
+                    subcalendar_name: calendarName, // Use cached calendar name
+                    calendar_name: calendarName, // For easier access
+                    assignedInstaller: calendarName, // Use calendar name directly
+                    status: mapTeamUpStatus(event.status),
+                    notes: event.notes || '',
+                    estimatedDuration: formatDuration(event.end_dt - event.start_dt),
+                    priority: mapTeamUpPriority(event.title),
+                    source: 'teamup'
+                };
+            });
             
             // Save to Firebase
             if (db) {
@@ -3004,6 +3054,15 @@
                     db.collection('jobs').doc(job.id).set(job, { merge: true });
                 });
                 console.log('✅ Saved', teamUpJobs.length, 'TeamUp jobs to Firebase');
+                
+                // Log calendar assignments for debugging
+                const calendarAssignments = {};
+                teamUpJobs.forEach(job => {
+                    if (job.subcalendar_name) {
+                        calendarAssignments[job.subcalendar_name] = (calendarAssignments[job.subcalendar_name] || 0) + 1;
+                    }
+                });
+                console.log('📅 Calendar assignments:', calendarAssignments);
             }
         }
 
