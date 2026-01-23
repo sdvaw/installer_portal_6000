@@ -594,6 +594,24 @@
             measurementId: "G-93D62ZGLEJ"
         };
 
+        // Disable right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Disable text selection on installer portal
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
+        // Disable drag and drop
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+        });
+        
         // Initialize Firebase with error handling
         let auth, db, storage;
         
