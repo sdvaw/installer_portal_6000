@@ -3074,7 +3074,7 @@
         
         // Load installer jobs
         function loadInstallerJobsWithCalendar(installer) {
-            console.log('🔍 Loading jobs for installer:', installer.name);
+            console.log('🔍 Loading jobs for installer:', installer.name, 'Week offset:', currentWeekOffset);
             
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
@@ -3082,19 +3082,29 @@
                 return;
             }
             
-            // Check if db and installer.id exist
-            if (!db || !installer.id) {
-                console.error('❌ Database or installer ID missing');
-                return;
-            }
-            
             // Show loading state first
             jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
             
+            // Calculate week date range
+            const today = new Date();
+            const weekStart = new Date(today.getTime() + (currentWeekOffset * 7 * 24 * 60 * 60 * 1000));
+            const weekEnd = new Date(weekStart.getTime() + (6 * 24 * 60 * 60 * 1000));
+            
+            // Set week start to Monday and week end to Sunday
+            const dayOfWeek = weekStart.getDay();
+            const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday = 0, Monday = 1
+            weekStart.setDate(weekStart.getDate() + mondayOffset);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            // Set times to start/end of day
+            weekStart.setHours(0, 0, 0, 0);
+            weekEnd.setHours(23, 59, 59, 999);
+            
+            console.log('📅 Week range:', weekStart.toDateString(), 'to', weekEnd.toDateString());
+            
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                
-                // Get all jobs and show complete structure
+                // Get all jobs and filter by week range
                 db.collection('jobs').get()
                     .then(snapshot => {
                         if (snapshot.empty) {
@@ -3102,34 +3112,43 @@
                             return;
                         }
                         
-                        let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
                         let matchedJobs = [];
                         
                         snapshot.forEach(doc => {
                             const jobData = doc.data();
                             console.log('🔍 Processing job:', doc.id, jobData);
                             
-
                             // Match jobs to installer by calendar name
                             if (jobData.subcalendar_name && 
                                 (jobData.subcalendar_name.includes(installer.name) || 
                                  jobData.subcalendar_name.includes('Installer - ' + installer.name))) {
-                                matchedJobs.push({
-                                    id: doc.id,
-                                    ...jobData
-                                });
+                                
+                                // Check if job falls within the current week range
+                                let jobDate = null;
+                                if (jobData.start) {
+                                    jobDate = new Date(jobData.start.seconds * 1000);
+                                } else if (jobData.scheduledDate) {
+                                    jobDate = new Date(jobData.scheduledDate.seconds * 1000);
+                                }
+                                
+                                if (jobDate && jobDate >= weekStart && jobDate <= weekEnd) {
+                                    matchedJobs.push({
+                                        id: doc.id,
+                                        ...jobData
+                                    });
+                                }
                             }
                         });
                         
                         if (matchedJobs.length === 0) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found for this installer</div>';
+                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found for this week</div>';
                             return;
                         }
                         
                         // Display matched jobs
                         let jobsHTML = '<div style="display: grid; gap: 10px;">';
                         matchedJobs.forEach(job => {
-                            const jobDate = job.start ? new Date(job.start).toLocaleDateString() : 'No date';
+                            const jobDate = job.start ? new Date(job.start.seconds * 1000).toLocaleDateString() : 'No date';
                             const jobTitle = job.title || 'No title';
                             const jobAddress = job.address || job.location || 'No address';
                             const jobCustomer = job.customer || 'No customer';
@@ -3138,7 +3157,6 @@
                             const jobStatus = job.status || 'scheduled';
                             const windowDoorCounts = job.windowDoorCounts || {};
                             
-
                             jobsHTML += `
                                 <div onclick="showJobPopup('${job.id}', '${encodeURIComponent(JSON.stringify(job))}')" 
                                      style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
@@ -3168,7 +3186,7 @@
                         jobsHTML += '</div>';
                         
                         jobsListEl.innerHTML = jobsHTML;
-                        console.log('✅ Jobs loaded successfully');
+                        console.log('✅ Jobs loaded successfully for week:', matchedJobs.length, 'jobs');
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
@@ -6039,14 +6057,20 @@
 
         function previousWeek() {
             currentWeekOffset--;
-            // loadJobs(); // Disabled - causing null uid error
-            console.log('📅 Previous week navigation disabled');
+            console.log('📅 Previous week - offset:', currentWeekOffset);
+            if (window.installerData) {
+                loadInstallerJobsWithCalendar(window.installerData);
+            }
+            updateWeekRange();
         }
 
         function nextWeek() {
             currentWeekOffset++;
-            // loadJobs(); // Disabled - causing null uid error
-            console.log('📅 Next week navigation disabled');
+            console.log('📅 Next week - offset:', currentWeekOffset);
+            if (window.installerData) {
+                loadInstallerJobsWithCalendar(window.installerData);
+            }
+            updateWeekRange();
         }
 
         function updateWeekRange() {
