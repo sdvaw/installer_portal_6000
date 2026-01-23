@@ -2153,6 +2153,8 @@
                                 <option value="fasteners">⚙️ Fasteners</option>
                                 <option value="tape">📎 Tape</option>
                                 <option value="final">✅ Final Pictures</option>
+                                <option value="walkthrough">🚶 Customer Walkthrough</option>
+                                <option value="certificate">📜 Certificate of Completion</option>
                                 <option value="defect">🚨 Defect Report</option>
                             </select>
                         </div>
@@ -2318,6 +2320,29 @@
                     `;
                     break;
                     
+                case 'walkthrough':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="customer_signoff">✍️ Customer Sign-off</option>
+                        <option value="final_inspection">🔍 Final Inspection</option>
+                        <option value="operation_demo">👨‍🏫 Operation Demo</option>
+                        <option value="customer_questions">❓ Customer Questions</option>
+                    `;
+                    break;
+                    
+                case 'certificate':
+                    subCategoryDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="signed_certificate">📝 Signed Certificate</option>
+                        <option value="completion_form">📋 Completion Form</option>
+                        <option value="warranty_info">🛡️ Warranty Information</option>
+                        <option value="final_paperwork">📄 Final Paperwork</option>
+                    `;
+                    break;
+                    
                 case 'defect':
                     subCategoryDiv.style.display = 'block';
                     windowDoorDiv.style.display = 'block';
@@ -2447,6 +2472,8 @@
                 case 'fasteners': tags.push('installation', 'hardware'); break;
                 case 'tape': tags.push('installation', 'sealing'); break;
                 case 'final': tags.push('completion', 'documentation'); break;
+                case 'walkthrough': tags.push('customer', 'completion', 'signoff'); break;
+                case 'certificate': tags.push('documentation', 'completion', 'legal'); break;
                 case 'defect': tags.push('issue', 'attention_needed'); break;
             }
             
@@ -2595,14 +2622,16 @@
             }
             
             // Check if db and installer.id exist
-            alert('🔍 Debug: db = ' + (db ? 'exists' : 'NULL') + ', installer.id = ' + (installer.id || 'NULL'));
+            if (!db || !installer.id) {
+                console.error('❌ Database or installer ID missing');
+                return;
+            }
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs and showing ALL fields...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
             
             // Load actual jobs from Firestore
             if (db && installer.id) {
-                alert('🔧 Showing ALL job fields to find TeamUp calendar data...');
                 
                 // Get all jobs and show complete structure
                 db.collection('jobs').get()
