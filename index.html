@@ -5007,24 +5007,6 @@
             `).join('');
         }
 
-        // Update job status in Firestore
-        async function updateJobStatus(jobId, newStatus) {
-            try {
-                const jobRef = db.collection('jobs').doc(jobId);
-                
-                await jobRef.update({
-                    status: newStatus,
-                    statusUpdatedAt: new Date(),
-                    statusUpdatedBy: window.installerData ? window.installerData.id : 'Unknown Installer'
-                });
-
-                console.log(`Job ${jobId} status updated to: ${newStatus}`);
-            } catch (error) {
-                console.error('Failed to update job status:', error);
-                showError('Failed to update job status');
-            }
-        }
-
         // Camera capture for specific job (mobile-first)
         function capturePhotoForJob(jobId, type) {
             console.log('Capturing photo for job:', jobId, 'type:', type);
