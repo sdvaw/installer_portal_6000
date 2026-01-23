@@ -2134,6 +2134,7 @@
         
         function capturePhoto(jobId) {
             console.log('📷 Opening structured photo capture for job:', jobId);
+            closeJobPopup(); // Close job popup first
             
             // Create structured photo capture modal
             const photoModalHTML = `
@@ -2761,13 +2762,12 @@
         }
         
         // Load installer jobs
-        function loadInstallerJobs(installer) {
+        function loadInstallerJobsWithCalendar(installer) {
             console.log('🔍 Loading jobs for installer:', installer.name);
             
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
-                alert('❌ jobsList element not found!');
                 return;
             }
             
@@ -2792,66 +2792,77 @@
                         }
                         
                         let calendarHTML = '<div style="color: #333; background: white; padding: 20px;">';
-                        calendarHTML += '<h2>🔍 ALL JOB FIELDS - Looking for TeamUp Calendar Data</h2>';
-                        calendarHTML += '<div style="background: #fff3cd; padding: 10px; margin: 10px 0; border-radius: 4px;">';
-                        calendarHTML += '🔍 Found ' + snapshot.size + ' jobs. Showing ALL fields to find calendar assignment data...';
-                        calendarHTML += '</div>';
+                        let matchedJobs = [];
                         
-                        snapshot.forEach((doc, index) => {
-                            const data = doc.data();
+                        snapshot.forEach(doc => {
+                            const jobData = doc.data();
+                            console.log('🔍 Processing job:', doc.id, jobData);
                             
-                            calendarHTML += `
-                                <div style="border: 2px solid #2196F3; padding: 15px; background: white; border-radius: 8px; margin: 10px 0;">
-                                    <div style="font-weight: bold; color: #2196F3; margin-bottom: 10px;">
-                                        📄 Job ${index + 1}: ${doc.id}
+
+                            // Match jobs to installer by calendar name
+                            if (jobData.subcalendar_name && 
+                                (jobData.subcalendar_name.includes(installer.name) || 
+                                 jobData.subcalendar_name.includes('Installer - ' + installer.name))) {
+                                matchedJobs.push({
+                                    id: doc.id,
+                                    ...jobData
+                                });
+                            }
+                        });
+                        
+                        if (matchedJobs.length === 0) {
+                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found for this installer</div>';
+                            return;
+                        }
+                        
+                        // Display matched jobs
+                        let jobsHTML = '<div style="display: grid; gap: 10px;">';
+                        matchedJobs.forEach(job => {
+                            const jobDate = job.start ? new Date(job.start).toLocaleDateString() : 'No date';
+                            const jobTitle = job.title || 'No title';
+                            const jobAddress = job.address || job.location || 'No address';
+                            const jobCustomer = job.customer || 'No customer';
+                            const jobPhone = job.phone || 'No phone';
+                            const jobEmail = job.email || 'No email';
+                            const jobStatus = job.status || 'scheduled';
+                            const windowDoorCounts = job.windowDoorCounts || {};
+                            
+
+                            jobsHTML += `
+                                <div onclick="showJobPopup('${job.id}', '${encodeURIComponent(JSON.stringify(job))}')" 
+                                     style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
+                                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
+                                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
+                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                                        <div style="flex: 1;">
+                                            <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px;">${jobTitle}</div>
+                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">📅 ${jobDate}</div>
+                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">👤 ${jobCustomer}</div>
+                                            <div style="font-size: 12px; color: #666;">📍 ${jobAddress}</div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="background: ${jobStatus === 'completed' ? '#4CAF50' : jobStatus === 'in-progress' ? '#FF9800' : '#2196F3'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-bottom: 4px;">
+                                                ${jobStatus || 'scheduled'}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style="background: #f8f9fa; padding: 10px; border-radius: 4px;">
-                                        <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
-                                            🔍 Looking for calendar/installer assignment for: <strong>${installer.name}</strong>
-                                        </div>
-                                        <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 10px;">
-                                            <strong>ALL FIELDS IN THIS JOB:</strong><br>
-                                            <pre style="white-space: pre-wrap; word-wrap: break-word; margin: 0;">${JSON.stringify(data, null, 2)}</pre>
-                                        </div>
+                                    <div style="display: flex; gap: 8px; font-size: 11px; color: #888;">
+                                        ${windowDoorCounts.Windows ? `<span>🪟 ${windowDoorCounts.Windows}</span>` : ''}
+                                        ${windowDoorCounts.Doors ? `<span>🚪 ${windowDoorCounts.Doors}</span>` : ''}
+                                        ${windowDoorCounts.SGD ? `<span>🚪 ${windowDoorCounts.SGD}</span>` : ''}
                                     </div>
                                 </div>
                             `;
                         });
+                        jobsHTML += '</div>';
                         
-                        calendarHTML += '</div>';
-                        jobsListEl.innerHTML = calendarHTML;
-                        
-                        alert('🔍 Showing ALL job fields! Look for calendar/installer assignment data in the JSON.');
+                        jobsListEl.innerHTML = jobsHTML;
+                        console.log('✅ Jobs loaded successfully');
                     })
                     .catch(error => {
                         console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error loading jobs: ' + error.message);
+                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading jobs</div>';
                     });
-                
-            } else {
-                alert('❌ Database not available or installer ID missing');
-                jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
-            }
-        }
-        
-        // Assign job to installer
-        function assignJobToInstaller(jobId, installerId) {
-            alert('🔧 Assigning job ' + jobId + ' to installer ' + installerId);
-            
-            if (db) {
-                db.collection('jobs').doc(jobId).update({
-                    assignedInstaller: installerId
-                })
-                .then(() => {
-                    alert('✅ Job assigned successfully!');
-                    // Reload the jobs to show the updated assignment
-                    if (window.installerData) {
-                        loadInstallerJobs(window.installerData);
-                    }
-                })
-                .catch(error => {
-                    alert('❌ Error assigning job: ' + error.message);
-                });
             }
         }
         
