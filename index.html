@@ -2110,8 +2110,8 @@
                             <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
                                 <button onclick="try { console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}'); } catch(error) { console.error('❌ Error in status update:', error); alert('❌ Error: ' + error.message); }" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
                                 <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
-                                <button onclick="startWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Walkthrough</button>
-                                <button onclick="startCertificate('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
+                                <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Final Walkthrough</button>
+                                <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
                                 <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Directions</button>
                             </div>
                         </div>
@@ -2599,18 +2599,18 @@
             return tags;
         }
         
-        function startWalkthrough(jobId) {
-            console.log('🚶 Starting customer walkthrough for job:', jobId);
+        function startFinalWalkthrough(jobId) {
+            console.log('🚶 Starting final walkthrough for job:', jobId);
             closeJobPopup(); // Close job popup first
             
-            // Create walkthrough modal
+            // Create final walkthrough modal
             const walkthroughModalHTML = `
                 <div id="walkthroughModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
                     <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                        <h3 style="margin: 0 0 20px 0; color: #17a2b8; text-align: center;">🚶 Customer Walkthrough</h3>
+                        <h3 style="margin: 0 0 20px 0; color: #17a2b8; text-align: center;">🚶 Final Walkthrough</h3>
                         
                         <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
-                            <h4 style="margin: 0 0 15px 0; color: #17a2b8;">Walkthrough Checklist</h4>
+                            <h4 style="margin: 0 0 15px 0; color: #17a2b8;">Final Walkthrough Checklist</h4>
                             <div style="display: flex; flex-direction: column; gap: 10px;">
                                 <label style="display: flex; align-items: center; gap: 10px;">
                                     <input type="checkbox" id="walkthroughCheck1" style="transform: scale(1.2);">
@@ -2646,12 +2646,12 @@
                         
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; margin-bottom: 10px; font-weight: bold;">Notes:</label>
-                            <textarea id="walkthroughNotes" placeholder="Add any notes about the walkthrough..." 
+                            <textarea id="walkthroughNotes" placeholder="Add any notes about the final walkthrough..." 
                                 style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical;"></textarea>
                         </div>
                         
                         <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="saveWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Walkthrough</button>
+                            <button onclick="saveFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Final Walkthrough</button>
                             <button onclick="closeWalkthroughModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
                         </div>
                     </div>
@@ -2664,7 +2664,7 @@
             setTimeout(() => setupWalkthroughSignatureCanvas(), 100);
         }
         
-        function startCertificate(jobId) {
+        function startCertificateOfCompletion(jobId) {
             console.log('📜 Starting certificate of completion for job:', jobId);
             closeJobPopup(); // Close job popup first
             
@@ -2675,12 +2675,11 @@
                         <h3 style="margin: 0 0 20px 0; color: #6f42c1; text-align: center;">📜 Certificate of Completion</h3>
                         
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Document Type:</label>
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Certificate Type:</label>
                             <select id="certificateType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="signed_certificate">📝 Signed Certificate</option>
-                                <option value="completion_form">📋 Completion Form</option>
-                                <option value="warranty_info">🛡️ Warranty Information</option>
-                                <option value="final_paperwork">📄 Final Paperwork</option>
+                                <option value="certificate_of_completion">📜 Certificate of Completion</option>
+                                <option value="final_inspection">🔍 Final Inspection Report</option>
+                                <option value="customer_acceptance">✍️ Customer Acceptance</option>
                             </select>
                         </div>
                         
@@ -2700,7 +2699,7 @@
                         </div>
                         
                         <div style="display: flex; gap: 10px; justify-content: center;">
-                            <button onclick="saveCertificate('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Certificate</button>
+                            <button onclick="saveCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Certificate</button>
                             <button onclick="closeCertificateModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
                         </div>
                     </div>
@@ -2788,12 +2787,12 @@
             }
         }
         
-        function saveWalkthrough(jobId) {
+        function saveFinalWalkthrough(jobId) {
             const checkboxes = ['walkthroughCheck1', 'walkthroughCheck2', 'walkthroughCheck3', 'walkthroughCheck4', 'walkthroughCheck5'];
             const allChecked = checkboxes.every(id => document.getElementById(id).checked);
             
             if (!allChecked) {
-                alert('❌ All walkthrough checklist items must be checked before saving');
+                alert('❌ All final walkthrough checklist items must be checked before saving');
                 return;
             }
             
@@ -2809,7 +2808,7 @@
                 jobId: jobId,
                 installerId: window.installerData.id,
                 installerName: window.installerData.name,
-                type: 'walkthrough',
+                type: 'final_walkthrough',
                 checklist: {
                     allWindowsOperate: document.getElementById('walkthroughCheck1').checked,
                     locksFunction: document.getElementById('walkthroughCheck2').checked,
@@ -2823,15 +2822,15 @@
             };
             
             if (db) {
-                db.collection('walkthroughs').add(walkthroughData)
+                db.collection('final_walkthroughs').add(walkthroughData)
                 .then(() => {
-                    console.log('✅ Walkthrough saved successfully');
-                    alert('✅ Walkthrough completed successfully!');
+                    console.log('✅ Final walkthrough saved successfully');
+                    alert('✅ Final walkthrough completed successfully!');
                     closeWalkthroughModal();
                 })
                 .catch(error => {
-                    console.error('❌ Error saving walkthrough:', error);
-                    alert('❌ Error saving walkthrough: ' + error.message);
+                    console.error('❌ Error saving final walkthrough:', error);
+                    alert('❌ Error saving final walkthrough: ' + error.message);
                 });
             }
         }
@@ -2911,7 +2910,7 @@
             }
         }
         
-        function saveCertificate(jobId) {
+        function saveCertificateOfCompletion(jobId) {
             const signatureData = getCertificateSignatureData();
             if (!signatureData) {
                 alert('❌ Customer signature is required');
@@ -2925,7 +2924,7 @@
                 jobId: jobId,
                 installerId: window.installerData.id,
                 installerName: window.installerData.name,
-                type: 'certificate',
+                type: 'certificate_of_completion',
                 certificateType: certificateType,
                 customerSignature: signatureData,
                 notes: notes,
@@ -2933,15 +2932,15 @@
             };
             
             if (db) {
-                db.collection('certificates').add(certificateData)
+                db.collection('certificates_of_completion').add(certificateData)
                 .then(() => {
-                    console.log('✅ Certificate saved successfully');
-                    alert('✅ Certificate completed successfully!');
+                    console.log('✅ Certificate of completion saved successfully');
+                    alert('✅ Certificate of completion completed successfully!');
                     closeCertificateModal();
                 })
                 .catch(error => {
-                    console.error('❌ Error saving certificate:', error);
-                    alert('❌ Error saving certificate: ' + error.message);
+                    console.error('❌ Error saving certificate of completion:', error);
+                    alert('❌ Error saving certificate of completion: ' + error.message);
                 });
             }
         }
