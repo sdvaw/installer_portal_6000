@@ -2133,39 +2133,77 @@
         }
         
         function capturePhoto(jobId) {
-            console.log('📷 Opening photo capture for job:', jobId);
+            console.log('📷 Opening structured photo capture for job:', jobId);
             
-            // Create photo capture modal
+            // Create structured photo capture modal
             const photoModalHTML = `
-                <div id="photoModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center;">
-                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; text-align: center;">
-                        <h3 style="margin: 0 0 20px 0; color: #2196F3;">📷 Capture Photo</h3>
+                <div id="photoModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <h3 style="margin: 0 0 20px 0; color: #2196F3; text-align: center;">📷 Job Photo Documentation</h3>
                         
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Photo Type:</label>
-                            <select id="photoType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="before">📸 Before Photo</option>
-                                <option value="after">✅ After Photo</option>
-                                <option value="defect">⚠️ Defect Photo</option>
-                                <option value="progress">🔄 Progress Photo</option>
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Photo Category:</label>
+                            <select id="photoCategory" onchange="updatePhotoOptions()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Select category...</option>
+                                <option value="sign">📝 Sign Photo</option>
+                                <option value="before">📸 Before Pictures</option>
+                                <option value="existing_damage">⚠️ Existing Damage</option>
+                                <option value="inspection">🔍 Inspection Pictures</option>
+                                <option value="bucking">🔨 Bucking</option>
+                                <option value="fasteners">⚙️ Fasteners</option>
+                                <option value="tape">📎 Tape</option>
+                                <option value="final">✅ Final Pictures</option>
+                                <option value="defect">🚨 Defect Report</option>
+                            </select>
+                        </div>
+                        
+                        <div id="subCategoryDiv" style="margin-bottom: 20px; display: none;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Sub-Category:</label>
+                            <select id="photoSubCategory" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Select sub-category...</option>
+                            </select>
+                        </div>
+                        
+                        <div id="windowDoorDiv" style="margin-bottom: 20px; display: none;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Window/Door Designation:</label>
+                            <select id="windowDoorType" onchange="updateDesignations()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
+                                <option value="">Select type...</option>
+                                <option value="window">🪟 Window</option>
+                                <option value="door">🚪 Door</option>
+                                <option value="slider">🚪 Sliding Door</option>
+                            </select>
+                            
+                            <select id="designationNumber" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Select designation...</option>
+                            </select>
+                        </div>
+                        
+                        <div id="buildingSideDiv" style="margin-bottom: 20px; display: none;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Building Side:</label>
+                            <select id="buildingSide" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="">Select side...</option>
+                                <option value="front">🏠 Front</option>
+                                <option value="left">⬅️ Left Side</option>
+                                <option value="right">➡️ Right Side</option>
+                                <option value="rear">🔙 Rear</option>
                             </select>
                         </div>
                         
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Notes (optional):</label>
-                            <textarea id="photoNotes" placeholder="Add notes about this photo..." 
-                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; resize: vertical;"></textarea>
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Comments/Notes:</label>
+                            <textarea id="photoNotes" placeholder="Add detailed notes about this photo..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical;"></textarea>
                         </div>
                         
-                        <div id="photoPreview" style="margin-bottom: 20px; min-height: 100px; border: 2px dashed #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        <div id="photoPreview" style="margin-bottom: 20px; min-height: 120px; border: 2px dashed #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999;">
                             <span>📷 No photo selected</span>
                         </div>
                         
                         <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
                         
-                        <div style="display: flex; gap: 10px; justify-content: center;">
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                             <button onclick="document.getElementById('photoInput').click()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Take Photo</button>
-                            <button onclick="savePhoto('${jobId}')" style="background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Photo</button>
+                            <button onclick="saveStructuredPhoto('${jobId}')" style="background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Photo</button>
                             <button onclick="closePhotoModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
                         </div>
                     </div>
@@ -2188,17 +2226,131 @@
             });
         }
         
-        function closePhotoModal() {
-            const modal = document.getElementById('photoModal');
-            if (modal) {
-                modal.remove();
+        function updatePhotoOptions() {
+            const category = document.getElementById('photoCategory').value;
+            const subCategoryDiv = document.getElementById('subCategoryDiv');
+            const windowDoorDiv = document.getElementById('windowDoorDiv');
+            const buildingSideDiv = document.getElementById('buildingSideDiv');
+            const subCategorySelect = document.getElementById('photoSubCategory');
+            
+            // Reset all
+            subCategoryDiv.style.display = 'none';
+            windowDoorDiv.style.display = 'none';
+            buildingSideDiv.style.display = 'none';
+            subCategorySelect.innerHTML = '<option value="">Select sub-category...</option>';
+            
+            switch(category) {
+                case 'sign':
+                    subCategoryDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="job_sign">📝 Job Sign</option>
+                        <option value="permit_sign">📋 Permit Sign</option>
+                        <option value="safety_signs">⚠️ Safety Signs</option>
+                    `;
+                    break;
+                    
+                case 'before':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="front">🏠 Front View</option>
+                        <option value="side1">⬅️ Side 1</option>
+                        <option value="side2">➡️ Side 2</option>
+                        <option value="rear">🔙 Rear View</option>
+                    `;
+                    break;
+                    
+                case 'existing_damage':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="general">⚠️ General Damage</option>
+                        <option value="water_damage">💧 Water Damage</option>
+                        <option value="structural">🏗️ Structural Issues</option>
+                        <option value="previous_work">🔧 Previous Work</option>
+                    `;
+                    break;
+                    
+                case 'inspection':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="rough_opening">📏 Rough Opening</option>
+                        <option value="level_check">📐 Level Check</option>
+                        <option value="square_check">📐 Square Check</option>
+                        <option value="measurements">📏 Measurements</option>
+                    `;
+                    break;
+                    
+                case 'bucking':
+                case 'fasteners':
+                case 'tape':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="installation">🔧 Installation</option>
+                        <option value="detail">🔍 Detail Shot</option>
+                        <option value="progress">🔄 Progress</option>
+                    `;
+                    break;
+                    
+                case 'final':
+                    subCategoryDiv.style.display = 'block';
+                    buildingSideDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="completed_work">✅ Completed Work</option>
+                        <option value="cleanup">🧹 Cleanup</option>
+                        <option value="customer_review">👤 Customer Review</option>
+                    `;
+                    break;
+                    
+                case 'defect':
+                    subCategoryDiv.style.display = 'block';
+                    windowDoorDiv.style.display = 'block';
+                    subCategorySelect.innerHTML = `
+                        <option value="">Select...</option>
+                        <option value="installation_issue">🚧 Installation Issue</option>
+                        <option value="material_defect">🔨 Material Defect</option>
+                        <option value="damage">💥 Damage</option>
+                        <option value="missing_item">❓ Missing Item</option>
+                    `;
+                    break;
             }
         }
         
-        function savePhoto(jobId) {
+        function updateDesignations() {
+            const type = document.getElementById('windowDoorType').value;
+            const designationSelect = document.getElementById('designationNumber');
+            
+            designationSelect.innerHTML = '<option value="">Select designation...</option>';
+            
+            if (type) {
+                for (let i = 1; i <= 20; i++) {
+                    designationSelect.innerHTML += `<option value="${i}">${type.charAt(0).toUpperCase() + type.slice(1)} ${i}</option>`;
+                }
+            }
+        }
+        
+        function saveStructuredPhoto(jobId) {
             const photoInput = document.getElementById('photoInput');
-            const photoType = document.getElementById('photoType').value;
-            const photoNotes = document.getElementById('photoNotes').value.trim();
+            const category = document.getElementById('photoCategory').value;
+            const subCategory = document.getElementById('photoSubCategory').value;
+            const windowDoorType = document.getElementById('windowDoorType').value;
+            const designationNumber = document.getElementById('designationNumber').value;
+            const buildingSide = document.getElementById('buildingSide').value;
+            const notes = document.getElementById('photoNotes').value.trim();
+            
+            if (!category) {
+                alert('❌ Please select a photo category');
+                return;
+            }
             
             if (!photoInput.files[0]) {
                 alert('❌ Please select a photo first');
@@ -2206,16 +2358,22 @@
             }
             
             const file = photoInput.files[0];
-            const fileName = `job_${jobId}_${photoType}_${Date.now()}.jpg`;
             
-            console.log('📷 Saving photo:', fileName, 'type:', photoType);
+            // Create descriptive filename
+            let filenameParts = [jobId, category];
+            if (subCategory) filenameParts.push(subCategory);
+            if (windowDoorType && designationNumber) filenameParts.push(`${windowDoorType}${designationNumber}`);
+            if (buildingSide) filenameParts.push(buildingSide);
+            filenameParts.push(Date.now());
+            
+            const fileName = filenameParts.join('_') + '.jpg';
+            
+            console.log('📷 Saving structured photo:', fileName);
             
             if (storage) {
-                // Create storage reference
                 const storageRef = storage.ref();
                 const photoRef = storageRef.child(`job-photos/${window.installerData.id}/${fileName}`);
                 
-                // Upload file
                 const uploadTask = photoRef.put(file);
                 
                 uploadTask.on('state_changed', 
@@ -2228,26 +2386,29 @@
                         alert('❌ Error uploading photo: ' + error.message);
                     },
                     () => {
-                        // Upload complete - get download URL
                         uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                             console.log('✅ Photo uploaded:', downloadURL);
                             
-                            // Save photo metadata to Firestore
                             const photoData = {
                                 jobId: jobId,
                                 installerId: window.installerData.id,
                                 installerName: window.installerData.name,
-                                photoType: photoType,
+                                category: category,
+                                subCategory: subCategory,
+                                windowDoorType: windowDoorType,
+                                designationNumber: designationNumber,
+                                buildingSide: buildingSide,
                                 photoUrl: downloadURL,
                                 fileName: fileName,
-                                notes: photoNotes,
+                                notes: notes,
                                 capturedAt: new Date().toISOString(),
-                                fileSize: file.size
+                                fileSize: file.size,
+                                tags: generatePhotoTags(category, subCategory, windowDoorType)
                             };
                             
                             db.collection('job-photos').add(photoData)
                             .then(() => {
-                                console.log('✅ Photo metadata saved');
+                                console.log('✅ Structured photo metadata saved');
                                 alert('✅ Photo saved successfully!');
                                 closePhotoModal();
                                 closeJobPopup();
@@ -2262,6 +2423,27 @@
             } else {
                 alert('❌ Storage not available');
             }
+        }
+        
+        function generatePhotoTags(category, subCategory, windowDoorType) {
+            const tags = [category];
+            if (subCategory) tags.push(subCategory);
+            if (windowDoorType) tags.push(windowDoorType);
+            
+            // Add descriptive tags based on category
+            switch(category) {
+                case 'sign': tags.push('documentation', 'required'); break;
+                case 'before': tags.push('documentation', 'existing'); break;
+                case 'existing_damage': tags.push('documentation', 'damage', 'existing'); break;
+                case 'inspection': tags.push('quality', 'measurement'); break;
+                case 'bucking': tags.push('installation', 'framing'); break;
+                case 'fasteners': tags.push('installation', 'hardware'); break;
+                case 'tape': tags.push('installation', 'sealing'); break;
+                case 'final': tags.push('completion', 'documentation'); break;
+                case 'defect': tags.push('issue', 'attention_needed'); break;
+            }
+            
+            return tags;
         }
         
         function updateJobStatus(jobId) {
