@@ -2110,7 +2110,9 @@
                             <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
                                 <button onclick="try { console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}'); } catch(error) { console.error('❌ Error in status update:', error); alert('❌ Error: ' + error.message); }" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
                                 <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
-                                <button onclick="getDirections('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Get Directions</button>
+                                <button onclick="startWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Walkthrough</button>
+                                <button onclick="startCertificate('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
+                                <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Directions</button>
                             </div>
                         </div>
                     </div>
@@ -2154,8 +2156,6 @@
                                 <option value="fasteners">⚙️ Fasteners</option>
                                 <option value="tape">📎 Tape</option>
                                 <option value="final">✅ Final Pictures</option>
-                                <option value="walkthrough">🚶 Customer Walkthrough</option>
-                                <option value="certificate">📜 Certificate of Completion</option>
                                 <option value="defect">🚨 Defect Report</option>
                             </select>
                         </div>
@@ -2358,36 +2358,6 @@
                         <option value="cleanup">🧹 Cleanup</option>
                         <option value="customer_review">👤 Customer Review</option>
                     `;
-                    break;
-                    
-                case 'walkthrough':
-                    subCategoryDiv.style.display = 'block';
-                    walkthroughChecklist.style.display = 'block';
-                    signatureSection.style.display = 'block';
-                    windowDoorDiv.style.display = 'block';
-                    subCategorySelect.innerHTML = `
-                        <option value="">Select...</option>
-                        <option value="customer_signoff">✍️ Customer Sign-off</option>
-                        <option value="final_inspection">🔍 Final Inspection</option>
-                        <option value="operation_demo">👨‍🏫 Operation Demo</option>
-                        <option value="customer_questions">❓ Customer Questions</option>
-                    `;
-                    // Setup signature canvas after showing
-                    setTimeout(() => setupSignatureCanvas(), 100);
-                    break;
-                    
-                case 'certificate':
-                    subCategoryDiv.style.display = 'block';
-                    signatureSection.style.display = 'block';
-                    subCategorySelect.innerHTML = `
-                        <option value="">Select...</option>
-                        <option value="signed_certificate">📝 Signed Certificate</option>
-                        <option value="completion_form">📋 Completion Form</option>
-                        <option value="warranty_info">🛡️ Warranty Information</option>
-                        <option value="final_paperwork">📄 Final Paperwork</option>
-                    `;
-                    // Setup signature canvas after showing
-                    setTimeout(() => setupSignatureCanvas(), 100);
                     break;
                     
                 case 'defect':
@@ -2623,12 +2593,357 @@
                 case 'fasteners': tags.push('installation', 'hardware'); break;
                 case 'tape': tags.push('installation', 'sealing'); break;
                 case 'final': tags.push('completion', 'documentation'); break;
-                case 'walkthrough': tags.push('customer', 'completion', 'signoff'); break;
-                case 'certificate': tags.push('documentation', 'completion', 'legal'); break;
                 case 'defect': tags.push('issue', 'attention_needed'); break;
             }
             
             return tags;
+        }
+        
+        function startWalkthrough(jobId) {
+            console.log('🚶 Starting customer walkthrough for job:', jobId);
+            closeJobPopup(); // Close job popup first
+            
+            // Create walkthrough modal
+            const walkthroughModalHTML = `
+                <div id="walkthroughModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <h3 style="margin: 0 0 20px 0; color: #17a2b8; text-align: center;">🚶 Customer Walkthrough</h3>
+                        
+                        <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
+                            <h4 style="margin: 0 0 15px 0; color: #17a2b8;">Walkthrough Checklist</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="walkthroughCheck1" style="transform: scale(1.2);">
+                                    <span>All windows/doors operate correctly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="walkthroughCheck2" style="transform: scale(1.2);">
+                                    <span>Locks and latches function properly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="walkthroughCheck3" style="transform: scale(1.2);">
+                                    <span>No damage to property observed</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="walkthroughCheck4" style="transform: scale(1.2);">
+                                    <span>Work area cleaned properly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="walkthroughCheck5" style="transform: scale(1.2);">
+                                    <span>Customer questions answered</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Customer Signature:</label>
+                            <canvas id="walkthroughSignatureCanvas" style="width: 100%; height: 150px; border: 2px solid #ddd; border-radius: 4px; background: white; cursor: crosshair; touch-action: none;"></canvas>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button onclick="clearWalkthroughSignature()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Clear</button>
+                                <span style="font-size: 12px; color: #666; align-self: center;">Sign above with finger or mouse</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Notes:</label>
+                            <textarea id="walkthroughNotes" placeholder="Add any notes about the walkthrough..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="saveWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Walkthrough</button>
+                            <button onclick="closeWalkthroughModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', walkthroughModalHTML);
+            
+            // Setup signature canvas after showing
+            setTimeout(() => setupWalkthroughSignatureCanvas(), 100);
+        }
+        
+        function startCertificate(jobId) {
+            console.log('📜 Starting certificate of completion for job:', jobId);
+            closeJobPopup(); // Close job popup first
+            
+            // Create certificate modal
+            const certificateModalHTML = `
+                <div id="certificateModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <h3 style="margin: 0 0 20px 0; color: #6f42c1; text-align: center;">📜 Certificate of Completion</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Document Type:</label>
+                            <select id="certificateType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="signed_certificate">📝 Signed Certificate</option>
+                                <option value="completion_form">📋 Completion Form</option>
+                                <option value="warranty_info">🛡️ Warranty Information</option>
+                                <option value="final_paperwork">📄 Final Paperwork</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Customer Signature:</label>
+                            <canvas id="certificateSignatureCanvas" style="width: 100%; height: 150px; border: 2px solid #ddd; border-radius: 4px; background: white; cursor: crosshair; touch-action: none;"></canvas>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button onclick="clearCertificateSignature()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Clear</button>
+                                <span style="font-size: 12px; color: #666; align-self: center;">Sign above with finger or mouse</span>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Notes:</label>
+                            <textarea id="certificateNotes" placeholder="Add any notes about the certificate..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="saveCertificate('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Certificate</button>
+                            <button onclick="closeCertificateModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', certificateModalHTML);
+            
+            // Setup signature canvas after showing
+            setTimeout(() => setupCertificateSignatureCanvas(), 100);
+        }
+        
+        // Walkthrough functions
+        let walkthroughSignatureCanvas, walkthroughSignatureCtx;
+        let isWalkthroughDrawing = false;
+        
+        function setupWalkthroughSignatureCanvas() {
+            walkthroughSignatureCanvas = document.getElementById('walkthroughSignatureCanvas');
+            if (!walkthroughSignatureCanvas) return;
+            
+            walkthroughSignatureCtx = walkthroughSignatureCanvas.getContext('2d');
+            
+            const rect = walkthroughSignatureCanvas.getBoundingClientRect();
+            walkthroughSignatureCanvas.width = rect.width;
+            walkthroughSignatureCanvas.height = rect.height;
+            
+            walkthroughSignatureCtx.strokeStyle = '#000';
+            walkthroughSignatureCtx.lineWidth = 2;
+            walkthroughSignatureCtx.lineCap = 'round';
+            walkthroughSignatureCtx.lineJoin = 'round';
+            
+            walkthroughSignatureCanvas.addEventListener('mousedown', startWalkthroughDrawing);
+            walkthroughSignatureCanvas.addEventListener('mousemove', drawWalkthrough);
+            walkthroughSignatureCanvas.addEventListener('mouseup', stopWalkthroughDrawing);
+            walkthroughSignatureCanvas.addEventListener('mouseout', stopWalkthroughDrawing);
+            
+            walkthroughSignatureCanvas.addEventListener('touchstart', handleWalkthroughTouch);
+            walkthroughSignatureCanvas.addEventListener('touchmove', handleWalkthroughTouch);
+            walkthroughSignatureCanvas.addEventListener('touchend', stopWalkthroughDrawing);
+        }
+        
+        function startWalkthroughDrawing(e) {
+            isWalkthroughDrawing = true;
+            const rect = walkthroughSignatureCanvas.getBoundingClientRect();
+            walkthroughSignatureCtx.beginPath();
+            walkthroughSignatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        
+        function drawWalkthrough(e) {
+            if (!isWalkthroughDrawing) return;
+            const rect = walkthroughSignatureCanvas.getBoundingClientRect();
+            walkthroughSignatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            walkthroughSignatureCtx.stroke();
+        }
+        
+        function stopWalkthroughDrawing() {
+            isWalkthroughDrawing = false;
+        }
+        
+        function handleWalkthroughTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            walkthroughSignatureCanvas.dispatchEvent(mouseEvent);
+        }
+        
+        function clearWalkthroughSignature() {
+            if (walkthroughSignatureCtx && walkthroughSignatureCanvas) {
+                walkthroughSignatureCtx.clearRect(0, 0, walkthroughSignatureCanvas.width, walkthroughSignatureCanvas.height);
+            }
+        }
+        
+        function getWalkthroughSignatureData() {
+            if (!walkthroughSignatureCanvas) return null;
+            return walkthroughSignatureCanvas.toDataURL();
+        }
+        
+        function closeWalkthroughModal() {
+            const modal = document.getElementById('walkthroughModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveWalkthrough(jobId) {
+            const checkboxes = ['walkthroughCheck1', 'walkthroughCheck2', 'walkthroughCheck3', 'walkthroughCheck4', 'walkthroughCheck5'];
+            const allChecked = checkboxes.every(id => document.getElementById(id).checked);
+            
+            if (!allChecked) {
+                alert('❌ All walkthrough checklist items must be checked before saving');
+                return;
+            }
+            
+            const signatureData = getWalkthroughSignatureData();
+            if (!signatureData) {
+                alert('❌ Customer signature is required');
+                return;
+            }
+            
+            const notes = document.getElementById('walkthroughNotes').value.trim();
+            
+            const walkthroughData = {
+                jobId: jobId,
+                installerId: window.installerData.id,
+                installerName: window.installerData.name,
+                type: 'walkthrough',
+                checklist: {
+                    allWindowsOperate: document.getElementById('walkthroughCheck1').checked,
+                    locksFunction: document.getElementById('walkthroughCheck2').checked,
+                    noDamage: document.getElementById('walkthroughCheck3').checked,
+                    areaCleaned: document.getElementById('walkthroughCheck4').checked,
+                    questionsAnswered: document.getElementById('walkthroughCheck5').checked
+                },
+                customerSignature: signatureData,
+                notes: notes,
+                completedAt: new Date().toISOString()
+            };
+            
+            if (db) {
+                db.collection('walkthroughs').add(walkthroughData)
+                .then(() => {
+                    console.log('✅ Walkthrough saved successfully');
+                    alert('✅ Walkthrough completed successfully!');
+                    closeWalkthroughModal();
+                })
+                .catch(error => {
+                    console.error('❌ Error saving walkthrough:', error);
+                    alert('❌ Error saving walkthrough: ' + error.message);
+                });
+            }
+        }
+        
+        // Certificate functions
+        let certificateSignatureCanvas, certificateSignatureCtx;
+        let isCertificateDrawing = false;
+        
+        function setupCertificateSignatureCanvas() {
+            certificateSignatureCanvas = document.getElementById('certificateSignatureCanvas');
+            if (!certificateSignatureCanvas) return;
+            
+            certificateSignatureCtx = certificateSignatureCanvas.getContext('2d');
+            
+            const rect = certificateSignatureCanvas.getBoundingClientRect();
+            certificateSignatureCanvas.width = rect.width;
+            certificateSignatureCanvas.height = rect.height;
+            
+            certificateSignatureCtx.strokeStyle = '#000';
+            certificateSignatureCtx.lineWidth = 2;
+            certificateSignatureCtx.lineCap = 'round';
+            certificateSignatureCtx.lineJoin = 'round';
+            
+            certificateSignatureCanvas.addEventListener('mousedown', startCertificateDrawing);
+            certificateSignatureCanvas.addEventListener('mousemove', drawCertificate);
+            certificateSignatureCanvas.addEventListener('mouseup', stopCertificateDrawing);
+            certificateSignatureCanvas.addEventListener('mouseout', stopCertificateDrawing);
+            
+            certificateSignatureCanvas.addEventListener('touchstart', handleCertificateTouch);
+            certificateSignatureCanvas.addEventListener('touchmove', handleCertificateTouch);
+            certificateSignatureCanvas.addEventListener('touchend', stopCertificateDrawing);
+        }
+        
+        function startCertificateDrawing(e) {
+            isCertificateDrawing = true;
+            const rect = certificateSignatureCanvas.getBoundingClientRect();
+            certificateSignatureCtx.beginPath();
+            certificateSignatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        
+        function drawCertificate(e) {
+            if (!isCertificateDrawing) return;
+            const rect = certificateSignatureCanvas.getBoundingClientRect();
+            certificateSignatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            certificateSignatureCtx.stroke();
+        }
+        
+        function stopCertificateDrawing() {
+            isCertificateDrawing = false;
+        }
+        
+        function handleCertificateTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            certificateSignatureCanvas.dispatchEvent(mouseEvent);
+        }
+        
+        function clearCertificateSignature() {
+            if (certificateSignatureCtx && certificateSignatureCanvas) {
+                certificateSignatureCtx.clearRect(0, 0, certificateSignatureCanvas.width, certificateSignatureCanvas.height);
+            }
+        }
+        
+        function getCertificateSignatureData() {
+            if (!certificateSignatureCanvas) return null;
+            return certificateSignatureCanvas.toDataURL();
+        }
+        
+        function closeCertificateModal() {
+            const modal = document.getElementById('certificateModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveCertificate(jobId) {
+            const signatureData = getCertificateSignatureData();
+            if (!signatureData) {
+                alert('❌ Customer signature is required');
+                return;
+            }
+            
+            const certificateType = document.getElementById('certificateType').value;
+            const notes = document.getElementById('certificateNotes').value.trim();
+            
+            const certificateData = {
+                jobId: jobId,
+                installerId: window.installerData.id,
+                installerName: window.installerData.name,
+                type: 'certificate',
+                certificateType: certificateType,
+                customerSignature: signatureData,
+                notes: notes,
+                completedAt: new Date().toISOString()
+            };
+            
+            if (db) {
+                db.collection('certificates').add(certificateData)
+                .then(() => {
+                    console.log('✅ Certificate saved successfully');
+                    alert('✅ Certificate completed successfully!');
+                    closeCertificateModal();
+                })
+                .catch(error => {
+                    console.error('❌ Error saving certificate:', error);
+                    alert('❌ Error saving certificate: ' + error.message);
+                });
+            }
         }
         
         function updateJobStatus(jobId) {
