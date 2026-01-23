@@ -2226,6 +2226,13 @@
             });
         }
         
+        function closePhotoModal() {
+            const modal = document.getElementById('photoModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
         function updatePhotoOptions() {
             const category = document.getElementById('photoCategory').value;
             const subCategoryDiv = document.getElementById('subCategoryDiv');
