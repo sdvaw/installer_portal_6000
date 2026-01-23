@@ -2675,12 +2675,10 @@
                         <h3 style="margin: 0 0 20px 0; color: #6f42c1; text-align: center;">📜 Certificate of Completion</h3>
                         
                         <div style="margin-bottom: 20px;">
-                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Certificate Type:</label>
-                            <select id="certificateType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="certificate_of_completion">📜 Certificate of Completion</option>
-                                <option value="final_inspection">🔍 Final Inspection Report</option>
-                                <option value="customer_acceptance">✍️ Customer Acceptance</option>
-                            </select>
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Certificate of Completion</label>
+                            <div style="padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; color: #666;">
+                                Customer is signing the official Certificate of Completion for this job
+                            </div>
                         </div>
                         
                         <div style="margin-bottom: 20px;">
@@ -2917,7 +2915,6 @@
                 return;
             }
             
-            const certificateType = document.getElementById('certificateType').value;
             const notes = document.getElementById('certificateNotes').value.trim();
             
             const certificateData = {
@@ -2925,7 +2922,7 @@
                 installerId: window.installerData.id,
                 installerName: window.installerData.name,
                 type: 'certificate_of_completion',
-                certificateType: certificateType,
+                certificateType: 'certificate_of_completion',
                 customerSignature: signatureData,
                 notes: notes,
                 completedAt: new Date().toISOString()
