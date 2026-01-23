@@ -2166,6 +2166,41 @@
                             </select>
                         </div>
                         
+                        <div id="walkthroughChecklist" style="margin-bottom: 20px; display: none; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
+                            <h4 style="margin: 0 0 15px 0; color: #2196F3;">🚶 Customer Walkthrough Checklist</h4>
+                            <div style="display: flex; flex-direction: column; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="check1" style="transform: scale(1.2);">
+                                    <span>All windows/doors operate correctly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="check2" style="transform: scale(1.2);">
+                                    <span>Locks and latches function properly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="check3" style="transform: scale(1.2);">
+                                    <span>No damage to property observed</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="check4" style="transform: scale(1.2);">
+                                    <span>Work area cleaned properly</span>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="checkbox" id="check5" style="transform: scale(1.2);">
+                                    <span>Customer questions answered</span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="signatureSection" style="margin-bottom: 20px; display: none;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Customer Signature:</label>
+                            <canvas id="signatureCanvas" style="width: 100%; height: 150px; border: 2px solid #ddd; border-radius: 4px; background: white; cursor: crosshair; touch-action: none;"></canvas>
+                            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                                <button onclick="clearSignature()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Clear</button>
+                                <span style="font-size: 12px; color: #666; align-self: center;">Sign above with finger or mouse</span>
+                            </div>
+                        </div>
+                        
                         <div id="windowDoorDiv" style="margin-bottom: 20px; display: none;">
                             <label style="display: block; margin-bottom: 10px; font-weight: bold;">Window/Door Designation:</label>
                             <select id="windowDoorType" onchange="updateDesignations()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px;">
@@ -2240,12 +2275,16 @@
             const subCategoryDiv = document.getElementById('subCategoryDiv');
             const windowDoorDiv = document.getElementById('windowDoorDiv');
             const buildingSideDiv = document.getElementById('buildingSideDiv');
+            const walkthroughChecklist = document.getElementById('walkthroughChecklist');
+            const signatureSection = document.getElementById('signatureSection');
             const subCategorySelect = document.getElementById('photoSubCategory');
             
             // Reset all
             subCategoryDiv.style.display = 'none';
             windowDoorDiv.style.display = 'none';
             buildingSideDiv.style.display = 'none';
+            walkthroughChecklist.style.display = 'none';
+            signatureSection.style.display = 'none';
             subCategorySelect.innerHTML = '<option value="">Select sub-category...</option>';
             
             switch(category) {
@@ -2322,6 +2361,8 @@
                     
                 case 'walkthrough':
                     subCategoryDiv.style.display = 'block';
+                    walkthroughChecklist.style.display = 'block';
+                    signatureSection.style.display = 'block';
                     windowDoorDiv.style.display = 'block';
                     subCategorySelect.innerHTML = `
                         <option value="">Select...</option>
@@ -2330,10 +2371,13 @@
                         <option value="operation_demo">👨‍🏫 Operation Demo</option>
                         <option value="customer_questions">❓ Customer Questions</option>
                     `;
+                    // Setup signature canvas after showing
+                    setTimeout(() => setupSignatureCanvas(), 100);
                     break;
                     
                 case 'certificate':
                     subCategoryDiv.style.display = 'block';
+                    signatureSection.style.display = 'block';
                     subCategorySelect.innerHTML = `
                         <option value="">Select...</option>
                         <option value="signed_certificate">📝 Signed Certificate</option>
@@ -2341,6 +2385,8 @@
                         <option value="warranty_info">🛡️ Warranty Information</option>
                         <option value="final_paperwork">📄 Final Paperwork</option>
                     `;
+                    // Setup signature canvas after showing
+                    setTimeout(() => setupSignatureCanvas(), 100);
                     break;
                     
                 case 'defect':
@@ -2355,6 +2401,77 @@
                     `;
                     break;
             }
+        }
+        
+        let signatureCanvas, signatureCtx;
+        let isDrawing = false;
+        
+        function setupSignatureCanvas() {
+            signatureCanvas = document.getElementById('signatureCanvas');
+            if (!signatureCanvas) return;
+            
+            signatureCtx = signatureCanvas.getContext('2d');
+            
+            // Set canvas size
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCanvas.width = rect.width;
+            signatureCanvas.height = rect.height;
+            
+            // Set drawing style
+            signatureCtx.strokeStyle = '#000';
+            signatureCtx.lineWidth = 2;
+            signatureCtx.lineCap = 'round';
+            signatureCtx.lineJoin = 'round';
+            
+            // Mouse events
+            signatureCanvas.addEventListener('mousedown', startDrawing);
+            signatureCanvas.addEventListener('mousemove', draw);
+            signatureCanvas.addEventListener('mouseup', stopDrawing);
+            signatureCanvas.addEventListener('mouseout', stopDrawing);
+            
+            // Touch events for mobile
+            signatureCanvas.addEventListener('touchstart', handleTouch);
+            signatureCanvas.addEventListener('touchmove', handleTouch);
+            signatureCanvas.addEventListener('touchend', stopDrawing);
+        }
+        
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.beginPath();
+            signatureCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = signatureCanvas.getBoundingClientRect();
+            signatureCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            signatureCtx.stroke();
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+        }
+        
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            signatureCanvas.dispatchEvent(mouseEvent);
+        }
+        
+        function clearSignature() {
+            if (signatureCtx && signatureCanvas) {
+                signatureCtx.clearRect(0, 0, signatureCanvas.width, signatureCanvas.height);
+            }
+        }
+        
+        function getSignatureData() {
+            if (!signatureCanvas) return null;
+            return signatureCanvas.toDataURL();
         }
         
         function updateDesignations() {
@@ -2382,6 +2499,22 @@
             if (!category) {
                 alert('❌ Please select a photo category');
                 return;
+            }
+            
+            // For walkthrough and certificate, require signature
+            if ((category === 'walkthrough' || category === 'certificate') && !getSignatureData()) {
+                alert('❌ Customer signature is required for ' + category);
+                return;
+            }
+            
+            // For walkthrough, require all checklist items to be checked
+            if (category === 'walkthrough') {
+                const checkboxes = ['check1', 'check2', 'check3', 'check4', 'check5'];
+                const allChecked = checkboxes.every(id => document.getElementById(id).checked);
+                if (!allChecked) {
+                    alert('❌ All walkthrough checklist items must be checked before saving');
+                    return;
+                }
             }
             
             if (!photoInput.files[0]) {
@@ -2437,6 +2570,23 @@
                                 fileSize: file.size,
                                 tags: generatePhotoTags(category, subCategory, windowDoorType)
                             };
+                            
+                            // Add checklist data for walkthrough
+                            if (category === 'walkthrough') {
+                                photoData.walkthroughChecklist = {
+                                    allWindowsOperate: document.getElementById('check1').checked,
+                                    locksFunction: document.getElementById('check2').checked,
+                                    noDamage: document.getElementById('check3').checked,
+                                    areaCleaned: document.getElementById('check4').checked,
+                                    questionsAnswered: document.getElementById('check5').checked
+                                };
+                            }
+                            
+                            // Add signature data
+                            if (category === 'walkthrough' || category === 'certificate') {
+                                photoData.customerSignature = getSignatureData();
+                                photoData.signedAt = new Date().toISOString();
+                            }
                             
                             db.collection('job-photos').add(photoData)
                             .then(() => {
