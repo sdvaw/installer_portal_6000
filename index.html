@@ -2133,8 +2133,135 @@
         }
         
         function capturePhoto(jobId) {
-            alert('📷 Photo capture coming soon for job: ' + jobId);
-            // TODO: Implement photo capture functionality
+            console.log('📷 Opening photo capture for job:', jobId);
+            
+            // Create photo capture modal
+            const photoModalHTML = `
+                <div id="photoModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; text-align: center;">
+                        <h3 style="margin: 0 0 20px 0; color: #2196F3;">📷 Capture Photo</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Photo Type:</label>
+                            <select id="photoType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="before">📸 Before Photo</option>
+                                <option value="after">✅ After Photo</option>
+                                <option value="defect">⚠️ Defect Photo</option>
+                                <option value="progress">🔄 Progress Photo</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Notes (optional):</label>
+                            <textarea id="photoNotes" placeholder="Add notes about this photo..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <div id="photoPreview" style="margin-bottom: 20px; min-height: 100px; border: 2px dashed #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999;">
+                            <span>📷 No photo selected</span>
+                        </div>
+                        
+                        <input type="file" id="photoInput" accept="image/*" capture="environment" style="display: none;">
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="document.getElementById('photoInput').click()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Take Photo</button>
+                            <button onclick="savePhoto('${jobId}')" style="background: #2196F3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">💾 Save Photo</button>
+                            <button onclick="closePhotoModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', photoModalHTML);
+            
+            // Setup photo input change handler
+            document.getElementById('photoInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('photoPreview').innerHTML = 
+                            `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 4px;">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        
+        function closePhotoModal() {
+            const modal = document.getElementById('photoModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function savePhoto(jobId) {
+            const photoInput = document.getElementById('photoInput');
+            const photoType = document.getElementById('photoType').value;
+            const photoNotes = document.getElementById('photoNotes').value.trim();
+            
+            if (!photoInput.files[0]) {
+                alert('❌ Please select a photo first');
+                return;
+            }
+            
+            const file = photoInput.files[0];
+            const fileName = `job_${jobId}_${photoType}_${Date.now()}.jpg`;
+            
+            console.log('📷 Saving photo:', fileName, 'type:', photoType);
+            
+            if (storage) {
+                // Create storage reference
+                const storageRef = storage.ref();
+                const photoRef = storageRef.child(`job-photos/${window.installerData.id}/${fileName}`);
+                
+                // Upload file
+                const uploadTask = photoRef.put(file);
+                
+                uploadTask.on('state_changed', 
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        console.log('📷 Upload progress:', progress + '%');
+                    },
+                    (error) => {
+                        console.error('❌ Upload error:', error);
+                        alert('❌ Error uploading photo: ' + error.message);
+                    },
+                    () => {
+                        // Upload complete - get download URL
+                        uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                            console.log('✅ Photo uploaded:', downloadURL);
+                            
+                            // Save photo metadata to Firestore
+                            const photoData = {
+                                jobId: jobId,
+                                installerId: window.installerData.id,
+                                installerName: window.installerData.name,
+                                photoType: photoType,
+                                photoUrl: downloadURL,
+                                fileName: fileName,
+                                notes: photoNotes,
+                                capturedAt: new Date().toISOString(),
+                                fileSize: file.size
+                            };
+                            
+                            db.collection('job-photos').add(photoData)
+                            .then(() => {
+                                console.log('✅ Photo metadata saved');
+                                alert('✅ Photo saved successfully!');
+                                closePhotoModal();
+                                closeJobPopup();
+                            })
+                            .catch(error => {
+                                console.error('❌ Error saving photo metadata:', error);
+                                alert('❌ Error saving photo info: ' + error.message);
+                            });
+                        });
+                    }
+                );
+            } else {
+                alert('❌ Storage not available');
+            }
         }
         
         function updateJobStatus(jobId) {
