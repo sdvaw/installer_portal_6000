@@ -463,6 +463,21 @@
                     </div>
                 </div>
 
+                <!-- Installer Tools -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-terminal">> INSTALLER_TOOLS</h2>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="showBlackoutDatesModal()" class="terminal-button p-4 text-center">
+                            📅 Blackout Dates
+                        </button>
+                        <button onclick="syncTeamUpEvents()" class="terminal-button p-4 text-center">
+                            🔄 Sync Calendar
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Quick Actions - REMOVED (moved to job cards) -->
             </main>
         </div>
@@ -2614,73 +2629,56 @@
                             <div style="display: flex; flex-direction: column; gap: 15px;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 500;">All windows/doors operate correctly</span>
-                                    <div class="star-rating" data-item="windows">
-                                        <span class="star" data-value="1">⭐</span>
-                                        <span class="star" data-value="2">⭐</span>
-                                        <span class="star" data-value="3">⭐</span>
-                                        <span class="star" data-value="4">⭐</span>
-                                        <span class="star" data-value="5">⭐</span>
+                                    <div class="star-rating" data-item="windows" style="display: flex; gap: 5px;">
+                                        <button type="button" class="star-btn" data-value="1" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="2" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="3" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="4" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="5" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
                                     </div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 500;">Locks and latches function properly</span>
-                                    <div class="star-rating" data-item="locks">
-                                        <span class="star" data-value="1">⭐</span>
-                                        <span class="star" data-value="2">⭐</span>
-                                        <span class="star" data-value="3">⭐</span>
-                                        <span class="star" data-value="4">⭐</span>
-                                        <span class="star" data-value="5">⭐</span>
+                                    <div class="star-rating" data-item="locks" style="display: flex; gap: 5px;">
+                                        <button type="button" class="star-btn" data-value="1" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="2" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="3" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="4" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="5" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
                                     </div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 500;">No damage to property observed</span>
-                                    <div class="star-rating" data-item="damage">
-                                        <span class="star" data-value="1">⭐</span>
-                                        <span class="star" data-value="2">⭐</span>
-                                        <span class="star" data-value="3">⭐</span>
-                                        <span class="star" data-value="4">⭐</span>
-                                        <span class="star" data-value="5">⭐</span>
+                                    <div class="star-rating" data-item="damage" style="display: flex; gap: 5px;">
+                                        <button type="button" class="star-btn" data-value="1" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="2" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="3" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="4" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="5" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
                                     </div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 500;">Work area cleaned properly</span>
-                                    <div class="star-rating" data-item="cleanup">
-                                        <span class="star" data-value="1">⭐</span>
-                                        <span class="star" data-value="2">⭐</span>
-                                        <span class="star" data-value="3">⭐</span>
-                                        <span class="star" data-value="4">⭐</span>
-                                        <span class="star" data-value="5">⭐</span>
+                                    <div class="star-rating" data-item="cleanup" style="display: flex; gap: 5px;">
+                                        <button type="button" class="star-btn" data-value="1" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="2" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="3" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="4" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="5" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
                                     </div>
                                 </div>
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <span style="font-weight: 500;">Customer questions answered</span>
-                                    <div class="star-rating" data-item="questions">
-                                        <span class="star" data-value="1">⭐</span>
-                                        <span class="star" data-value="2">⭐</span>
-                                        <span class="star" data-value="3">⭐</span>
-                                        <span class="star" data-value="4">⭐</span>
-                                        <span class="star" data-value="5">⭐</span>
+                                    <div class="star-rating" data-item="questions" style="display: flex; gap: 5px;">
+                                        <button type="button" class="star-btn" data-value="1" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="2" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="3" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="4" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
+                                        <button type="button" class="star-btn" data-value="5" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #ddd;">☆</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <style>
-                            .star-rating {
-                                display: flex;
-                                gap: 2px;
-                            }
-                            .star {
-                                font-size: 20px;
-                                cursor: pointer;
-                                color: #ddd;
-                                transition: color 0.2s;
-                            }
-                            .star:hover,
-                            .star.active {
-                                color: #ffc107;
-                            }
-                        </style>
                         
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; margin-bottom: 10px; font-weight: bold;">Customer Signature:</label>
@@ -2715,33 +2713,57 @@
         }
         
         function setupStarRatings() {
+            console.log('🔧 Setting up star ratings...');
             const starRatings = document.querySelectorAll('.star-rating');
-            starRatings.forEach(rating => {
-                const stars = rating.querySelectorAll('.star');
+            console.log(`🔧 Found ${starRatings.length} star rating groups`);
+            
+            starRatings.forEach((rating, index) => {
+                const stars = rating.querySelectorAll('.star-btn');
+                console.log(`🔧 Rating group ${index}: ${stars.length} stars`);
+                
+                // Initialize rating to 0 and clear all stars
+                rating.dataset.rating = '0';
                 stars.forEach(star => {
-                    star.addEventListener('click', function() {
+                    star.textContent = '☆';
+                    star.style.color = '#ddd';
+                });
+                
+                stars.forEach((star, starIndex) => {
+                    star.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
                         const value = parseInt(this.dataset.value);
                         const item = rating.dataset.item;
                         
-                        // Remove active class from all stars in this rating
-                        stars.forEach(s => s.classList.remove('active'));
+                        console.log(`⭐ CLICKED star ${value} for ${item} (star index: ${starIndex})`);
                         
-                        // Add active class to stars up to the clicked one
+                        // Clear all stars first
+                        stars.forEach(s => {
+                            s.textContent = '☆';
+                            s.style.color = '#ddd';
+                        });
+                        
+                        // Fill stars up to the clicked one
                         for (let i = 0; i < value; i++) {
-                            stars[i].classList.add('active');
+                            stars[i].textContent = '★';
+                            stars[i].style.color = '#ffc107';
                         }
                         
                         // Store the rating value
-                        rating.dataset.rating = value;
-                        console.log(`⭐ Rating for ${item}: ${value} stars`);
+                        rating.dataset.rating = value.toString();
+                        console.log(`⭐ SAVED Rating for ${item}: ${value} stars`);
+                        console.log(`⭐ Dataset rating: ${rating.dataset.rating}`);
                     });
                     
                     star.addEventListener('mouseenter', function() {
                         const value = parseInt(this.dataset.value);
                         stars.forEach((s, index) => {
                             if (index < value) {
+                                s.textContent = '★';
                                 s.style.color = '#ffc107';
                             } else {
+                                s.textContent = '☆';
                                 s.style.color = '#ddd';
                             }
                         });
@@ -2752,8 +2774,10 @@
                     const value = parseInt(rating.dataset.rating || 0);
                     stars.forEach((s, index) => {
                         if (index < value) {
+                            s.textContent = '★';
                             s.style.color = '#ffc107';
                         } else {
+                            s.textContent = '☆';
                             s.style.color = '#ddd';
                         }
                     });
@@ -2761,8 +2785,197 @@
             });
         }
         
+        function showBlackoutDatesModal() {
+            console.log('📅 Opening blackout dates modal');
+            
+            const blackoutModalHTML = `
+                <div id="blackoutModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <h3 style="margin: 0 0 20px 0; color: #8b5cf6; text-align: center;">📅 Blackout Dates</h3>
+                        
+                        <!-- Add New Blackout Date -->
+                        <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
+                            <h4 style="margin: 0 0 15px 0; color: #8b5cf6;">Add New Blackout Period</h4>
+                            <div style="display: grid; gap: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Blackout Period:</label>
+                                    <input type="date" id="blackoutStartDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
+                                    <input type="date" id="blackoutEndDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    <div style="font-size: 12px; color: #666; margin-top: 4px;">Select start date, then select end date</div>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Notes (optional):</label>
+                                    <textarea id="blackoutNotes" placeholder="Additional details..." 
+                                        style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 80px; resize: vertical;"></textarea>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <button onclick="saveBlackoutDate()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; flex: 1;">💾 Save Blackout</button>
+                                <button onclick="clearBlackoutForm()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px;">🗑️ Clear</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Existing Blackout Dates -->
+                        <div style="margin-bottom: 20px;">
+                            <h4 style="margin: 0 0 15px 0; color: #8b5cf6;">Current Blackout Dates</h4>
+                            <div id="blackoutDatesList" style="max-height: 300px; overflow-y: auto;">
+                                <div style="text-align: center; padding: 20px; color: #666;">
+                                    Loading blackout dates...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="closeBlackoutModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Close</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', blackoutModalHTML);
+            
+            // Set minimum dates to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('blackoutStartDate').min = today;
+            document.getElementById('blackoutEndDate').min = today;
+            
+            // Auto-update end date minimum when start date changes
+            document.getElementById('blackoutStartDate').addEventListener('change', function() {
+                document.getElementById('blackoutEndDate').min = this.value;
+                if (document.getElementById('blackoutEndDate').value && document.getElementById('blackoutEndDate').value < this.value) {
+                    document.getElementById('blackoutEndDate').value = this.value;
+                }
+            });
+            
+            // Load existing blackout dates
+            loadBlackoutDates();
+        }
+        
+        function closeBlackoutModal() {
+            const modal = document.getElementById('blackoutModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function clearBlackoutForm() {
+            document.getElementById('blackoutStartDate').value = '';
+            document.getElementById('blackoutEndDate').value = '';
+            document.getElementById('blackoutNotes').value = '';
+        }
+        
+        function saveBlackoutDate() {
+            const startDate = document.getElementById('blackoutStartDate').value;
+            const endDate = document.getElementById('blackoutEndDate').value;
+            const notes = document.getElementById('blackoutNotes').value.trim();
+            
+            if (!startDate || !endDate) {
+                alert('❌ Start date and end date are required');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('❌ End date must be after start date');
+                return;
+            }
+            
+            const blackoutData = {
+                installerId: window.installerData.id,
+                installerName: window.installerData.name,
+                startDate: startDate,
+                endDate: endDate,
+                notes: notes,
+                status: 'active',
+                createdAt: new Date().toISOString()
+            };
+            
+            if (db) {
+                db.collection('blackout_dates').add(blackoutData)
+                .then(() => {
+                    console.log('✅ Blackout date saved successfully');
+                    alert('✅ Blackout date added successfully!');
+                    clearBlackoutForm();
+                    loadBlackoutDates();
+                })
+                .catch(error => {
+                    console.error('❌ Error saving blackout date:', error);
+                    alert('❌ Error saving blackout date: ' + error.message);
+                });
+            }
+        }
+        
+        function loadBlackoutDates() {
+            const listElement = document.getElementById('blackoutDatesList');
+            if (!listElement) return;
+            
+            listElement.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
+            
+            if (db && window.installerData) {
+                db.collection('blackout_dates')
+                .where('installerId', '==', window.installerData.id)
+                .where('status', '==', 'active')
+                .orderBy('startDate')
+                .get()
+                .then(snapshot => {
+                    if (snapshot.empty) {
+                        listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No blackout dates found</div>';
+                        return;
+                    }
+                    
+                    let blackoutHTML = '<div style="display: grid; gap: 10px;">';
+                    snapshot.forEach(doc => {
+                        const blackout = doc.data();
+                        const startDate = new Date(blackout.startDate).toLocaleDateString();
+                        const endDate = new Date(blackout.endDate).toLocaleDateString();
+                        
+                        blackoutHTML += `
+                            <div style="border: 1px solid #ddd; border-radius: 4px; padding: 12px; background: white;">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; color: #8b5cf6; margin-bottom: 4px;">
+                                            📅 Blackout Period
+                                        </div>
+                                        <div style="font-size: 14px; color: #666; margin-bottom: 2px;">
+                                            📅 ${startDate} - ${endDate}
+                                        </div>
+                                        ${blackout.notes ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">${blackout.notes}</div>` : ''}
+                                    </div>
+                                    <button onclick="deleteBlackoutDate('${doc.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️</button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    blackoutHTML += '</div>';
+                    
+                    listElement.innerHTML = blackoutHTML;
+                })
+                .catch(error => {
+                    console.error('❌ Error loading blackout dates:', error);
+                    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading blackout dates</div>';
+                });
+            }
+        }
+        
+        function deleteBlackoutDate(blackoutId) {
+            if (!confirm('Are you sure you want to delete this blackout date?')) {
+                return;
+            }
+            
+            if (db) {
+                db.collection('blackout_dates').doc(blackoutId).delete()
+                .then(() => {
+                    console.log('✅ Blackout date deleted successfully');
+                    alert('✅ Blackout date deleted successfully!');
+                    loadBlackoutDates();
+                })
+                .catch(error => {
+                    console.error('❌ Error deleting blackout date:', error);
+                    alert('❌ Error deleting blackout date: ' + error.message);
+                });
+            }
+        }
+        
         function startCertificateOfCompletion(jobId) {
-            console.log('📜 Starting certificate of completion for job:', jobId);
             closeJobPopup(); // Close job popup first
             
             // Create certificate modal
@@ -5369,6 +5582,25 @@
                             
                             <div id="teamUpInstallersList" class="space-y-4">
                                 <!-- TeamUp installers will be populated here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Provisioning Actions -->
+                        <div class="bg-white rounded-lg shadow p-6 mb-6">
+                            <h2 class="text-xl font-bold text-terminal mb-4">> INSTALLER_TOOLS</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button onclick="showJobStatusModal()" class="w-full bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 transition-colors">
+                                    🔄 Update Job Status
+                                </button>
+                                <button onclick="showIssueReportModal()" class="w-full bg-red-600 text-white px-4 py-3 rounded hover:bg-red-700 transition-colors">
+                                    🚨 Report Issue
+                                </button>
+                                <button onclick="showBlackoutDatesModal()" class="w-full bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 transition-colors">
+                                    📅 Blackout Dates
+                                </button>
+                                <button onclick="syncTeamUpEvents()" class="w-full bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition-colors">
+                                    🔄 Sync Calendar
+                                </button>
                             </div>
                         </div>
                         
