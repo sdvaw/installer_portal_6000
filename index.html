@@ -2610,30 +2610,77 @@
                         <h3 style="margin: 0 0 20px 0; color: #17a2b8; text-align: center;">🚶 Final Walkthrough</h3>
                         
                         <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
-                            <h4 style="margin: 0 0 15px 0; color: #17a2b8;">Final Walkthrough Checklist</h4>
-                            <div style="display: flex; flex-direction: column; gap: 10px;">
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="walkthroughCheck1" style="transform: scale(1.2);">
-                                    <span>All windows/doors operate correctly</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="walkthroughCheck2" style="transform: scale(1.2);">
-                                    <span>Locks and latches function properly</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="walkthroughCheck3" style="transform: scale(1.2);">
-                                    <span>No damage to property observed</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="walkthroughCheck4" style="transform: scale(1.2);">
-                                    <span>Work area cleaned properly</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="checkbox" id="walkthroughCheck5" style="transform: scale(1.2);">
-                                    <span>Customer questions answered</span>
-                                </label>
+                            <h4 style="margin: 0 0 15px 0; color: #17a2b8;">Final Walkthrough Rating</h4>
+                            <div style="display: flex; flex-direction: column; gap: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 500;">All windows/doors operate correctly</span>
+                                    <div class="star-rating" data-item="windows">
+                                        <span class="star" data-value="1">⭐</span>
+                                        <span class="star" data-value="2">⭐</span>
+                                        <span class="star" data-value="3">⭐</span>
+                                        <span class="star" data-value="4">⭐</span>
+                                        <span class="star" data-value="5">⭐</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 500;">Locks and latches function properly</span>
+                                    <div class="star-rating" data-item="locks">
+                                        <span class="star" data-value="1">⭐</span>
+                                        <span class="star" data-value="2">⭐</span>
+                                        <span class="star" data-value="3">⭐</span>
+                                        <span class="star" data-value="4">⭐</span>
+                                        <span class="star" data-value="5">⭐</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 500;">No damage to property observed</span>
+                                    <div class="star-rating" data-item="damage">
+                                        <span class="star" data-value="1">⭐</span>
+                                        <span class="star" data-value="2">⭐</span>
+                                        <span class="star" data-value="3">⭐</span>
+                                        <span class="star" data-value="4">⭐</span>
+                                        <span class="star" data-value="5">⭐</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 500;">Work area cleaned properly</span>
+                                    <div class="star-rating" data-item="cleanup">
+                                        <span class="star" data-value="1">⭐</span>
+                                        <span class="star" data-value="2">⭐</span>
+                                        <span class="star" data-value="3">⭐</span>
+                                        <span class="star" data-value="4">⭐</span>
+                                        <span class="star" data-value="5">⭐</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="font-weight: 500;">Customer questions answered</span>
+                                    <div class="star-rating" data-item="questions">
+                                        <span class="star" data-value="1">⭐</span>
+                                        <span class="star" data-value="2">⭐</span>
+                                        <span class="star" data-value="3">⭐</span>
+                                        <span class="star" data-value="4">⭐</span>
+                                        <span class="star" data-value="5">⭐</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                        
+                        <style>
+                            .star-rating {
+                                display: flex;
+                                gap: 2px;
+                            }
+                            .star {
+                                font-size: 20px;
+                                cursor: pointer;
+                                color: #ddd;
+                                transition: color 0.2s;
+                            }
+                            .star:hover,
+                            .star.active {
+                                color: #ffc107;
+                            }
+                        </style>
                         
                         <div style="margin-bottom: 20px;">
                             <label style="display: block; margin-bottom: 10px; font-weight: bold;">Customer Signature:</label>
@@ -2662,6 +2709,56 @@
             
             // Setup signature canvas after showing
             setTimeout(() => setupWalkthroughSignatureCanvas(), 100);
+            
+            // Setup star ratings
+            setTimeout(() => setupStarRatings(), 100);
+        }
+        
+        function setupStarRatings() {
+            const starRatings = document.querySelectorAll('.star-rating');
+            starRatings.forEach(rating => {
+                const stars = rating.querySelectorAll('.star');
+                stars.forEach(star => {
+                    star.addEventListener('click', function() {
+                        const value = parseInt(this.dataset.value);
+                        const item = rating.dataset.item;
+                        
+                        // Remove active class from all stars in this rating
+                        stars.forEach(s => s.classList.remove('active'));
+                        
+                        // Add active class to stars up to the clicked one
+                        for (let i = 0; i < value; i++) {
+                            stars[i].classList.add('active');
+                        }
+                        
+                        // Store the rating value
+                        rating.dataset.rating = value;
+                        console.log(`⭐ Rating for ${item}: ${value} stars`);
+                    });
+                    
+                    star.addEventListener('mouseenter', function() {
+                        const value = parseInt(this.dataset.value);
+                        stars.forEach((s, index) => {
+                            if (index < value) {
+                                s.style.color = '#ffc107';
+                            } else {
+                                s.style.color = '#ddd';
+                            }
+                        });
+                    });
+                });
+                
+                rating.addEventListener('mouseleave', function() {
+                    const value = parseInt(rating.dataset.rating || 0);
+                    stars.forEach((s, index) => {
+                        if (index < value) {
+                            s.style.color = '#ffc107';
+                        } else {
+                            s.style.color = '#ddd';
+                        }
+                    });
+                });
+            });
         }
         
         function startCertificateOfCompletion(jobId) {
@@ -2786,11 +2883,24 @@
         }
         
         function saveFinalWalkthrough(jobId) {
-            const checkboxes = ['walkthroughCheck1', 'walkthroughCheck2', 'walkthroughCheck3', 'walkthroughCheck4', 'walkthroughCheck5'];
-            const allChecked = checkboxes.every(id => document.getElementById(id).checked);
+            // Collect star ratings
+            const starRatings = document.querySelectorAll('.star-rating');
+            const ratings = {};
+            let allRated = true;
             
-            if (!allChecked) {
-                alert('❌ All final walkthrough checklist items must be checked before saving');
+            starRatings.forEach(rating => {
+                const item = rating.dataset.item;
+                const value = rating.dataset.rating;
+                
+                if (!value || value === '0') {
+                    allRated = false;
+                } else {
+                    ratings[item] = parseInt(value);
+                }
+            });
+            
+            if (!allRated) {
+                alert('❌ Please rate all items before saving the final walkthrough');
                 return;
             }
             
@@ -2807,13 +2917,8 @@
                 installerId: window.installerData.id,
                 installerName: window.installerData.name,
                 type: 'final_walkthrough',
-                checklist: {
-                    allWindowsOperate: document.getElementById('walkthroughCheck1').checked,
-                    locksFunction: document.getElementById('walkthroughCheck2').checked,
-                    noDamage: document.getElementById('walkthroughCheck3').checked,
-                    areaCleaned: document.getElementById('walkthroughCheck4').checked,
-                    questionsAnswered: document.getElementById('walkthroughCheck5').checked
-                },
+                ratings: ratings,
+                overallScore: Math.round(Object.values(ratings).reduce((a, b) => a + b, 0) / Object.values(ratings).length),
                 customerSignature: signatureData,
                 notes: notes,
                 completedAt: new Date().toISOString()
@@ -3125,10 +3230,10 @@
                                 
                                 // Check if job falls within the current week range
                                 let jobDate = null;
-                                if (jobData.start) {
-                                    jobDate = new Date(jobData.start.seconds * 1000);
-                                } else if (jobData.scheduledDate) {
+                                if (jobData.scheduledDate && jobData.scheduledDate.seconds) {
                                     jobDate = new Date(jobData.scheduledDate.seconds * 1000);
+                                } else if (jobData.start && jobData.start.seconds) {
+                                    jobDate = new Date(jobData.start.seconds * 1000);
                                 }
                                 
                                 if (jobDate && jobDate >= weekStart && jobDate <= weekEnd) {
@@ -3148,7 +3253,8 @@
                         // Display matched jobs
                         let jobsHTML = '<div style="display: grid; gap: 10px;">';
                         matchedJobs.forEach(job => {
-                            const jobDate = job.start ? new Date(job.start.seconds * 1000).toLocaleDateString() : 'No date';
+                            const jobDate = job.scheduledDate && job.scheduledDate.seconds ? 
+                                new Date(job.scheduledDate.seconds * 1000).toLocaleDateString() : 'No date';
                             const jobTitle = job.title || 'No title';
                             const jobAddress = job.address || job.location || 'No address';
                             const jobCustomer = job.customer || 'No customer';
