@@ -2125,6 +2125,9 @@
                             <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
                                 <button onclick="try { console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}'); } catch(error) { console.error('❌ Error in status update:', error); alert('❌ Error: ' + error.message); }" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
                                 <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
+                                <button onclick="showDefectReportingModal('${jobId}')" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚨 Report Defect</button>
+                            </div>
+                            <div style="display: flex; gap: 10px; padding-top: 10px;">
                                 <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Final Walkthrough</button>
                                 <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
                                 <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Directions</button>
@@ -2975,8 +2978,381 @@
             }
         }
         
-        function startCertificateOfCompletion(jobId) {
+        function showDefectReportingModal(jobId) {
+            console.log('🚨 Opening defect reporting modal for job:', jobId);
             closeJobPopup(); // Close job popup first
+            
+            const defectModalHTML = `
+                <div id="defectModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                        <h3 style="margin: 0 0 20px 0; color: #dc3545; text-align: center;">🚨 Defect Reporting</h3>
+                        
+                        <!-- Defect Type Selection -->
+                        <div style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9;">
+                            <h4 style="margin: 0 0 15px 0; color: #dc3545;">Defect Type</h4>
+                            <div style="display: grid; gap: 10px;">
+                                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: white;">
+                                    <input type="radio" name="defectType" value="installation" onchange="updateDefectForm('installation')" style="margin-right: 10px;">
+                                    <div>
+                                        <div style="font-weight: bold;">🔧 Installation Damage</div>
+                                        <div style="font-size: 12px; color: #666;">Damage caused during installation process</div>
+                                    </div>
+                                </label>
+                                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: white;">
+                                    <input type="radio" name="defectType" value="manufacturer" onchange="updateDefectForm('manufacturer')" style="margin-right: 10px;">
+                                    <div>
+                                        <div style="font-weight: bold;">🏭 Manufacturer Defect</div>
+                                        <div style="font-size: 12px; color: #666;">Defects in materials or manufacturing</div>
+                                    </div>
+                                </label>
+                                <label style="display: flex; align-items: center; padding: 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: white;">
+                                    <input type="radio" name="defectType" value="property" onchange="updateDefectForm('property')" style="margin-right: 10px;">
+                                    <div>
+                                        <div style="font-weight: bold;">🏠 Property Damage</div>
+                                        <div style="font-size: 12px; color: #666;">Damage to customer property (plants, vases, etc.)</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Installation/Manufacturer Defect Form -->
+                        <div id="windowDoorForm" style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9; display: none;">
+                            <h4 style="margin: 0 0 15px 0; color: #dc3545;">Window/Door Identification</h4>
+                            
+                            <!-- Multiple Units Section -->
+                            <div style="margin-bottom: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <h5 style="margin: 0; font-weight: bold;">Affected Units:</h5>
+                                    <button type="button" onclick="addDefectUnit()" style="background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">+ Add Unit</button>
+                                </div>
+                                <div id="defectUnitsList" style="display: grid; gap: 10px;">
+                                    <!-- First unit will be added by default -->
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; gap: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Issue Type:</label>
+                                    <select id="defectIssueType" onchange="updateMeasurementFields()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="">Select issue...</option>
+                                        <option value="measurement">📏 Measurement Issue</option>
+                                        <option value="fit">🔧 Fit Problem</option>
+                                        <option value="operation">🔄 Operation Issue</option>
+                                        <option value="finish">🎨 Finish Defect</option>
+                                        <option value="hardware">⚙️ Hardware Problem</option>
+                                        <option value="glass">🪟 Glass Defect</option>
+                                        <option value="frame">🔨 Frame Issue</option>
+                                        <option value="seal">🔒 Seal Problem</option>
+                                        <option value="custom">📝 Custom Issue</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Measurement Fields -->
+                                <div id="measurementFields" style="display: none;">
+                                    <h6 style="margin: 0 0 10px 0; font-weight: bold; color: #dc3545;">📏 Measurement Details:</h6>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                        <div>
+                                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Required Dimensions:</label>
+                                            <input type="text" id="requiredDimensions" placeholder="e.g., 36x48 inches" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Actual Dimensions:</label>
+                                            <input type="text" id="actualDimensions" placeholder="e.g., 35.5x47.5 inches" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: 10px;">
+                                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Variance:</label>
+                                        <input type="text" id="dimensionVariance" placeholder="e.g., -0.5" width, -0.5" height" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                    </div>
+                                </div>
+                                
+                                <div id="customIssueDiv" style="display: none;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Custom Issue Description:</label>
+                                    <input type="text" id="defectCustomIssue" placeholder="Describe the custom issue..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Property Damage Form -->
+                        <div id="propertyForm" style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 4px; padding: 15px; background: #f9f9f9; display: none;">
+                            <h4 style="margin: 0 0 15px 0; color: #dc3545;">Property Damage Details</h4>
+                            <div style="display: grid; gap: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Item Damaged:</label>
+                                    <select id="propertyItemType" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="">Select item...</option>
+                                        <option value="plants">🌿 Plants/Landscaping</option>
+                                        <option value="vase">🏺 Vase/Decorative Item</option>
+                                        <option value="furniture">🪑 Furniture</option>
+                                        <option value="wall">🖼️ Wall/Paint</option>
+                                        <option value="floor">🟨 Flooring</option>
+                                        <option value="other">📝 Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div id="customPropertyDiv" style="display: none;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Custom Item Description:</label>
+                                    <input type="text" id="propertyCustomItem" placeholder="Describe the damaged item..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                                
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Location of Damage:</label>
+                                    <input type="text" id="propertyLocation" placeholder="e.g., Front yard, Living room, Garage" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Description -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">Detailed Description:</label>
+                            <textarea id="defectDescription" placeholder="Provide detailed description of the defect..." 
+                                style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; min-height: 100px; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <!-- Photo Capture -->
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: bold;">📷 Photo Evidence:</label>
+                            <input type="file" id="defectPhoto" accept="image/*" capture="camera" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <div id="photoPreview" style="margin-top: 10px; text-align: center;"></div>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="saveDefectReport('${jobId}')" style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; flex: 1;">🚨 Save Defect Report</button>
+                            <button onclick="closeDefectModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', defectModalHTML);
+            
+            // Add first unit by default
+            addDefectUnit();
+            
+            // Setup photo preview
+            document.getElementById('defectPhoto').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('photoPreview').innerHTML = 
+                            `<img src="${e.target.result}" style="max-width: 100%; max-height: 200px; border-radius: 4px;">`;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Setup issue type change handler
+            document.getElementById('defectIssueType').addEventListener('change', function() {
+                updateMeasurementFields();
+                const customDiv = document.getElementById('customIssueDiv');
+                if (this.value === 'custom') {
+                    customDiv.style.display = 'block';
+                } else {
+                    customDiv.style.display = 'none';
+                }
+            });
+            
+            // Setup property item change handler
+            document.getElementById('propertyItemType').addEventListener('change', function() {
+                const customDiv = document.getElementById('customPropertyDiv');
+                if (this.value === 'other') {
+                    customDiv.style.display = 'block';
+                } else {
+                    customDiv.style.display = 'none';
+                }
+            });
+        }
+        
+        let defectUnitCounter = 0;
+        
+        function addDefectUnit() {
+            defectUnitCounter++;
+            const unitId = `unit_${defectUnitCounter}`;
+            
+            const unitHTML = `
+                <div id="${unitId}" style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; background: white;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h6 style="margin: 0; font-weight: bold;">Unit ${defectUnitCounter}</h6>
+                        ${defectUnitCounter > 1 ? `<button type="button" onclick="removeDefectUnit('${unitId}')" style="background: #dc3545; color: white; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 11px;">✕</button>` : ''}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">Type:</label>
+                            <select name="unitType" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                                <option value="">Select...</option>
+                                <option value="window">🪟 Window</option>
+                                <option value="door">🚪 Door</option>
+                                <option value="sliding">🚪 Sliding Door</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">Map Designation:</label>
+                            <input type="text" name="mapDesignation" placeholder="e.g., A1, B3" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 3px; font-size: 12px; font-weight: bold;">Location:</label>
+                            <input type="text" name="unitLocation" placeholder="e.g., Living Room" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px;">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('defectUnitsList').insertAdjacentHTML('beforeend', unitHTML);
+        }
+        
+        function removeDefectUnit(unitId) {
+            const unit = document.getElementById(unitId);
+            if (unit) {
+                unit.remove();
+            }
+        }
+        
+        function updateMeasurementFields() {
+            const issueType = document.getElementById('defectIssueType').value;
+            const measurementFields = document.getElementById('measurementFields');
+            
+            if (issueType === 'measurement') {
+                measurementFields.style.display = 'block';
+            } else {
+                measurementFields.style.display = 'none';
+            }
+        }
+        
+        function getDefectUnits() {
+            const units = [];
+            const unitElements = document.querySelectorAll('#defectUnitsList > div');
+            
+            unitElements.forEach(unitElement => {
+                const type = unitElement.querySelector('select[name="unitType"]').value;
+                const mapDesignation = unitElement.querySelector('input[name="mapDesignation"]').value.trim();
+                const location = unitElement.querySelector('input[name="unitLocation"]').value.trim();
+                
+                if (type && mapDesignation && location) {
+                    units.push({
+                        type: type,
+                        mapDesignation: mapDesignation,
+                        location: location
+                    });
+                }
+            });
+            
+            return units;
+        }
+        
+        function updateDefectForm(type) {
+            const windowDoorForm = document.getElementById('windowDoorForm');
+            const propertyForm = document.getElementById('propertyForm');
+            
+            if (type === 'installation' || type === 'manufacturer') {
+                windowDoorForm.style.display = 'block';
+                propertyForm.style.display = 'none';
+            } else if (type === 'property') {
+                windowDoorForm.style.display = 'none';
+                propertyForm.style.display = 'block';
+            }
+        }
+        
+        function closeDefectModal() {
+            const modal = document.getElementById('defectModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function saveDefectReport(jobId) {
+            const defectType = document.querySelector('input[name="defectType"]:checked')?.value;
+            
+            if (!defectType) {
+                alert('❌ Please select a defect type');
+                return;
+            }
+            
+            let defectData = {
+                jobId: jobId,
+                defectType: defectType,
+                installerId: window.installerData.id,
+                installerName: window.installerData.name,
+                description: document.getElementById('defectDescription').value.trim(),
+                createdAt: new Date().toISOString()
+            };
+            
+            // Add type-specific data
+            if (defectType === 'installation' || defectType === 'manufacturer') {
+                const units = getDefectUnits();
+                if (units.length === 0) {
+                    alert('❌ Please add at least one affected window/door');
+                    return;
+                }
+                
+                defectData.units = units;
+                defectData.issueType = document.getElementById('defectIssueType').value;
+                defectData.customIssue = document.getElementById('defectCustomIssue').value.trim();
+                
+                // Add measurement data if applicable
+                if (defectData.issueType === 'measurement') {
+                    defectData.measurements = {
+                        required: document.getElementById('requiredDimensions').value.trim(),
+                        actual: document.getElementById('actualDimensions').value.trim(),
+                        variance: document.getElementById('dimensionVariance').value.trim()
+                    };
+                    
+                    if (!defectData.measurements.required || !defectData.measurements.actual) {
+                        alert('❌ Please provide both required and actual dimensions for measurement issues');
+                        return;
+                    }
+                }
+                
+                if (!defectData.issueType) {
+                    alert('❌ Please select an issue type');
+                    return;
+                }
+            } else if (defectType === 'property') {
+                defectData.itemType = document.getElementById('propertyItemType').value;
+                defectData.customItem = document.getElementById('propertyCustomItem').value.trim();
+                defectData.propertyLocation = document.getElementById('propertyLocation').value.trim();
+                
+                if (!defectData.itemType || !defectData.propertyLocation) {
+                    alert('❌ Please fill in all property damage fields');
+                    return;
+                }
+            }
+            
+            if (!defectData.description) {
+                alert('❌ Please provide a detailed description');
+                return;
+            }
+            
+            // Handle photo upload
+            const photoFile = document.getElementById('defectPhoto').files[0];
+            if (photoFile) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    defectData.photoData = e.target.result;
+                    saveDefectToFirebase(defectData);
+                };
+                reader.readAsDataURL(photoFile);
+            } else {
+                saveDefectToFirebase(defectData);
+            }
+        }
+        
+        function saveDefectToFirebase(defectData) {
+            if (db) {
+                db.collection('defect_reports').add(defectData)
+                .then(() => {
+                    console.log('✅ Defect report saved successfully');
+                    alert('✅ Defect report submitted successfully!');
+                    closeDefectModal();
+                })
+                .catch(error => {
+                    console.error('❌ Error saving defect report:', error);
+                    alert('❌ Error saving defect report: ' + error.message);
+                });
+            }
+        }
+        
+        function startCertificateOfCompletion(jobId) {
             
             // Create certificate modal
             const certificateModalHTML = `
@@ -5601,6 +5977,9 @@
                                 <button onclick="syncTeamUpEvents()" class="w-full bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition-colors">
                                     🔄 Sync Calendar
                                 </button>
+                                <button onclick="showDefectReportingModal('${job.id}')" class="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition-colors">
+                                            🚨 Report Defect
+                                        </button>
                             </div>
                         </div>
                         
