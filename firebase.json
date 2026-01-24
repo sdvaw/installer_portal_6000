@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": ".",
+    "public": "deploy",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -9,18 +9,15 @@
     "rewrites": [
       {
         "source": "/admin",
-        "destination": "/index.html",
-        "type": 200
+        "destination": "/index.html"
       },
       {
         "source": "/installer/**",
-        "destination": "/index.html",
-        "type": 200
+        "destination": "/index.html"
       },
       {
         "source": "**",
-        "destination": "/index.html",
-        "type": 200
+        "destination": "/index.html"
       }
     ]
   }
