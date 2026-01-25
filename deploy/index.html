@@ -472,8 +472,8 @@
                         <button onclick="showBlackoutDatesModal()" class="terminal-button p-4 text-center">
                             📅 Blackout Dates
                         </button>
-                        <button onclick="syncTeamUpEvents()" class="terminal-button p-4 text-center">
-                            🔄 Sync Calendar
+                        <button onclick="showJobStatusModal()" class="terminal-button p-4 text-center">
+                            🔄 Update Status
                         </button>
                     </div>
                 </div>
@@ -1949,131 +1949,6 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Load installer jobs using subcalendar_name field
-        function loadInstallerJobsWithCalendar(installer) {
-            console.log('🔍 Loading jobs for installer using calendar field:', installer.name);
-            
-            const jobsListEl = document.getElementById('jobsList');
-            if (!jobsListEl) {
-                console.error('❌ jobsList element not found');
-                alert('❌ jobsList element not found!');
-                return;
-            }
-            
-            // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs for ' + installer.name + '...</div>';
-            
-            // Load actual jobs from Firestore
-            if (db && installer.id) {
-                alert('🔧 Matching installer name to subcalendar_name field: ' + installer.name);
-                
-                // Query jobs where subcalendar_name matches installer name
-                db.collection('jobs').get()
-                    .then(snapshot => {
-                        if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
-                            return;
-                        }
-                        
-                        let matchedJobs = [];
-                        
-                        snapshot.forEach(doc => {
-                            const jobData = doc.data();
-                            
-                            // Check if subcalendar_name field matches this installer
-                            if (jobData.subcalendar_name) {
-                                const calendarName = jobData.subcalendar_name;
-                                const installerName = installer.name;
-                                
-                                console.log('🔍 Matching check:');
-                                console.log('  Calendar name:', calendarName);
-                                console.log('  Installer name:', installerName);
-                                
-                                // Simple match: if installer name is in calendar name, they get all jobs from that calendar
-                                if (calendarName.includes(installerName)) {
-                                    matchedJobs.push({
-                                        id: doc.id,
-                                        data: jobData
-                                    });
-                                    console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
-                                } else {
-                                    console.log('❌ No match for ' + installer.name + ' with calendar:', jobData.subcalendar_name);
-                                }
-                            }
-                        });
-                        
-                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
-                        console.log('🔍 Alert shown, now processing jobs for display...');
-                        
-                        // Display matched jobs in compact mobile view
-                        let calendarHTML = '<div style="color: #333; background: white; padding: 5px; max-width: 100%; margin: 0 auto;">';
-                        calendarHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">';
-                        calendarHTML += '<h2 style="margin: 0; font-size: 16px;">📅 ' + installer.name + '</h2>';
-                        calendarHTML += '<div style="display: flex; gap: 8px;">';
-                        calendarHTML += '<button onclick="changeWeek(-1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">◀</button>';
-                        calendarHTML += '<button onclick="changeWeek(1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">▶</button>';
-                        calendarHTML += '</div></div>';
-                        
-                        if (matchedJobs.length === 0) {
-                            calendarHTML += '<div style="text-align: center; padding: 20px; color: #666;">No jobs found</div>';
-                        } else {
-                            console.log('🔍 Processing', matchedJobs.length, 'matched jobs for display');
-                            
-                            // Group jobs by date
-                            const jobsByDate = {};
-                            matchedJobs.forEach(job => {
-                                const data = job.data;
-                                let dateKey = 'No date';
-                                if (data.scheduledDate && data.scheduledDate.seconds) {
-                                    dateKey = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
-                                }
-                                if (!jobsByDate[dateKey]) jobsByDate[dateKey] = [];
-                                jobsByDate[dateKey].push(job);
-                            });
-                            
-                            // Display compact job list
-                            Object.keys(jobsByDate).sort().forEach(date => {
-                                calendarHTML += '<div style="margin-bottom: 15px;">';
-                                calendarHTML += '<div style="background: #f5f5f5; padding: 5px 8px; font-size: 12px; color: #666; border-bottom: 1px solid #ddd;">' + date + '</div>';
-                                
-                                jobsByDate[date].forEach(job => {
-                                    const data = job.data;
-                                    const jobId = job.id;
-                                    
-                                    console.log('🔍 Creating job element for:', jobId, data.title);
-                                    
-                                    calendarHTML += `
-                                        <div style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
-                                             onclick="showJobPopup('${jobId}', '${encodeURIComponent(JSON.stringify(job.data))}')">
-                                            <div style="font-weight: bold; color: #2196F3; font-size: 14px;">
-                                                ${data.title || 'No Title'}
-                                            </div>
-                                            <div style="color: #999; font-size: 11px;">
-                                                ${data.windowDoorCounts || ''}
-                                            </div>
-                                        </div>
-                                    `;
-                                });
-                                
-                                calendarHTML += '</div>';
-                            });
-                        }
-                        
-                        calendarHTML += '</div>';
-                        jobsListEl.innerHTML = calendarHTML;
-                        console.log('🔍 Job list HTML updated successfully');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error loading jobs: ' + error.message);
-                    });
-                
-            } else {
-                alert('❌ Database not available or installer ID missing');
-                jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
-            }
-        }
-        
         // Week navigation functions
         function changeWeek(direction) {
             currentWeekOffset += direction;
@@ -2082,6 +1957,11 @@
             if (window.installerData) {
                 loadInstallerJobsWithCalendar(window.installerData);
             }
+        }
+        
+        function showDayJobs(dateStr) {
+            console.log('📅 Showing jobs for date:', dateStr);
+            alert('📅 Jobs for ' + dateStr + '\n\nThis would show the jobs for this specific day with the ability to drill down to job details.');
         }
         
         function toggleJobDetails(jobId) {
@@ -3769,18 +3649,19 @@
             }
         }
         
-        // Load installer jobs
+        // Load installer jobs using subcalendar_name field
         function loadInstallerJobsWithCalendar(installer) {
-            console.log('🔍 Loading jobs for installer:', installer.name, 'Week offset:', currentWeekOffset);
+            console.log('🔍 Loading mobile week calendar for installer:', installer.name);
             
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
+                alert('❌ jobsList element not found!');
                 return;
             }
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading week...</div>';
             
             // Calculate week date range
             const today = new Date();
@@ -3799,98 +3680,49 @@
             
             console.log('📅 Week range:', weekStart.toDateString(), 'to', weekEnd.toDateString());
             
-            // Load actual jobs from Firestore
-            if (db && installer.id) {
-                // Get all jobs and filter by week range
-                db.collection('jobs').get()
-                    .then(snapshot => {
-                        if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
-                            return;
-                        }
-                        
-                        let matchedJobs = [];
-                        
-                        snapshot.forEach(doc => {
-                            const jobData = doc.data();
-                            console.log('🔍 Processing job:', doc.id, jobData);
-                            
-                            // Match jobs to installer by calendar name
-                            if (jobData.subcalendar_name && 
-                                (jobData.subcalendar_name.includes(installer.name) || 
-                                 jobData.subcalendar_name.includes('Installer - ' + installer.name))) {
-                                
-                                // Check if job falls within the current week range
-                                let jobDate = null;
-                                if (jobData.scheduledDate && jobData.scheduledDate.seconds) {
-                                    jobDate = new Date(jobData.scheduledDate.seconds * 1000);
-                                } else if (jobData.start && jobData.start.seconds) {
-                                    jobDate = new Date(jobData.start.seconds * 1000);
-                                }
-                                
-                                if (jobDate && jobDate >= weekStart && jobDate <= weekEnd) {
-                                    matchedJobs.push({
-                                        id: doc.id,
-                                        ...jobData
-                                    });
-                                }
-                            }
-                        });
-                        
-                        if (matchedJobs.length === 0) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found for this week</div>';
-                            return;
-                        }
-                        
-                        // Display matched jobs
-                        let jobsHTML = '<div style="display: grid; gap: 10px;">';
-                        matchedJobs.forEach(job => {
-                            const jobDate = job.scheduledDate && job.scheduledDate.seconds ? 
-                                new Date(job.scheduledDate.seconds * 1000).toLocaleDateString() : 'No date';
-                            const jobTitle = job.title || 'No title';
-                            const jobAddress = job.address || job.location || 'No address';
-                            const jobCustomer = job.customer || 'No customer';
-                            const jobPhone = job.phone || 'No phone';
-                            const jobEmail = job.email || 'No email';
-                            const jobStatus = job.status || 'scheduled';
-                            const windowDoorCounts = job.windowDoorCounts || {};
-                            
-                            jobsHTML += `
-                                <div onclick="showJobPopup('${job.id}', '${encodeURIComponent(JSON.stringify(job))}')" 
-                                     style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
-                                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
-                                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px;">${jobTitle}</div>
-                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">📅 ${jobDate}</div>
-                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">👤 ${jobCustomer}</div>
-                                            <div style="font-size: 12px; color: #666;">📍 ${jobAddress}</div>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <div style="background: ${jobStatus === 'completed' ? '#4CAF50' : jobStatus === 'in-progress' ? '#FF9800' : '#2196F3'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-bottom: 4px;">
-                                                ${jobStatus || 'scheduled'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px; font-size: 11px; color: #888;">
-                                        ${windowDoorCounts.Windows ? `<span>🪟 ${windowDoorCounts.Windows}</span>` : ''}
-                                        ${windowDoorCounts.Doors ? `<span>🚪 ${windowDoorCounts.Doors}</span>` : ''}
-                                        ${windowDoorCounts.SGD ? `<span>🚪 ${windowDoorCounts.SGD}</span>` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        jobsHTML += '</div>';
-                        
-                        jobsListEl.innerHTML = jobsHTML;
-                        console.log('✅ Jobs loaded successfully for week:', matchedJobs.length, 'jobs');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading jobs</div>';
-                    });
+            // Create mobile-optimized week calendar HTML
+            let calendarHTML = '<div class="terminal-card p-3">';
+            
+            // Week navigation - mobile friendly
+            calendarHTML += '<div class="flex justify-between items-center mb-3">';
+            calendarHTML += '<h3 class="text-base font-bold text-terminal">📅 Week of ' + weekStart.toLocaleDateString() + '</h3>';
+            calendarHTML += '<div class="flex gap-1">';
+            calendarHTML += '<button onclick="changeWeek(-1)" class="terminal-button px-2 py-1 text-xs">◀</button>';
+            calendarHTML += '<button onclick="changeWeek(1)" class="terminal-button px-2 py-1 text-xs">▶</button>';
+            calendarHTML += '</div></div>';
+            
+            // Create week grid - mobile optimized (7 days in a row)
+            calendarHTML += '<div class="grid grid-cols-7 gap-1 mb-3">';
+            const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+            
+            for (let i = 0; i < 7; i++) {
+                const currentDay = new Date(weekStart.getTime() + (i * 24 * 60 * 60 * 1000));
+                const dateStr = currentDay.toLocaleDateString();
+                const dayNum = currentDay.getDate();
+                
+                // For demo, show random job counts (in real version, this would come from database)
+                const jobCount = Math.floor(Math.random() * 3); // 0-2 jobs for demo
+                
+                calendarHTML += '<div onclick="showDayJobs(\'' + dateStr + '\')" class="terminal-card p-2 text-center cursor-pointer hover:bg-gray-800 min-h-[60px] flex flex-col justify-center">';
+                calendarHTML += '<div class="text-xs text-terminal-muted">' + dayNames[i] + '</div>';
+                calendarHTML += '<div class="text-sm font-bold text-terminal">' + dayNum + '</div>';
+                if (jobCount > 0) {
+                    calendarHTML += '<div class="text-xs bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center mx-auto mt-1">' + jobCount + '</div>';
+                }
+                calendarHTML += '</div>';
             }
+            
+            calendarHTML += '</div>';
+            
+            // Blackout dates button - mobile friendly
+            calendarHTML += '<div class="text-center mt-3">';
+            calendarHTML += '<button onclick="showBlackoutDatesModal()" class="terminal-button px-4 py-2 text-sm">📅 Request Blackout Dates</button>';
+            calendarHTML += '</div>';
+            
+            calendarHTML += '</div>';
+            
+            jobsListEl.innerHTML = calendarHTML;
+            console.log('✅ Mobile week calendar displayed successfully');
         }
         
         // Debug TeamUp API Response
