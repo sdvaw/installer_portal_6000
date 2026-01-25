@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Installer Portal - v2025.01.18.2030</title>
+    <title>Installer Portal - v2025.01.25.1104</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
@@ -740,51 +740,53 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show admin login screen
+            // Show admin login screen with terminal theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div>
-                            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                                👑 Admin Portal
-                            </h2>
-                            <p class="mt-2 text-center text-sm text-gray-600">
-                                Administrator access only
-                            </p>
-                            <div class="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                                <p class="text-sm font-medium text-yellow-800">
-                                    <strong>🔐 Demo Credentials:</strong><br>
-                                    Email: admin@company.com<br>
-                                    Password: admin123
+                        <div class="terminal-card p-8">
+                            <div class="text-center mb-8">
+                                <h2 class="text-3xl font-bold text-terminal mb-2">
+                                    👑 Admin Portal
+                                </h2>
+                                <p class="text-sm text-terminal-muted">
+                                    Administrator access only
                                 </p>
+                                <div class="mt-4 p-3 border border-terminal rounded-lg bg-black">
+                                    <p class="text-sm font-medium text-terminal">
+                                        <strong>🔐 Demo Credentials:</strong><br>
+                                        Email: admin@company.com<br>
+                                        Password: admin123
+                                    </p>
+                                </div>
                             </div>
+                            <form id="adminLoginForm" class="space-y-6">
+                                <div>
+                                    <label for="adminEmail" class="block text-sm font-medium text-terminal mb-2">
+                                        Admin Email
+                                    </label>
+                                    <input id="adminEmail" name="email" type="email" autocomplete="email" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter admin email" value="admin@company.com">
+                                </div>
+
+                                <div>
+                                    <label for="adminPassword" class="block text-sm font-medium text-terminal mb-2">
+                                        Admin Password
+                                    </label>
+                                    <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter admin password" value="admin123">
+                                </div>
+
+                                <div>
+                                    <button type="submit" class="w-full terminal-button py-3 px-4 text-sm font-bold">
+                                        🔐 Admin Sign In
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form id="adminLoginForm" class="mt-8 space-y-6">
-                            <div>
-                                <label for="adminEmail" class="block text-sm font-medium text-gray-700">
-                                    Admin Email
-                                </label>
-                                <input id="adminEmail" name="email" type="email" autocomplete="email" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter admin email" value="admin@company.com">
-                            </div>
-
-                            <div>
-                                <label for="adminPassword" class="block text-sm font-medium text-gray-700">
-                                    Admin Password
-                                </label>
-                                <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter admin password" value="admin123">
-                            </div>
-
-                            <div>
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    🔐 Admin Sign In
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             `;
@@ -1961,7 +1963,62 @@
         
         function showDayJobs(dateStr) {
             console.log('📅 Showing jobs for date:', dateStr);
-            alert('📅 Jobs for ' + dateStr + '\n\nThis would show the jobs for this specific day with the ability to drill down to job details.');
+            
+            // Create demo jobs for this day
+            const demoJobs = [
+                {
+                    id: 'JOB001',
+                    title: 'Window Installation - Living Room',
+                    customer: 'John Smith',
+                    address: '123 Main Street, Springfield',
+                    windows: 3,
+                    doors: 1
+                },
+                {
+                    id: 'JOB002', 
+                    title: 'Door Replacement - Front Entry',
+                    customer: 'Mary Johnson',
+                    address: '456 Oak Avenue, Springfield',
+                    windows: 0,
+                    doors: 2
+                }
+            ];
+            
+            // Create modal HTML for mobile
+            const modalHTML = `
+                <div id="dayJobsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: #1a1a1a; border: 2px solid #00ff00; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; font-family: monospace;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
+                            <h3 style="margin: 0; color: #00ff00;">📅 ${dateStr}</h3>
+                            <button onclick="closeDayJobsModal()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕</button>
+                        </div>
+                        
+                        <div style="color: #00ff00; margin-bottom: 15px; font-size: 14px;">${demoJobs.length} jobs scheduled</div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${demoJobs.map(job => `
+                                <div onclick="showJobPopup('${job.id}')" style="background: #2a2a2a; border: 1px solid #00ff00; padding: 15px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                    <div style="color: #00ff00; font-weight: bold; margin-bottom: 5px;">${job.title}</div>
+                                    <div style="color: #888; font-size: 12px; margin-bottom: 3px;">👤 ${job.customer}</div>
+                                    <div style="color: #888; font-size: 12px; margin-bottom: 5px;">📍 ${job.address}</div>
+                                    <div style="color: #00ff00; font-size: 11px;">🪟 ${job.windows} 🚪 ${job.doors}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            console.log('✅ Day jobs modal displayed for:', dateStr);
+        }
+        
+        function closeDayJobsModal() {
+            const modal = document.getElementById('dayJobsModal');
+            if (modal) {
+                modal.remove();
+            }
         }
         
         function toggleJobDetails(jobId) {
@@ -1974,58 +2031,66 @@
         }
         
         // Job popup modal functions
-        function showJobPopup(jobId, jobDataEncoded) {
-            try {
-                const jobData = JSON.parse(decodeURIComponent(jobDataEncoded));
-                console.log('🔍 Showing job popup for:', jobId, jobData);
-                
-                // Create modal HTML
-                const modalHTML = `
-                    <div id="jobModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-                        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                                <h3 style="margin: 0; color: #2196F3;">📋 ${jobData.title || 'Job Details'}</h3>
-                                <button onclick="closeJobPopup()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+        function showJobPopup(jobId) {
+            console.log('🔍 Showing job popup for:', jobId);
+            
+            // Demo job data
+            const jobData = {
+                id: jobId,
+                title: 'Window Installation - Living Room',
+                customer: 'John Smith',
+                address: '123 Main Street, Springfield',
+                phone: '555-0123',
+                windows: 3,
+                doors: 1,
+                status: 'scheduled',
+                notes: 'Install new double-hung windows'
+            };
+            
+            // Create mobile job details modal
+            const modalHTML = `
+                <div id="jobModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: #1a1a1a; border: 2px solid #00ff00; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: monospace;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
+                            <h3 style="margin: 0; color: #00ff00; font-size: 16px;">📋 ${jobData.title}</h3>
+                            <button onclick="closeJobPopup()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕</button>
+                        </div>
+                        
+                        <div style="color: #00ff00; margin-bottom: 20px;">
+                            <div style="margin-bottom: 8px;"><strong>👤 Customer:</strong> ${jobData.customer}</div>
+                            <div style="margin-bottom: 8px;"><strong>📍 Address:</strong> ${jobData.address}</div>
+                            <div style="margin-bottom: 8px;"><strong>📞 Phone:</strong> ${jobData.phone}</div>
+                            <div style="margin-bottom: 8px;"><strong>🪟 Windows:</strong> ${jobData.windows}</div>
+                            <div style="margin-bottom: 8px;"><strong>🚪 Doors:</strong> ${jobData.doors}</div>
+                            <div style="margin-bottom: 8px;"><strong>📊 Status:</strong> <span style="color: #ffc107;">${jobData.status}</span></div>
+                            <div style="margin-bottom: 8px;"><strong>📝 Notes:</strong> ${jobData.notes}</div>
+                        </div>
+                        
+                        <div style="border-top: 1px solid #00ff00; padding-top: 15px;">
+                            <div style="color: #00ff00; font-weight: bold; margin-bottom: 10px; text-align: center;">🔧 JOB MANAGEMENT</div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <button onclick="updateJobStatus('${jobId}')" style="background: #ffc107; color: #000; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🔄 Update Status</button>
+                                <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📷 Capture Photo</button>
                             </div>
                             
-                            <div style="margin-bottom: 15px;">
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">👤 Customer</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.customer || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📍 Address</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.address || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📞 Phone</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.phone || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">🪟 Windows/Doors</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.windowDoorCounts || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📅 Scheduled Date</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.scheduledDate ? new Date(jobData.scheduledDate.seconds * 1000).toLocaleDateString() : 'N/A'}</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <button onclick="showDefectReportingModal('${jobId}')" style="background: #dc3545; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🚨 Report Defect</button>
+                                <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🚶 Walkthrough</button>
                             </div>
                             
-                            <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
-                                <button onclick="try { console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}'); } catch(error) { console.error('❌ Error in status update:', error); alert('❌ Error: ' + error.message); }" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
-                                <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
-                                <button onclick="showDefectReportingModal('${jobId}')" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚨 Report Defect</button>
-                            </div>
-                            <div style="display: flex; gap: 10px; padding-top: 10px;">
-                                <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Final Walkthrough</button>
-                                <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
-                                <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Directions</button>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📜 Certificate</button>
+                                <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🗺️ Directions</button>
                             </div>
                         </div>
                     </div>
-                `;
-                
-                // Add modal to page
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-            } catch (error) {
-                console.error('❌ Error showing job popup:', error);
-                alert('❌ Error showing job details: ' + error.message);
-            }
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            console.log('✅ Job details modal displayed');
         }
         
         function closeJobPopup() {
@@ -3680,12 +3745,15 @@
             
             console.log('📅 Week range:', weekStart.toDateString(), 'to', weekEnd.toDateString());
             
+            // ALWAYS show the calendar - don't try to load from Firebase for now
+            console.log('🎭 Showing calendar without Firebase data for testing');
+            
             // Create mobile-optimized week calendar HTML
             let calendarHTML = '<div class="terminal-card p-3">';
             
-            // Week navigation - mobile friendly
-            calendarHTML += '<div class="flex justify-between items-center mb-3">';
-            calendarHTML += '<h3 class="text-base font-bold text-terminal">📅 Week of ' + weekStart.toLocaleDateString() + '</h3>';
+            // Week navigation - mobile friendly (smaller header)
+            calendarHTML += '<div class="flex justify-between items-center mb-2">';
+            calendarHTML += '<h3 class="text-sm font-bold text-terminal">📅 ' + weekStart.toLocaleDateString() + '</h3>';
             calendarHTML += '<div class="flex gap-1">';
             calendarHTML += '<button onclick="changeWeek(-1)" class="terminal-button px-2 py-1 text-xs">◀</button>';
             calendarHTML += '<button onclick="changeWeek(1)" class="terminal-button px-2 py-1 text-xs">▶</button>';
@@ -3693,21 +3761,22 @@
             
             // Create week grid - mobile optimized (7 days in a row)
             calendarHTML += '<div class="grid grid-cols-7 gap-1 mb-3">';
-            const dayNames = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+            const dayNames = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
             
             for (let i = 0; i < 7; i++) {
                 const currentDay = new Date(weekStart.getTime() + (i * 24 * 60 * 60 * 1000));
                 const dateStr = currentDay.toLocaleDateString();
                 const dayNum = currentDay.getDate();
+                const dayName = dayNames[i];
                 
                 // For demo, show random job counts (in real version, this would come from database)
                 const jobCount = Math.floor(Math.random() * 3); // 0-2 jobs for demo
                 
-                calendarHTML += '<div onclick="showDayJobs(\'' + dateStr + '\')" class="terminal-card p-2 text-center cursor-pointer hover:bg-gray-800 min-h-[60px] flex flex-col justify-center">';
-                calendarHTML += '<div class="text-xs text-terminal-muted">' + dayNames[i] + '</div>';
+                calendarHTML += '<div onclick="showDayJobs(\'' + dateStr.replace(/\//g, '-') + '\')" class="terminal-card p-2 text-center cursor-pointer hover:bg-gray-800 min-h-[70px] flex flex-col justify-center">';
+                calendarHTML += '<div class="text-xs text-terminal-muted">' + dayName + '</div>';
                 calendarHTML += '<div class="text-sm font-bold text-terminal">' + dayNum + '</div>';
                 if (jobCount > 0) {
-                    calendarHTML += '<div class="text-xs bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center mx-auto mt-1">' + jobCount + '</div>';
+                    calendarHTML += '<div class="text-xs bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center mx-auto mt-1">' + jobCount + '</div>';
                 }
                 calendarHTML += '</div>';
             }
