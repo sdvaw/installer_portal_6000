@@ -6955,7 +6955,7 @@
                 const updateData = {
                     status: status,
                     updatedAt: new Date().toISOString(),
-                    updatedBy: installerData.name
+                    updatedBy: installerData ? installerData.name : 'Unknown Installer'
                 };
                 
                 if (note) {
