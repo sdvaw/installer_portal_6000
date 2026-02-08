@@ -65,307 +65,176 @@
             color: #1f2937;
         }
 
-        .terminal-panel {
-            background: #0a0a0a;
-            border: 2px solid #00ff00;
-            border-radius: 0;
-            box-shadow: 
-                0 0 10px rgba(0, 255, 0, 0.5),
-                inset 0 0 10px rgba(0, 255, 0, 0.1);
-            position: relative;
-        }
-
-        .terminal-panel::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 2px,
-                    rgba(0, 255, 0, 0.03) 2px,
-                    rgba(0, 255, 0, 0.03) 4px
-                );
-            pointer-events: none;
-        }
-
-        .terminal-card {
-            background: #0d0d0d;
-            border: 1px solid #00ff00;
-            border-radius: 0;
+        .modern-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
             padding: 20px;
-            box-shadow: 
-                0 0 5px rgba(0, 255, 0, 0.3),
-                inset 0 0 5px rgba(0, 255, 0, 0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
             transition: all 0.2s ease;
             position: relative;
-            min-height: 300px;
         }
 
-        .terminal-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 1px,
-                    rgba(0, 255, 0, 0.02) 1px,
-                    rgba(0, 255, 0, 0.02) 2px
-                );
-            pointer-events: none;
+        .modern-card:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+            transform: translateY(-1px);
         }
 
-        .terminal-card:hover {
-            border-color: #00ff00;
-            box-shadow: 
-                0 0 15px rgba(0, 255, 0, 0.5),
-                inset 0 0 10px rgba(0, 255, 0, 0.1);
-        }
-
-        .terminal-button {
-            background: #0a0a0a;
-            border: 1px solid #00ff00;
-            color: #00ff00;
+        .modern-button {
+            background: #3b82f6;
+            border: 1px solid #3b82f6;
+            color: white;
             padding: 10px 20px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            text-transform: uppercase;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-weight: 500;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s ease;
             position: relative;
             overflow: hidden;
-        }
-
-        .terminal-button::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .terminal-button:hover::before {
-            left: 100%;
-        }
-
-        .terminal-button:hover {
-            background: #00ff00;
-            color: #000000;
-            box-shadow: 0 0 10px #00ff00;
-        }
-
-        .terminal-button:active {
-            transform: scale(0.98);
-        }
-
-        .terminal-input {
-            background: #0a0a0a;
-            border: 1px solid #00ff00;
-            color: #00ff00;
-            padding: 10px 15px;
-            font-family: 'Courier New', monospace;
             transition: all 0.2s ease;
         }
 
-        .terminal-input::placeholder {
-            color: rgba(0, 255, 0, 0.5);
+        .modern-button:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
         }
 
-        .terminal-input:focus {
-            outline: none;
-            border-color: #00ff00;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        .modern-button:active {
+            transform: translateY(0);
         }
 
-        .terminal-header {
-            background: #0a0a0a;
-            border: 2px solid #00ff00;
-            border-bottom: none;
-            position: relative;
+        .modern-button-success {
+            background: #10b981;
+            border-color: #10b981;
         }
 
-        .terminal-header::after {
-            content: "DATABASE SYSTEM v2025.01.25.1810";
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            font-size: 10px;
-            color: rgba(0, 255, 0, 0.7);
-            font-family: 'Courier New', monospace;
+        .modern-button-success:hover {
+            background: #059669;
+            border-color: #059669;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
         }
 
-        .text-terminal {
-            color: #00ff00;
-            text-shadow: 0 0 3px #00ff00;
-            font-family: 'Courier New', monospace;
+        .modern-button-danger {
+            background: #ef4444;
+            border-color: #ef4444;
         }
 
-        .text-terminal-muted {
-            color: rgba(0, 255, 0, 0.7);
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.5);
+        .modern-button-danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
         }
 
-        .terminal-stat {
-            background: #0d0d0d;
-            border: 1px solid #00ff00;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.2s ease;
-            position: relative;
+        .modern-button-warning {
+            background: #f59e0b;
+            border-color: #f59e0b;
         }
 
-        .terminal-stat::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                repeating-linear-gradient(
-                    0deg,
-                    transparent,
-                    transparent 1px,
-                    rgba(0, 255, 0, 0.02) 1px,
-                    rgba(0, 255, 0, 0.02) 2px
-                );
-            pointer-events: none;
+        .modern-button-warning:hover {
+            background: #d97706;
+            border-color: #d97706;
+            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
         }
 
-        .terminal-stat:hover {
-            border-color: #00ff00;
-            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        .modern-text {
+            color: #1f2937;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        .terminal-modal {
-            background: #0a0a0a;
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        .modern-text-muted {
+            color: #6b7280;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        .terminal-modal-overlay {
-            background: rgba(0, 0, 0, 0.8);
+        .modern-header {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            padding: 16px 0;
+            border-bottom: 1px solid #e5e7eb;
         }
 
-        /* Cursor blink effect */
-        @keyframes cursor-blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
+        .modern-loading {
+            background: #f9fafb;
+            color: #1f2937;
         }
 
-        .cursor::after {
-            content: "_";
-            animation: cursor-blink 1s infinite;
-            color: #00ff00;
-        }
-
-        /* Scan line effect */
-        @keyframes scanline {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
-        }
-
-        .scanline {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(to bottom, transparent, rgba(0, 255, 0, 0.3), transparent);
-            animation: scanline 8s linear infinite;
-            pointer-events: none;
-        }
-
-        /* Flicker effect */
-        @keyframes flicker {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.95; }
-        }
-
-        .flicker {
-            animation: flicker 0.15s infinite;
-        }
-
-        /* Override default styles */
-        .text-white {
-            color: #00ff00;
-            text-shadow: 0 0 3px #00ff00;
-        }
-
-        .text-gray-900 {
-            color: #00ff00;
-            text-shadow: 0 0 3px #00ff00;
-        }
-
-        .text-gray-600 {
-            color: rgba(0, 255, 0, 0.8);
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.5);
-        }
-
-        .text-gray-500 {
-            color: rgba(0, 255, 0, 0.6);
-            text-shadow: 0 0 2px rgba(0, 255, 0, 0.3);
-        }
-
-        /* Custom scrollbar */
+        /* Modern scrollbar */
         ::-webkit-scrollbar {
-            width: 12px;
+            width: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #0a0a0a;
-            border: 1px solid #00ff00;
+            background: #f1f1f1;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #00ff00;
-            border: 1px solid #00ff00;
+            background: #c1c1c1;
+            border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #00ff00;
-            box-shadow: 0 0 5px #00ff00;
+            background: #a8a8a8;
         }
 
-        /* Select styling */
-        select {
-            background: #0a0a0a;
-            border: 1px solid #00ff00;
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
-        }
-
-        select option {
-            background: #0a0a0a;
-            color: #00ff00;
-        }
-
-        /* Table styling */
-        table {
-            border: 1px solid #00ff00;
-        }
-
-        th, td {
-            border: 1px solid rgba(0, 255, 0, 0.3);
+        /* Modern form styling */
+        input, textarea, select {
+            background: white;
+            border: 1px solid #d1d5db;
+            color: #1f2937;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            border-radius: 8px;
             padding: 8px 12px;
         }
 
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Modern table styling */
+        table {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 12px 16px;
+            text-align: left;
+        }
+
         th {
-            background: rgba(0, 255, 0, 0.1);
-            text-transform: uppercase;
-            font-size: 12px;
+            background: #f9fafb;
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+        }
+
+        /* Mobile-first responsive improvements */
+        @media (max-width: 640px) {
+            .modern-card {
+                padding: 16px;
+                margin: 8px;
+            }
+            
+            .modern-button {
+                padding: 12px 16px;
+                font-size: 16px;
+                min-height: 44px;
+            }
+            
+            .modern-header {
+                padding: 12px 0;
+            }
+            
+            .max-w-4xl {
+                max-width: 100%;
+                padding: 0 16px;
+            }
         }
     </style>
 </head>
@@ -456,52 +325,51 @@
     </div>
 
     <!-- Installer Login Modal (Hidden Initially) -->
-    <div id="installerLoginModal" class="fixed inset-0 terminal-modal-overlay z-50 hidden">
+    <div id="installerLoginModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 hidden">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="terminal-modal max-w-md w-full p-6">
-                <div class="scanline"></div>
+            <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                 <div class="text-center mb-6">
                     <div class="text-4xl mb-4">🔧</div>
-                    <h2 class="text-xl font-bold text-terminal mb-2">INSTALLER_LOGIN.EXE</h2>
-                    <p class="text-terminal-muted text-sm">ACCESS_YOUR_PORTAL</p>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">Installer Login</h2>
+                    <p class="text-gray-600 text-sm">Access your portal</p>
                 </div>
                 
                 <div id="installerLoginForm">
                     <div class="space-y-4">
                         <div>
-                            <label class="text-terminal-muted text-sm">INSTALLER_NAME:</label>
-                            <div id="installerNameDisplay" class="text-terminal font-bold"></div>
+                            <label class="text-sm font-medium text-gray-700">Installer Name:</label>
+                            <div id="installerNameDisplay" class="text-gray-900 font-bold"></div>
                         </div>
                         <div>
-                            <label class="text-terminal-muted text-sm">EMAIL:</label>
-                            <div id="installerEmailDisplay" class="text-terminal"></div>
+                            <label class="text-sm font-medium text-gray-700">Email:</label>
+                            <div id="installerEmailDisplay" class="text-gray-600"></div>
                         </div>
                         <div>
-                            <label class="text-terminal-muted text-sm">PASSWORD:</label>
+                            <label class="text-sm font-medium text-gray-700">Password:</label>
                             <input type="password" id="installerPasswordInput" 
-                                   class="terminal-input w-full" 
-                                   placeholder="ENTER_PASSWORD">
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                   placeholder="Enter password">
                         </div>
-                        <div class="border border-green-600 rounded p-3 bg-black/50">
-                            <p class="text-terminal-muted text-xs mb-2">LOGIN_TOKEN:</p>
-                            <p id="loginTokenDisplay" class="text-terminal text-xs break-all"></p>
+                        <div class="border border-gray-200 rounded p-3 bg-gray-50">
+                            <p class="text-xs text-gray-600 mb-2">Login Token:</p>
+                            <p id="loginTokenDisplay" class="text-xs text-gray-800 break-all"></p>
                         </div>
-                        <button onclick="authenticateInstaller()" class="w-full terminal-button">
-                            [ACCESS_PORTAL]
+                        <button onclick="authenticateInstaller()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                            Access Portal
                         </button>
-                        <button onclick="cancelInstallerLogin()" class="w-full terminal-button">
-                            [CANCEL]
+                        <button onclick="cancelInstallerLogin()" class="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors">
+                            Cancel
                         </button>
                     </div>
                 </div>
                 
                 <div id="installerLoginError" class="hidden">
-                    <div class="border border-red-600 rounded p-4 bg-red-900/20">
-                        <p class="text-red-400 text-center">❌ INVALID_LOGIN_TOKEN</p>
-                        <p class="text-red-400 text-sm text-center mt-2">Please contact your administrator</p>
+                    <div class="border border-red-300 rounded p-4 bg-red-50">
+                        <p class="text-red-600 text-center">❌ Invalid Login Token</p>
+                        <p class="text-red-600 text-sm text-center mt-2">Please contact your administrator</p>
                     </div>
-                    <button onclick="cancelInstallerLogin()" class="w-full terminal-button mt-4">
-                        [CLOSE]
+                    <button onclick="cancelInstallerLogin()" class="w-full bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors mt-4">
+                        Close
                     </button>
                 </div>
             </div>
@@ -679,29 +547,29 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show direct login choice screen with terminal theme
+            // Show direct login choice screen with modern theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div class="terminal-card p-8">
+                        <div class="modern-card p-8">
                             <div class="text-center mb-8">
-                                <h1 class="text-4xl font-bold text-terminal mb-2">🔧 Installer Portal</h1>
-                                <p class="text-terminal-muted">Choose your access type</p>
+                                <h1 class="text-4xl font-bold text-gray-900 mb-2">🔧 Installer Portal</h1>
+                                <p class="text-gray-600">Choose your access type</p>
                             </div>
                             
                             <div class="space-y-4">
-                                <button onclick="loadInstallerPortal()" class="w-full terminal-button py-4 px-6 text-lg font-bold">
+                                <button onclick="loadInstallerPortal()" class="w-full modern-button py-4 px-6 text-lg font-bold">
                                     🔧 Installer Login
                                 </button>
                                 
-                                <button onclick="loadAdminPortal()" class="w-full terminal-button py-4 px-6 text-lg font-bold">
+                                <button onclick="loadAdminPortal()" class="w-full modern-button-success py-4 px-6 text-lg font-bold">
                                     👑 Administrator Login
                                 </button>
                             </div>
                             
                             <div class="mt-6 text-center">
-                                <p class="text-xs text-terminal-muted">
+                                <p class="text-xs text-gray-500">
                                     Installer access requires unique portal link
                                 </p>
                             </div>
@@ -718,21 +586,21 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show admin login screen with terminal theme
+            // Show admin login screen with modern theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div class="terminal-card p-8">
+                        <div class="modern-card p-8">
                             <div class="text-center mb-8">
-                                <h2 class="text-3xl font-bold text-terminal mb-2">
+                                <h2 class="text-3xl font-bold text-gray-900 mb-2">
                                     👑 Admin Portal
                                 </h2>
-                                <p class="text-sm text-terminal-muted">
+                                <p class="text-sm text-gray-600">
                                     Administrator access only
                                 </p>
-                                <div class="mt-4 p-3 border border-terminal rounded-lg bg-black">
-                                    <p class="text-sm font-medium text-terminal">
+                                <div class="mt-4 p-3 border border-gray-200 rounded-lg bg-blue-50">
+                                    <p class="text-sm font-medium text-gray-700">
                                         <strong>🔐 Demo Credentials:</strong><br>
                                         Email: admin@company.com<br>
                                         Password: admin123
@@ -741,25 +609,25 @@
                             </div>
                             <form id="adminLoginForm" class="space-y-6">
                                 <div>
-                                    <label for="adminEmail" class="block text-sm font-medium text-terminal mb-2">
+                                    <label for="adminEmail" class="block text-sm font-medium text-gray-700 mb-2">
                                         Admin Email
                                     </label>
                                     <input id="adminEmail" name="email" type="email" autocomplete="email" required 
-                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           class="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                            placeholder="Enter admin email" value="admin@company.com">
                                 </div>
 
                                 <div>
-                                    <label for="adminPassword" class="block text-sm font-medium text-terminal mb-2">
+                                    <label for="adminPassword" class="block text-sm font-medium text-gray-700 mb-2">
                                         Admin Password
                                     </label>
                                     <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
-                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           class="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                            placeholder="Enter admin password" value="admin123">
                                 </div>
 
                                 <div>
-                                    <button type="submit" class="w-full terminal-button py-3 px-4 text-sm font-bold">
+                                    <button type="submit" class="w-full modern-button py-3 px-4 text-sm font-bold">
                                         🔐 Admin Sign In
                                     </button>
                                 </div>
@@ -813,41 +681,41 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show installer login screen with terminal theme
+            // Show installer login screen with modern theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div class="terminal-card p-8">
+                        <div class="modern-card p-8">
                             <div class="text-center mb-8">
-                                <h2 class="text-3xl font-bold text-terminal mb-2">
+                                <h2 class="text-3xl font-bold text-gray-900 mb-2">
                                     🔧 Installer Portal
                                 </h2>
-                                <p class="text-sm text-terminal-muted">
+                                <p class="text-sm text-gray-600">
                                     Welcome Installer #${installerId}
                                 </p>
                             </div>
                             <form id="installerLoginForm" class="space-y-6">
                                 <div>
-                                    <label for="installerEmail" class="block text-sm font-medium text-terminal mb-2">
+                                    <label for="installerEmail" class="block text-sm font-medium text-gray-700 mb-2">
                                         Email
                                     </label>
                                     <input id="installerEmail" name="email" type="email" autocomplete="email" required 
-                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           class="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                            placeholder="Enter your email">
                                 </div>
 
                                 <div>
-                                    <label for="installerPassword" class="block text-sm font-medium text-terminal mb-2">
+                                    <label for="installerPassword" class="block text-sm font-medium text-gray-700 mb-2">
                                         Password
                                     </label>
                                     <input id="installerPassword" name="password" type="password" autocomplete="current-password" required 
-                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           class="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                            placeholder="Enter your password">
                                 </div>
 
                                 <div>
-                                    <button type="submit" class="w-full terminal-button py-3 px-4 text-sm font-bold">
+                                    <button type="submit" class="w-full modern-button py-3 px-4 text-sm font-bold">
                                         🔐 Installer Sign In
                                     </button>
                                 </div>
