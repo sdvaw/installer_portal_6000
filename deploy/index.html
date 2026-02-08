@@ -587,29 +587,29 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show direct login choice screen with modern theme
+            // Show direct login choice screen with dark sleek theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div class="modern-card p-8">
+                        <div class="dark-card p-8">
                             <div class="text-center mb-8">
-                                <h1 class="text-4xl font-bold text-gray-900 mb-2">🔧 Installer Portal</h1>
-                                <p class="text-gray-600">Choose your access type</p>
+                                <h1 class="text-4xl font-bold dark-text mb-2">🔧 Installer Portal</h1>
+                                <p class="dark-text-muted">Choose your access type</p>
                             </div>
                             
                             <div class="space-y-4">
-                                <button onclick="loadInstallerPortal()" class="w-full modern-button py-4 px-6 text-lg font-bold">
+                                <button onclick="loadInstallerPortal()" class="w-full dark-button py-4 px-6 text-lg font-bold">
                                     🔧 Installer Login
                                 </button>
                                 
-                                <button onclick="loadAdminPortal()" class="w-full modern-button-success py-4 px-6 text-lg font-bold">
+                                <button onclick="loadAdminPortal()" class="w-full dark-button-success py-4 px-6 text-lg font-bold">
                                     👑 Administrator Login
                                 </button>
                             </div>
                             
                             <div class="mt-6 text-center">
-                                <p class="text-xs text-gray-500">
+                                <p class="text-xs dark-text-secondary">
                                     Installer access requires unique portal link
                                 </p>
                             </div>
