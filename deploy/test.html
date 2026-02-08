@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TEST V9 - NEW FILE</title>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        .box { border: 2px solid #0f0; margin: 10px; padding: 10px; }
+        button { background: #0f0; color: #000; border: none; padding: 10px; margin: 5px; cursor: pointer; }
+        button:hover { background: #0ff; }
+        input, select { background: #333; color: #0f0; border: 1px solid #0f0; padding: 5px; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 TEST V9 - NEW FILE</h1>
+    <div id="content">
+        <div class="box">
+            <h2>TESTING NEW FILE</h2>
+            <p>This should show V9 in console!</p>
+        </div>
+    </div>
+
+    <script>
+        // TEST V9 CONSOLE LOG
+        console.log('🔥 TEST V9 - NEW FILE loaded');
+        
+        // Firebase config for new project
+        firebase.initializeApp({
+            apiKey: "AIzaSyDYFdyiz_T_0Tsqya_CSKS4wRlWOEckMGk",
+            authDomain: "installer-portal-v8-final.firebaseapp.com",
+            projectId: "installer-portal-v8-final",
+            storageBucket: "installer-portal-v8-final.firebasestorage.app"
+        });
+
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+
+        // Simple test
+        window.onload = function() {
+            console.log('🔥 TEST V9 - NEW FILE loaded');
+            document.getElementById('content').innerHTML = '<div class="box"><h2>✅ TEST V9 WORKS!</h2><p>Console should show V9!</p></div>';
+        };
+    </script>
+</body>
+</html>

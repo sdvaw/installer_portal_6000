@@ -1,0 +1,13 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow all access to job photos (for testing)
+    match /jobs/{jobId}/{allPaths=**} {
+      allow read, write: if true;
+    }
+    // Allow all access for now (restrict later)
+    match /{allPaths=**} {
+      allow read, write: if true;
+    }
+  }
+}

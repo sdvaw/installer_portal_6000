@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Installer Portal - WORKING</title>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        .box { border: 2px solid #0f0; padding: 20px; margin: 10px 0; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; font-family: monospace; }
+        button:hover { background: #fff; }
+        .job { background: rgba(0,255,0,0.1); padding: 10px; margin: 10px 0; border: 1px solid #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Installer Portal</h1>
+    <div id="content">
+        <div class="box">
+            <h2>Loading...</h2>
+        </div>
+    </div>
+
+    <script>
+        // Firebase setup
+        firebase.initializeApp({
+            apiKey: "AIzaSyDYFdyiz_T_0Tsqya_CSKS4wRlWOEckMGk",
+            authDomain: "installer-portal-6000.firebaseapp.com",
+            projectId: "installer-portal-6000"
+        });
+        const db = firebase.firestore();
+
+        // Simple state
+        let currentView = 'home';
+
+        // Main functions
+        function showHome() {
+            document.getElementById('content').innerHTML = `
+                <div class="box">
+                    <h2>🏠 Installer Portal</h2>
+                    <p>Welcome to the Installer Portal system.</p>
+                    <div style="margin-top: 20px;">
+                        <button onclick="showAdmin()">👑 Admin Portal</button>
+                        <button onclick="showLogin()">🔧 Installer Login</button>
+                    </div>
+                    <div style="margin-top: 20px; font-size: 0.9em; opacity: 0.7;">
+                        <p><strong>Admin:</strong> ${window.location.origin}/admin</p>
+                        <p><strong>Installer:</strong> ${window.location.origin}/installer/TOKEN</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showAdmin() {
+            document.getElementById('content').innerHTML = `
+                <div class="box">
+                    <h2>👑 Admin Portal</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 20px 0;">
+                        <button onclick="showSyncSettings()">⚙️ Sync Settings</button>
+                        <button onclick="showTeamUpSync()">📅 Sync TeamUp Now</button>
+                        <button onclick="viewPendingInstallers()">⏳ Pending Installers</button>
+                        <button onclick="viewInstallers()">👥 Active Installers</button>
+                        <button onclick="viewJobs()">📅 View Jobs</button>
+                        <button onclick="showHome()">🏠 Home</button>
+                    </div>
+                    <div id="adminContent"></div>
+                </div>
+            `;
+        }
+
+        function showLogin() {
+            document.getElementById('content').innerHTML = `
+                <div class="box">
+                    <h2>🔧 Installer Login</h2>
+                    <input type="text" id="token" placeholder="Enter token" style="width: 100%; padding: 10px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 10px 0;">
+                    <button onclick="login()">🔐 Login</button>
+                    <button onclick="showHome()">🏠 Home</button>
+                </div>
+            `;
+        }
+
+        // Sync Settings function
+        function showSyncSettings() {
+            const currentInterval = localStorage.getItem('syncInterval') || '60'; // Default 60 minutes
+            
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>⚙️ Sync Settings</h3>
+                    <p>Configure automatic TeamUp sync interval:</p>
+                    <div style="margin-top: 15px;">
+                        <label>Sync Interval:</label><br>
+                        <select id="syncInterval" style="width: 100%; padding: 8px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 5px 0;">
+                            <option value="15">Every 15 minutes</option>
+                            <option value="30">Every 30 minutes</option>
+                            <option value="60" selected>Every 1 hour</option>
+                            <option value="120">Every 2 hours</option>
+                            <option value="240">Every 4 hours</option>
+                            <option value="480">Every 8 hours</option>
+                            <option value="720">Every 12 hours</option>
+                        </select>
+                        
+                        <div style="margin-top: 15px;">
+                            <button onclick="saveSyncSettings()">💾 Save Settings</button>
+                            <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Cancel</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.7;">
+                        <p><strong>Current:</strong> Sync every ${currentInterval} minutes</p>
+                        <p><strong>Next sync:</strong> ${new Date(Date.now() + (currentInterval * 60 * 1000)).toLocaleTimeString()}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveSyncSettings() {
+            const interval = document.getElementById('syncInterval').value;
+            localStorage.setItem('syncInterval', interval);
+            
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>✅ Sync Settings Saved!</h3>
+                    <p>Automatic sync will run every ${interval} minutes.</p>
+                    <div style="margin-top: 15px;">
+                        <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Close</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Pending Installers function
+        async function viewPendingInstallers() {
+            document.getElementById('content').innerHTML = `
+                <div class="box">
+                    <h2>⏳ Pending Installers</h2>
+                    <p>Installers found in TeamUp jobs that need provisioning:</p>
+                    <div id="pendingList" style="margin-top: 15px;">
+                        <p>Loading pending installers...</p>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="showAdmin()">← Back to Admin</button>
+                    </div>
+                </div>
+            `;
+            
+            // Simulate finding pending installers from TeamUp jobs
+            setTimeout(() => {
+                const pendingInstallers = [
+                    { name: "John Smith", source: "TeamUp Job: Window Installation - Smith Residence" },
+                    { name: "Mike Johnson", source: "TeamUp Job: Door Replacement - Johnson Home" }
+                ];
+                
+                let html = '';
+                if (pendingInstallers.length === 0) {
+                    html = '<p>No pending installers found. <a href="#" onclick="showTeamUpSync()">Sync TeamUp</a> to check for new installers.</p>';
+                } else {
+                    html = '<div style="margin-bottom: 15px;"><button onclick="showTeamUpSync()">📅 Refresh from TeamUp</button></div>';
+                    pendingInstallers.forEach((installer, index) => {
+                        html += `
+                            <div class="job">
+                                <strong>${installer.name}</strong><br>
+                                Found in: ${installer.source}<br>
+                                <button onclick="provisionPendingInstaller('${installer.name}', '${installer.source}')">👤 Provision Installer</button>
+                            </div>
+                        `;
+                    });
+                }
+                
+                document.getElementById('pendingList').innerHTML = html;
+            }, 1000);
+        }
+
+        function provisionPendingInstaller(installerName, source) {
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>👤 Provision Installer: ${installerName}</h3>
+                    <p>Found in: ${source}</p>
+                    <p>Add contact information to enable portal access:</p>
+                    <div style="margin-top: 15px;">
+                        <label>Email Address:</label><br>
+                        <input type="email" id="installerEmail" placeholder="installer@company.com" style="width: 100%; padding: 8px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 5px 0;">
+                        
+                        <label>Phone Number:</label><br>
+                        <input type="tel" id="installerPhone" placeholder="555-123-4567" style="width: 100%; padding: 8px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 5px 0;">
+                        
+                        <p style="font-size: 0.9em; opacity: 0.7; margin-top: 10px;">
+                            <strong>Note:</strong> Email will receive portal link, phone will be used for texts and as initial password.
+                        </p>
+                        
+                        <div style="margin-top: 15px;">
+                            <button onclick="completeProvisioning('${installerName}')">✅ Complete Provisioning</button>
+                            <button onclick="viewPendingInstallers()">❌ Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function completeProvisioning(installerName) {
+            const email = document.getElementById('installerEmail').value.trim();
+            const phone = document.getElementById('installerPhone').value.trim();
+            
+            if (!email || !phone) {
+                alert('Please enter both email and phone number');
+                return;
+            }
+            
+            try {
+                const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                
+                const installer = {
+                    name: installerName,
+                    email: email,
+                    phone: phone,
+                    token: token,
+                    status: 'active',
+                    source: 'teamup',
+                    createdAt: new Date().toISOString(),
+                    provisionedBy: 'admin'
+                };
+                
+                await db.collection('installers').add(installer);
+                
+                const accessUrl = `${window.location.origin}/installer/${token}`;
+                
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="box">
+                        <h3>✅ Installer Successfully Provisioned!</h3>
+                        <div style="background: rgba(0,255,0,0.1); padding: 15px; border-radius: 4px; margin: 15px 0;">
+                            <p><strong>Name:</strong> ${installerName}</p>
+                            <p><strong>Email:</strong> ${email}</p>
+                            <p><strong>Phone:</strong> ${phone}</p>
+                            <p><strong>Status:</strong> Active</p>
+                            <p><strong>Access Token:</strong> ${token}</p>
+                            <p><strong>Access URL:</strong> <a href="${accessUrl}" target="_blank" style="color: #0f0;">${accessUrl}</a></p>
+                        </div>
+                        <p><strong>Next Steps:</strong></p>
+                        <p>1. Email portal link to: ${email}</p>
+                        <p>2. Installer can login with phone number as password</p>
+                        <p>3. Installer will see their TeamUp-assigned jobs</p>
+                        <div style="margin-top: 15px;">
+                            <button onclick="viewPendingInstallers()">⏳ View More Pending</button>
+                            <button onclick="viewInstallers()">👥 View Active Installers</button>
+                            <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Close</button>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                alert('Error provisioning installer: ' + error.message);
+            }
+        }
+
+        // TeamUp functions
+        function showTeamUpSettings() {
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>🔗 TeamUp Settings</h3>
+                    <p>Configure TeamUp Calendar integration to sync jobs automatically.</p>
+                    <div style="margin-top: 15px;">
+                        <label>TeamUp API Key:</label><br>
+                        <input type="password" id="teamupApiKey" placeholder="Enter your TeamUp API key" style="width: 100%; padding: 8px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 5px 0;">
+                        
+                        <label>Calendar ID:</label><br>
+                        <input type="text" id="teamupCalendarId" placeholder="Calendar ID (e.g., 123456)" style="width: 100%; padding: 8px; background: #000; border: 1px solid #0f0; color: #0f0; margin: 5px 0;">
+                        
+                        <div style="margin-top: 15px;">
+                            <button onclick="saveTeamUpSettings()">💾 Save Settings</button>
+                            <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Cancel</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.7;">
+                        <p><strong>Where to find these:</strong></p>
+                        <p>1. Go to TeamUp → Settings → API Keys</p>
+                        <p>2. Create new API key with read access</p>
+                        <p>3. Go to your calendar → Settings → Calendar ID</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveTeamUpSettings() {
+            const apiKey = document.getElementById('teamupApiKey').value.trim();
+            const calendarId = document.getElementById('teamupCalendarId').value.trim();
+            
+            if (!apiKey || !calendarId) {
+                alert('Please enter both API Key and Calendar ID');
+                return;
+            }
+            
+            // Save to localStorage for now (in production, save to Firebase)
+            localStorage.setItem('teamupApiKey', apiKey);
+            localStorage.setItem('teamupCalendarId', calendarId);
+            
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>✅ TeamUp Settings Saved!</h3>
+                    <p>Your TeamUp integration is now configured.</p>
+                    <p><strong>Next Steps:</strong></p>
+                    <p>1. Click "Sync TeamUp Jobs" to import jobs</p>
+                    <p>2. Jobs will be automatically synced from TeamUp</p>
+                    <div style="margin-top: 15px;">
+                        <button onclick="showTeamUpSync()">📅 Sync Jobs Now</button>
+                        <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Close</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showTeamUpSync() {
+            const apiKey = localStorage.getItem('teamupApiKey');
+            const calendarId = localStorage.getItem('teamupCalendarId');
+            
+            if (!apiKey || !calendarId) {
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="box">
+                        <h3>⚠️ TeamUp Not Configured</h3>
+                        <p>Please configure TeamUp settings first.</p>
+                        <button onclick="showTeamUpSettings()">🔗 Configure TeamUp</button>
+                        <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Cancel</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            document.getElementById('adminContent').innerHTML = `
+                <div class="box">
+                    <h3>📅 Syncing TeamUp Jobs...</h3>
+                    <p>Connecting to TeamUp calendar...</p>
+                    <div id="syncProgress"></div>
+                </div>
+            `;
+            
+            // Simulate TeamUp sync (in production, make real API calls)
+            setTimeout(() => {
+                syncTeamUpJobs(apiKey, calendarId);
+            }, 1000);
+        }
+
+        async function syncTeamUpJobs(apiKey, calendarId) {
+            try {
+                // Simulate fetching jobs from TeamUp
+                // In production: fetch('https://api.teamup.com/' + calendarId + '/events', { headers: { 'Teamup-Token': apiKey } })
+                
+                const mockTeamUpJobs = [
+                    {
+                        title: "Window Installation - Smith Residence",
+                        location: "123 Main St, Springfield",
+                        start: "2026-01-30T09:00:00Z",
+                        end: "2026-01-30T17:00:00Z",
+                        notes: "Install new double-hung windows"
+                    },
+                    {
+                        title: "Door Replacement - Johnson Home",
+                        location: "456 Oak Ave, Shelbyville",
+                        start: "2026-01-31T08:00:00Z", 
+                        end: "2026-01-31T16:00:00Z",
+                        notes: "Replace front door and frame"
+                    }
+                ];
+                
+                let syncedCount = 0;
+                
+                for (const job of mockTeamUpJobs) {
+                    // Check if job already exists
+                    const existing = await db.collection('jobs')
+                        .where('title', '==', job.title)
+                        .where('location', '==', job.location)
+                        .get();
+                    
+                    if (existing.empty) {
+                        // Create new job from TeamUp
+                        await db.collection('jobs').add({
+                            title: job.title,
+                            customer: job.title.split(' - ')[1] || 'Customer',
+                            address: job.location,
+                            scheduledDate: job.start,
+                            status: 'not_started',
+                            notes: job.notes,
+                            source: 'teamup',
+                            createdAt: new Date().toISOString()
+                        });
+                        syncedCount++;
+                    }
+                }
+                
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="box">
+                        <h3>✅ TeamUp Sync Complete!</h3>
+                        <p>Successfully synced ${syncedCount} new jobs from TeamUp.</p>
+                        <div style="margin-top: 15px;">
+                            <button onclick="viewJobs()">📅 View Jobs</button>
+                            <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Close</button>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                document.getElementById('adminContent').innerHTML = `
+                    <div class="box">
+                        <h3>❌ Sync Error</h3>
+                        <p>Error syncing from TeamUp: ${error.message}</p>
+                        <button onclick="document.getElementById('adminContent').innerHTML=''">❌ Close</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Admin functions - REMOVED (replaced with proper TeamUp-based provisioning above)
+
+        async function createInstaller() {
+            const token = Math.random().toString(36).substring(2, 15);
+            const installer = {
+                name: "Installer " + Math.floor(Math.random() * 1000),
+                email: "test@example.com",
+                phone: "555-1234",
+                token: token,
+                status: "active"
+            };
+            
+            await db.collection('installers').add(installer);
+            alert('Installer created! Token: ' + token);
+            viewInstallers();
+        }
+
+        async function viewInstallers() {
+            const snapshot = await db.collection('installers').get();
+            let html = '<div class="box"><h2>👥 Installers</h2>';
+            
+            if (snapshot.empty) {
+                html += '<p>No installers found. <a href="#" onclick="showProvisioning()">Provision your first installer</a>.</p>';
+            } else {
+                html += '<div style="margin-bottom: 15px;"><button onclick="showProvisioning()">👤 Add New Installer</button></div>';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    html += `
+                        <div class="job">
+                            <strong>${data.name}</strong><br>
+                            Email: ${data.email}<br>
+                            Phone: ${data.phone}<br>
+                            Status: ${data.status}<br>
+                            Token: ${data.token}<br>
+                            <a href="${window.location.origin}/installer/${data.token}" target="_blank">🔗 Access Link</a>
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '<div style="margin-top: 15px;"><button onclick="showAdmin()">← Back to Admin</button></div></div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        async function viewJobs() {
+            const snapshot = await db.collection('jobs').get();
+            let html = '<div class="box"><h2>📅 Jobs (from TeamUp)</h2>';
+            
+            if (snapshot.empty) {
+                html += '<p>No jobs found. <a href="#" onclick="showTeamUpSync()">Sync jobs from TeamUp</a> to get started.</p>';
+            } else {
+                html += '<div style="margin-bottom: 15px;"><button onclick="showTeamUpSync()">📅 Sync TeamUp Jobs</button></div>';
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    html += `
+                        <div class="job">
+                            <strong>${data.title}</strong><br>
+                            Customer: ${data.customer}<br>
+                            Address: ${data.address}<br>
+                            Status: ${data.status}<br>
+                            Source: ${data.source || 'Manual'}<br>
+                            Created: ${new Date(data.createdAt).toLocaleDateString()}
+                        </div>
+                    `;
+                });
+            }
+            
+            html += '<div style="margin-top: 15px;"><button onclick="showAdmin()">← Back to Admin</button></div></div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        // Installer functions
+        async function login() {
+            const token = document.getElementById('token').value;
+            const snapshot = await db.collection('installers').where('token', '==', token).get();
+            
+            if (snapshot.empty) {
+                alert('Invalid token');
+                return;
+            }
+            
+            const installer = snapshot.docs[0].data();
+            showInstallerPortal(installer);
+        }
+
+        async function showInstallerPortal(installer) {
+            const jobsSnapshot = await db.collection('jobs').get();
+            let html = `
+                <div class="box">
+                    <h2>🔧 Welcome ${installer.name}</h2>
+                    <button onclick="showHome()">🚪 Logout</button>
+                    <h3>Your Jobs:</h3>
+            `;
+            
+            jobsSnapshot.forEach(doc => {
+                const job = doc.data();
+                html += `
+                    <div class="job">
+                        <strong>${job.title}</strong><br>
+                        Customer: ${job.customer}<br>
+                        Address: ${job.address}<br>
+                        Status: ${job.status}<br>
+                        <button onclick="updateStatus('${doc.id}', 'in_progress')">Start Work</button>
+                        <button onclick="updateStatus('${doc.id}', 'completed')">Complete</button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+
+        async function updateStatus(jobId, status) {
+            await db.collection('jobs').doc(jobId).update({ status: status });
+            alert('Status updated!');
+            location.reload();
+        }
+
+        // Handle routing
+        function handleRoute() {
+            const path = window.location.pathname;
+            
+            if (path.includes('/admin')) {
+                showAdmin();
+            } else if (path.includes('/installer/')) {
+                const token = path.split('/installer/')[1];
+                loginWithToken(token);
+            } else {
+                showHome();
+            }
+        }
+
+        async function loginWithToken(token) {
+            const snapshot = await db.collection('installers').where('token', '==', token).get();
+            
+            if (snapshot.empty) {
+                showHome();
+                return;
+            }
+            
+            const installer = snapshot.docs[0].data();
+            showInstallerPortal(installer);
+        }
+
+        // Start app
+        handleRoute();
+    </script>
+</body>
+</html>

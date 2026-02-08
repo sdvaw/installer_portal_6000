@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Armor Impact Window ROI Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .pool-section { background: #e3f2fd; }
+        .no-pool-section { background: #fff3e0; }
+        .finish-level { margin: 10px 0; padding: 10px; border-left: 4px solid #4caf50; background: #f1f8e9; }
+        .roi-positive { color: #2e7d32; font-weight: bold; }
+        .roi-negative { color: #c62828; font-weight: bold; }
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f5f5f5; }
+        .highlight { background: #ffeb3b; font-weight: bold; }
+        .input-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4caf50; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #45a049; }
+        .summary { background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪟 Armor Impact Window ROI Calculator</h1>
+        <p>Detailed ROI analysis for hurricane impact windows with pool/no-pool scenarios and finish levels</p>
+
+        <div class="section">
+            <h2>📊 Project Information</h2>
+            <div class="input-group">
+                <label>Number of Windows/Doors:</label>
+                <input type="number" id="windowCount" value="10" min="1">
+            </div>
+            <div class="input-group">
+                <label>Average Window Size (sq ft):</label>
+                <input type="number" id="windowSize" value="25" min="1">
+            </div>
+            <div class="input-group">
+                <label>Home Value:</label>
+                <input type="number" id="homeValue" value="500000" min="0">
+            </div>
+            <div class="input-group">
+                <label>Has Pool:</label>
+                <select id="hasPool">
+                    <option value="yes">Yes - Pool Home</option>
+                    <option value="no">No - Standard Home</option>
+                </select>
+            </div>
+            <button onclick="calculateROI()">Calculate ROI</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Cost data by finish level
+        const finishLevels = {
+            low: {
+                name: "Level 1 - Basic Finish",
+                costPerSqFt: 45,
+                features: ["Standard frame", "Basic hardware", "Single seal"],
+                warrantyYears: 10
+            },
+            middle: {
+                name: "Level 2 - Premium Finish", 
+                costPerSqFt: 65,
+                features: ["Enhanced frame", "Premium hardware", "Double seal", "Sound reduction"],
+                warrantyYears: 15
+            },
+            high: {
+                name: "Level 3 - Luxury Finish",
+                costPerSqFt: 85,
+                features: ["Luxury frame", "Top-tier hardware", "Triple seal", "Maximum sound reduction", "UV protection"],
+                warrantyYears: 20
+            }
+        };
+
+        // Insurance discounts by scenario
+        const insuranceDiscounts = {
+            pool: {
+                low: 0.25,    // 25% discount for pool homes
+                middle: 0.30, // 30% discount
+                high: 0.35    // 35% discount
+            },
+            noPool: {
+                low: 0.15,    // 15% discount for standard homes
+                middle: 0.20, // 20% discount
+                high: 0.25    // 25% discount
+            }
+        };
+
+        // Energy savings by finish level
+        const energySavings = {
+            low: { monthly: 25, annual: 300 },
+            middle: { monthly: 35, annual: 420 },
+            high: { monthly: 45, annual: 540 }
+        };
+
+        function calculateROI() {
+            const windowCount = parseInt(document.getElementById('windowCount').value);
+            const windowSize = parseInt(document.getElementById('windowSize').value);
+            const homeValue = parseInt(document.getElementById('homeValue').value);
+            const hasPool = document.getElementById('hasPool').value;
+            
+            const totalSqFt = windowCount * windowSize;
+            const scenario = hasPool === 'yes' ? 'pool' : 'noPool';
+            
+            let resultsHTML = `
+                <div class="summary">
+                    <h2>📈 ROI Analysis Summary</h2>
+                    <p><strong>Project:</strong> ${windowCount} windows (${totalSqFt} total sq ft)</p>
+                    <p><strong>Home Type:</strong> ${hasPool === 'yes' ? 'Pool Home' : 'Standard Home'}</p>
+                    <p><strong>Home Value:</strong> $${homeValue.toLocaleString()}</p>
+                </div>
+            `;
+
+            resultsHTML += '<div class="comparison">';
+
+            // Pool Home Analysis
+            if (hasPool === 'yes') {
+                resultsHTML += generatePoolAnalysis(totalSqFt, homeValue);
+            } else {
+                resultsHTML += generateNoPoolAnalysis(totalSqFt, homeValue);
+            }
+
+            resultsHTML += '</div>';
+
+            document.getElementById('results').innerHTML = resultsHTML;
+        }
+
+        function generatePoolAnalysis(totalSqFt, homeValue) {
+            let html = '<div class="pool-section"><h3>🏊 Pool Home Analysis</h3>';
+            
+            html += '<h4>Insurance Benefits (Higher Risk = Higher Savings)</h4>';
+            html += '<p>Pool homes get larger discounts because:</p>';
+            html += '<ul><li>Higher liability risk</li><li>More glass exposure</li><li>Increased safety requirements</li></ul>';
+
+            Object.keys(finishLevels).forEach(level => {
+                const finish = finishLevels[level];
+                const totalCost = totalSqFt * finish.costPerSqFt;
+                const insuranceDiscount = insuranceDiscounts.pool[level];
+                const monthlyInsurance = homeValue * 0.0012; // Estimated monthly insurance
+                const monthlySavings = monthlyInsurance * insuranceDiscount;
+                const annualInsuranceSavings = monthlySavings * 12;
+                
+                const annualEnergySavings = energySavings[level].annual;
+                const totalAnnualSavings = annualInsuranceSavings + annualEnergySavings;
+                const paybackYears = totalCost / totalAnnualSavings;
+                const roi10Year = (totalAnnualSavings * 10 - totalCost) / totalCost * 100;
+
+                html += `
+                    <div class="finish-level">
+                        <h4>${finish.name}</h4>
+                        <table>
+                            <tr><th>Cost Breakdown</th><th>Amount</th></tr>
+                            <tr><td>Window Cost (${totalSqFt} sq ft @ $${finish.costPerSqFt}/sq ft)</td><td>$${totalCost.toLocaleString()}</td></tr>
+                            <tr><td>Installation (15%)</td><td>$${(totalCost * 0.15).toLocaleString()}</td></tr>
+                            <tr class="highlight"><td>Total Investment</td><td>$${(totalCost * 1.15).toLocaleString()}</td></tr>
+                        </table>
+
+                        <table>
+                            <tr><th>Annual Savings</th><th>Amount</th></tr>
+                            <tr><td>Insurance Discount (${(insuranceDiscount * 100)}%)</td><td>$${annualInsuranceSavings.toLocaleString()}</td></tr>
+                            <tr><td>Energy Savings</td><td>$${annualEnergySavings.toLocaleString()}</td></tr>
+                            <tr class="highlight"><td>Total Annual Savings</td><td>$${totalAnnualSavings.toLocaleString()}</td></tr>
+                        </table>
+
+                        <table>
+                            <tr><th>ROI Metrics</th><th>Value</th></tr>
+                            <tr><td>Payback Period</td><td>${paybackYears.toFixed(1)} years</td></tr>
+                            <tr><td>10-Year ROI</td><td class="${roi10Year >= 0 ? 'roi-positive' : 'roi-negative'}">${roi10Year.toFixed(1)}%</td></tr>
+                            <tr><td>Home Value Increase</td><td>$${(homeValue * 0.03).toLocaleString()}</td></tr>
+                        </table>
+
+                        <p><strong>Features:</strong> ${finish.features.join(', ')}</p>
+                        <p><strong>Warranty:</strong> ${finish.warrantyYears} years</p>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        function generateNoPoolAnalysis(totalSqFt, homeValue) {
+            let html = '<div class="no-pool-section"><h3>🏠 Standard Home Analysis</h3>';
+            
+            html += '<h4>Insurance Benefits (Standard Risk)</h4>';
+            html += '<p>Standard homes get good discounts because:</p>';
+            html += '<ul><li>Storm protection</li><li>Security benefits</li><li>Energy efficiency</li></ul>';
+
+            Object.keys(finishLevels).forEach(level => {
+                const finish = finishLevels[level];
+                const totalCost = totalSqFt * finish.costPerSqFt;
+                const insuranceDiscount = insuranceDiscounts.noPool[level];
+                const monthlyInsurance = homeValue * 0.0008; // Lower insurance for no pool
+                const monthlySavings = monthlyInsurance * insuranceDiscount;
+                const annualInsuranceSavings = monthlySavings * 12;
+                
+                const annualEnergySavings = energySavings[level].annual;
+                const totalAnnualSavings = annualInsuranceSavings + annualEnergySavings;
+                const paybackYears = totalCost / totalAnnualSavings;
+                const roi10Year = (totalAnnualSavings * 10 - totalCost) / totalCost * 100;
+
+                html += `
+                    <div class="finish-level">
+                        <h4>${finish.name}</h4>
+                        <table>
+                            <tr><th>Cost Breakdown</th><th>Amount</th></tr>
+                            <tr><td>Window Cost (${totalSqFt} sq ft @ $${finish.costPerSqFt}/sq ft)</td><td>$${totalCost.toLocaleString()}</td></tr>
+                            <tr><td>Installation (15%)</td><td>$${(totalCost * 0.15).toLocaleString()}</td></tr>
+                            <tr class="highlight"><td>Total Investment</td><td>$${(totalCost * 1.15).toLocaleString()}</td></tr>
+                        </table>
+
+                        <table>
+                            <tr><th>Annual Savings</th><th>Amount</th></tr>
+                            <tr><td>Insurance Discount (${(insuranceDiscount * 100)}%)</td><td>$${annualInsuranceSavings.toLocaleString()}</td></tr>
+                            <tr><td>Energy Savings</td><td>$${annualEnergySavings.toLocaleString()}</td></tr>
+                            <tr class="highlight"><td>Total Annual Savings</td><td>$${totalAnnualSavings.toLocaleString()}</td></tr>
+                        </table>
+
+                        <table>
+                            <tr><th>ROI Metrics</th><th>Value</th></tr>
+                            <tr><td>Payback Period</td><td>${paybackYears.toFixed(1)} years</td></tr>
+                            <tr><td>10-Year ROI</td><td class="${roi10Year >= 0 ? 'roi-positive' : 'roi-negative'}">${roi10Year.toFixed(1)}%</td></tr>
+                            <tr><td>Home Value Increase</td><td>$${(homeValue * 0.02).toLocaleString()}</td></tr>
+                        </table>
+
+                        <p><strong>Features:</strong> ${finish.features.join(', ')}</p>
+                        <p><strong>Warranty:</strong> ${finish.warrantyYears} years</p>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        // Auto-calculate on load
+        window.onload = function() {
+            calculateROI();
+        };
+    </script>
+</body>
+</html>
