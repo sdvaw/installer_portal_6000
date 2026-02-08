@@ -6699,87 +6699,107 @@
                         </button>
                     </div>
                 </div>
-            `).join('');
-        }
+                <span class="px-3 py-1 text-xs font-medium rounded-full ${
+                    job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                    job.status === 'in-progress' ? 'bg-green-100 text-green-800' :
+                    'bg-gray-100 text-gray-800'
+                }">
+                    ${job.status.replace('-', ' ').toUpperCase()}
+                </span>
+            </div>
+            ${job.notes ? `<div class="text-sm text-gray-500 mt-2"><i class="fas fa-sticky-note mr-1"></i>${job.notes}</div>` : ''}
+            <div class="job-actions">
+                ${job.status === 'scheduled' ? `
+                    <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'in-progress')" class="bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        🚀 Start Work
+                    </button>
+                ` : ''}
+                ${job.status === 'in-progress' ? `
+                    <button onclick="event.stopPropagation(); updateJobStatus('${job.id}', 'completed')" class="bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        ✅ Complete
+                    </button>
+                ` : ''}
+                <button onclick="event.stopPropagation(); showJobDetails('${job.id}')" class="bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+                    📋 Details
+                </button>
+                <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    📸 In Progress
+                </button>
+                <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                    📸 Final
+                </button>
+                <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    ⚠️ Defect
+                </button>
+                <button onclick="event.stopPropagation(); reportIssueForJob('${job.id}')" class="bg-orange-600 text-white rounded-lg hover:bg-orange-700">
+                    🚨 Issue
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
 
-        // Camera capture for specific job (mobile-first)
-        function capturePhotoForJob(jobId, type) {
-            console.log('Capturing photo for job:', jobId, 'type:', type);
-            
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            
-            // Force camera on mobile devices
-            if (navigator.userAgent.includes('Mobile') || navigator.userAgent.includes('Android') || navigator.userAgent.includes('iPhone')) {
-                input.capture = 'environment'; // Use rear camera
-                input.setAttribute('capture', 'environment');
-            }
-            
-            input.onchange = async function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    console.log(`Captured ${type} photo for job ${jobId}:`, file.name);
-                    await uploadPhotoToFirebase(file, type, jobId);
-                }
-            };
-            
-            input.click();
-        }
+// Camera capture for specific job (mobile-first) - UPDATED TO USE RAPID PHOTO MODULE
+function capturePhotoForJob(jobId, type) {
+    console.log('📸 Opening rapid photo capture for job:', jobId, 'type:', type);
+    
+    // Use the new rapid photo capture module
+    showRapidPhotoCapture(jobId, type);
+}
 
-        // Upload photo to Firebase Storage
-        async function uploadPhotoToFirebase(file, type, jobId) {
-            try {
-                const fileName = `${jobId}/${type}_${Date.now()}_${file.name}`;
-                
-                console.log(`Uploading ${type} photo:`, {
-                    fileName: fileName,
-                    fileSize: file.size,
-                    fileType: file.type
-                });
-                
-                // Demo mode - simulate upload
-                if (firebaseConfig.apiKey === "YOUR_ACTUAL_API_KEY") {
-                    // Demo mode
-                    alert(`${type} photo captured successfully for job ${jobId}!\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(1)} KB\n\n(Demo mode - not actually uploaded)`);
-                    return;
-                }
-                
-                // Real Firebase upload
-                const storageRef = storage.ref();
-                const photoRef = storageRef.child(`job-photos/${fileName}`);
-                
-                // Upload file
-                const snapshot = await photoRef.put(file);
-                const downloadURL = await snapshot.ref.getDownloadURL();
-                
-                // Save photo metadata to Firestore
-                const photoData = {
-                    type: type,
-                    fileName: fileName,
-                    downloadURL: downloadURL,
-                    fileSize: file.size,
-                    capturedAt: new Date().toISOString(),
-                    jobId: jobId,
-                    installerId: installerData.uid,
-                    installerName: installerData.name,
-                    metadata: {
-                        device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
-                        location: 'job_site',
-                        category: type === 'defect' ? 'issue' : 'documentation'
-                    }
-                };
-                
-                await db.collection('photos').add(photoData);
-                
-                console.log('Photo uploaded successfully:', photoData);
-                alert(`${type} photo uploaded successfully for job ${jobId}!`);
-                
-            } catch (error) {
-                console.error('Failed to upload photo:', error);
-                showError('Failed to upload photo');
-            }
+// Upload photo to Firebase Storage
+async function uploadPhotoToFirebase(file, type, jobId) {
+    try {
+        const fileName = `${jobId}/${type}_${Date.now()}_${file.name}`;
+        
+        console.log(`Uploading ${type} photo:`, {
+            fileName: fileName,
+            fileSize: file.size,
+            fileType: file.type
+        });
+        
+        // Demo mode - simulate upload
+        if (firebaseConfig.apiKey === "YOUR_ACTUAL_API_KEY") {
+            // Demo mode
+            alert(`${type} photo captured successfully for job ${jobId}!\nFile: ${file.name}\nSize: ${(file.size / 1024).toFixed(1)} KB\n\n(Demo mode - not actually uploaded)`);
+            return;
         }
+        
+        // Real Firebase upload
+        const storageRef = storage.ref();
+        const photoRef = storageRef.child(`job-photos/${fileName}`);
+        
+        // Upload file
+        const snapshot = await photoRef.put(file);
+        const downloadURL = await snapshot.ref.getDownloadURL();
+        
+        // Save photo metadata to Firestore
+        const photoData = {
+            type: type,
+            fileName: fileName,
+            downloadURL: downloadURL,
+            fileSize: file.size,
+            capturedAt: new Date().toISOString(),
+            jobId: jobId,
+            installerId: installerData.uid,
+            installerName: installerData.name,
+            metadata: {
+                device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+                location: 'job_site',
+                category: type === 'defect' ? 'issue' : 'documentation'
+            }
+        };
+        
+        await db.collection('photos').add(photoData);
+        
+        console.log('Photo uploaded successfully:', photoData);
+        alert(`${type} photo uploaded successfully for job ${jobId}!`);
+        
+    } catch (error) {
+        console.error('Failed to upload photo:', error);
+        showError('Failed to upload photo');
+    }
+}
 
         // Get current job ID (context)
         function getCurrentJobId() {
