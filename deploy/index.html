@@ -2574,9 +2574,14 @@
                 case 'tape': tags.push('installation', 'sealing'); break;
                 case 'final': tags.push('completion', 'documentation'); break;
                 case 'defect': tags.push('issue', 'attention_needed'); break;
+            }
+            
+            return tags;
+        }
+        
         function startFinalWalkthrough(jobId) {
             console.log('🚶 Starting final walkthrough for job:', jobId);
-            // Don't close job modal - let user stay on job details
+            // closeJobPopup(); // Don't close job modal - let user stay on job details
             
             // Create final walkthrough modal
             const walkthroughModalHTML = `
@@ -6950,7 +6955,7 @@
                 const updateData = {
                     status: status,
                     updatedAt: new Date().toISOString(),
-                    updatedBy: installerData.name
+                    updatedBy: installerData ? installerData.name : 'Unknown Installer'
                 };
                 
                 if (note) {
