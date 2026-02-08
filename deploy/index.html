@@ -57,30 +57,31 @@
             }
         }
         
-        /* Modern Professional Styles */
+        /* Dark Sleek Professional Styles */
         body {
-            background: #f9fafb;
+            background: #1a1a1a;
             min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: #1f2937;
+            color: #ffffff;
         }
 
-        .modern-card {
-            background: white;
-            border: 1px solid #e5e7eb;
+        .dark-card {
+            background: #242424;
+            border: 1px solid #404040;
             border-radius: 12px;
             padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             transition: all 0.2s ease;
             position: relative;
         }
 
-        .modern-card:hover {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+        .dark-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 8px 12px rgba(59, 130, 246, 0.2);
             transform: translateY(-1px);
         }
 
-        .modern-button {
+        .dark-button {
             background: #3b82f6;
             border: 1px solid #3b82f6;
             color: white;
@@ -94,95 +95,126 @@
             transition: all 0.2s ease;
         }
 
-        .modern-button:hover {
+        .dark-button:hover {
             background: #2563eb;
             border-color: #2563eb;
             transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         }
 
-        .modern-button:active {
+        .dark-button:active {
             transform: translateY(0);
         }
 
-        .modern-button-success {
+        .dark-button-success {
             background: #10b981;
             border-color: #10b981;
         }
 
-        .modern-button-success:hover {
+        .dark-button-success:hover {
             background: #059669;
             border-color: #059669;
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
         }
 
-        .modern-button-danger {
+        .dark-button-danger {
             background: #ef4444;
             border-color: #ef4444;
         }
 
-        .modern-button-danger:hover {
+        .dark-button-danger:hover {
             background: #dc2626;
             border-color: #dc2626;
-            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
         }
 
-        .modern-button-warning {
+        .dark-button-warning {
             background: #f59e0b;
             border-color: #f59e0b;
         }
 
-        .modern-button-warning:hover {
+        .dark-button-warning:hover {
             background: #d97706;
             border-color: #d97706;
-            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
         }
 
-        .modern-text {
-            color: #1f2937;
+        .dark-text {
+            color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        .modern-text-muted {
-            color: #6b7280;
+        .dark-text-muted {
+            color: #b3b3b3;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
-        .modern-header {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        .dark-text-secondary {
+            color: #808080;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .dark-header {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
             color: white;
             padding: 16px 0;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #404040;
         }
 
-        .modern-loading {
-            background: #f9fafb;
-            color: #1f2937;
+        .dark-loading {
+            background: #1a1a1a;
+            color: #ffffff;
         }
 
-        /* Modern scrollbar */
+        .dark-stat-card {
+            background: #242424;
+            border: 1px solid #404040;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .dark-stat-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 8px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .dark-modal {
+            background: #242424;
+            border: 1px solid #404040;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .dark-modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        /* Dark scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
         }
 
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: #2d2d2d;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
+            background: #404040;
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
+            background: #555555;
         }
 
-        /* Modern form styling */
+        /* Dark form styling */
         input, textarea, select {
-            background: white;
-            border: 1px solid #d1d5db;
-            color: #1f2937;
+            background: #2d2d2d;
+            border: 1px solid #404040;
+            color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             border-radius: 8px;
             padding: 8px 12px;
@@ -191,43 +223,51 @@
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
         }
 
-        /* Modern table styling */
+        input::placeholder, textarea::placeholder {
+            color: #808080;
+        }
+
+        /* Dark table styling */
         table {
-            border: 1px solid #e5e7eb;
+            border: 1px solid #404040;
             border-radius: 8px;
             overflow: hidden;
         }
 
         th, td {
-            border: 1px solid #e5e7eb;
+            border: 1px solid #404040;
             padding: 12px 16px;
             text-align: left;
         }
 
         th {
-            background: #f9fafb;
+            background: #2d2d2d;
             font-weight: 600;
-            color: #1f2937;
+            color: #ffffff;
             font-size: 14px;
         }
 
-        /* Mobile-first responsive improvements */
+        td {
+            color: #ffffff;
+        }
+
+        /* Mobile-first responsive improvements for dark theme */
         @media (max-width: 640px) {
-            .modern-card {
+            .dark-card {
                 padding: 16px;
                 margin: 8px;
             }
             
-            .modern-button {
+            .dark-button {
                 padding: 12px 16px;
                 font-size: 16px;
                 min-height: 44px;
             }
             
-            .modern-header {
+            .dark-header {
                 padding: 12px 0;
             }
             
@@ -241,13 +281,13 @@
 <body class="mobile-first">
     <div id="app" class="min-h-screen">
         <!-- Loading State -->
-        <div id="loading" class="flex items-center justify-center min-h-screen modern-loading">
-            <div class="modern-card p-8 max-w-md mx-4 text-center">
+        <div id="loading" class="flex items-center justify-center min-h-screen dark-loading">
+            <div class="dark-card p-8 max-w-md mx-4 text-center">
                 <div class="text-4xl mb-4">🔧</div>
-                <div class="text-xl font-bold text-gray-900 mb-2">Loading Installer Portal...</div>
-                <div class="text-sm text-gray-600">Initializing secure connection...</div>
+                <div class="text-xl font-bold dark-text mb-2">Loading Installer Portal...</div>
+                <div class="text-sm dark-text-muted">Initializing secure connection...</div>
                 <div class="mt-4">
-                    <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="w-full bg-gray-700 rounded-full h-2">
                         <div class="bg-blue-600 h-2 rounded-full" style="width: 100%; animation: pulse 2s infinite;"></div>
                     </div>
                 </div>
@@ -257,19 +297,19 @@
         <!-- Main Portal (Hidden Initially) -->
         <div id="portal" class="hidden">
             <!-- Header -->
-            <header class="modern-header sticky top-0 z-50">
+            <header class="dark-header sticky top-0 z-50">
                 <div class="max-w-4xl mx-auto px-4 py-3">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <div class="text-2xl mr-3">🔧</div>
                             <div>
-                                <h1 class="text-lg font-bold text-white">Installer Portal</h1>
-                                <div class="text-xs text-gray-200">Professional Management System</div>
+                                <h1 class="text-lg font-bold dark-text">Installer Portal</h1>
+                                <div class="text-xs dark-text-muted">Professional Management System</div>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <span id="installerName" class="text-sm font-medium text-white"></span>
-                            <button onclick="logout()" class="text-white hover:text-gray-200 transition-colors bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
+                            <span id="installerName" class="text-sm font-medium dark-text"></span>
+                            <button onclick="logout()" class="dark-text hover:text-gray-300 transition-colors bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
                                 Logout
                             </button>
                         </div>
@@ -280,15 +320,15 @@
             <!-- Main Content -->
             <main class="max-w-4xl mx-auto px-4 py-6">
                 <!-- Installer Info -->
-                <div class="modern-card p-4 mb-6">
+                <div class="dark-card p-4 mb-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-sm font-medium text-gray-600">Current Installer:</div>
-                            <div id="installerInfo" class="text-lg font-bold text-gray-900"></div>
+                            <div class="text-sm font-medium dark-text-muted">Current Installer:</div>
+                            <div id="installerInfo" class="text-lg font-bold dark-text"></div>
                         </div>
                         <div class="text-right">
-                            <div class="text-sm font-medium text-gray-600">Crew Assignment:</div>
-                            <div id="crewInfo" class="text-lg font-bold text-gray-900"></div>
+                            <div class="text-sm font-medium dark-text-muted">Crew Assignment:</div>
+                            <div id="crewInfo" class="text-lg font-bold dark-text"></div>
                         </div>
                     </div>
                 </div>
@@ -296,13 +336,13 @@
                 <!-- Jobs Section -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-gray-900">Job Schedule</h2>
+                        <h2 class="text-xl font-bold dark-text">Job Schedule</h2>
                         <div class="flex items-center space-x-2">
-                            <button onclick="previousWeek()" class="modern-button px-3 py-2">
+                            <button onclick="previousWeek()" class="dark-button px-3 py-2">
                                 ← Previous
                             </button>
-                            <span id="weekRange" class="text-sm font-medium text-gray-700"></span>
-                            <button onclick="nextWeek()" class="modern-button px-3 py-2">
+                            <span id="weekRange" class="text-sm font-medium dark-text-muted"></span>
+                            <button onclick="nextWeek()" class="dark-button px-3 py-2">
                                 Next →
                             </button>
                         </div>
@@ -314,10 +354,10 @@
                     </div>
 
                     <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden modern-card p-8 text-center">
+                    <div id="noJobs" class="hidden dark-card p-8 text-center">
                         <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-gray-900 mb-2">No Jobs Scheduled</div>
-                        <div class="text-gray-600">No jobs found for this week</div>
+                        <div class="text-xl font-semibold dark-text mb-2">No Jobs Scheduled</div>
+                        <div class="dark-text-muted">No jobs found for this week</div>
                     </div>
                 </div>
             </main>
@@ -1936,39 +1976,37 @@
 
             function toDateKey(value) {
                 if (!value) return '';
-
-                let d = value;
-                if (typeof value === 'object' && typeof value.toDate === 'function') {
-                    d = value.toDate();
-                }
-                if (!(d instanceof Date)) {
-                    d = new Date(d);
-                }
-                if (Number.isNaN(d.getTime())) return '';
+                const d = new Date(value);
+                if (isNaN(d.getTime())) return value;
                 return `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
             }
 
             const dayJobs = (jobs || []).filter(job => toDateKey(job.scheduledDate) === dateStr);
             
-            // Create modal HTML for mobile
+            // Create dark sleek modal HTML for mobile
             const modalHTML = `
-                <div id="dayJobsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-                    <div style="background: #1a1a1a; border: 2px solid #00ff00; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; font-family: monospace;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
-                            <h3 style="margin: 0; color: #00ff00;">📅 ${dateStr}</h3>
-                            <button onclick="closeDayJobsModal()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕</button>
+                <div id="dayJobsModal" class="fixed inset-0 dark-modal-overlay z-50 flex items-center justify-center p-4">
+                    <div class="dark-modal max-w-lg w-full p-6 max-h-[80vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-600">
+                            <h3 class="text-xl font-bold dark-text mb-0">📅 ${dateStr}</h3>
+                            <button onclick="closeDayJobsModal()" class="dark-button-danger px-3 py-1 rounded text-sm">
+                                ✕
+                            </button>
                         </div>
                         
-                        <div style="color: #00ff00; margin-bottom: 15px; font-size: 14px;">${dayJobs.length} jobs scheduled</div>
+                        <div class="dark-text-muted mb-6 text-sm">${dayJobs.length} jobs scheduled</div>
                         
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div class="space-y-3">
                             ${dayJobs.length === 0 ? `
-                                <div style="color: #888; font-size: 12px; padding: 10px; border: 1px dashed #00ff00;">No jobs scheduled for this day.</div>
+                                <div class="dark-card p-4 text-center dark-text-secondary">
+                                    No jobs scheduled for this day.
+                                </div>
                             ` : dayJobs.map(job => `
-                                <div onclick="closeDayJobsModal(); setTimeout(() => showJobDetails('${job.id}'), 0);" style="background: #2a2a2a; border: 1px solid #00ff00; padding: 15px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                    <div style="color: #00ff00; font-weight: bold; margin-bottom: 5px;">${job.title || job.id}</div>
-                                    <div style="color: #888; font-size: 12px; margin-bottom: 3px;">👤 ${job.customer || ''}</div>
-                                    <div style="color: #888; font-size: 12px; margin-bottom: 5px;">📍 ${job.address || ''}</div>
+                                <div onclick="closeDayJobsModal(); setTimeout(() => showJobDetails('${job.id}'), 0);" class="dark-card p-4 cursor-pointer hover:border-blue-500 transition-all">
+                                    <div class="dark-text font-semibold mb-2">${job.title || job.id}</div>
+                                    <div class="dark-text-secondary text-sm mb-1">👤 ${job.customer || ''}</div>
+                                    <div class="dark-text-secondary text-sm mb-2">📍 ${job.address || ''}</div>
+                                    ${job.status ? `<div class="inline-block px-2 py-1 bg-blue-600 text-white text-xs rounded mt-2">${job.status}</div>` : ''}
                                 </div>
                             `).join('')}
                         </div>
@@ -3767,14 +3805,14 @@
 
             function renderCalendar() {
                 // Create mobile-optimized week calendar HTML
-                let calendarHTML = '<div class="terminal-card p-3">';
+                let calendarHTML = '<div class="dark-card p-3">';
             
             // Week navigation - mobile friendly (smaller header)
             calendarHTML += '<div class="flex justify-between items-center mb-2">';
-            calendarHTML += '<h3 class="text-sm font-bold text-terminal">📅 ' + weekStart.toLocaleDateString() + '</h3>';
+            calendarHTML += '<h3 class="text-sm font-bold dark-text">📅 ' + weekStart.toLocaleDateString() + '</h3>';
             calendarHTML += '<div class="flex gap-1">';
-            calendarHTML += '<button onclick="changeWeek(-1)" class="terminal-button px-2 py-1 text-xs">◀</button>';
-            calendarHTML += '<button onclick="changeWeek(1)" class="terminal-button px-2 py-1 text-xs">▶</button>';
+            calendarHTML += '<button onclick="changeWeek(-1)" class="dark-button px-2 py-1 text-xs">◀</button>';
+            calendarHTML += '<button onclick="changeWeek(1)" class="dark-button px-2 py-1 text-xs">▶</button>';
             calendarHTML += '</div></div>';
             
             // Create week grid - mobile optimized (7 days in a row)
@@ -3790,9 +3828,9 @@
                 const dateKey = dateStr.replace(/\//g, '-');
                 const jobCount = (jobs || []).filter(job => toDateKey(job.scheduledDate) === dateKey).length;
                 
-                calendarHTML += '<div onclick="showDayJobs(\'' + dateKey + '\')" class="terminal-card p-2 text-center cursor-pointer hover:bg-gray-800 min-h-[70px] flex flex-col justify-center">';
-                calendarHTML += '<div class="text-xs text-terminal-muted">' + dayName + '</div>';
-                calendarHTML += '<div class="text-sm font-bold text-terminal">' + dayNum + '</div>';
+                calendarHTML += '<div onclick="showDayJobs(\'' + dateKey + '\')" class="dark-card p-2 text-center cursor-pointer hover:bg-gray-700 min-h-[70px] flex flex-col justify-center">';
+                calendarHTML += '<div class="text-xs dark-text-muted">' + dayName + '</div>';
+                calendarHTML += '<div class="text-sm font-bold dark-text">' + dayNum + '</div>';
                 if (jobCount > 0) {
                     calendarHTML += '<div class="text-xs bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center mx-auto mt-1">' + jobCount + '</div>';
                 }
@@ -3803,7 +3841,7 @@
             
             // Blackout dates button - mobile friendly
             calendarHTML += '<div class="text-center mt-3">';
-            calendarHTML += '<button onclick="showBlackoutDatesModal()" class="terminal-button px-4 py-2 text-sm">📅 Blackout Dates</button>';
+            calendarHTML += '<button onclick="showBlackoutDatesModal()" class="dark-button px-4 py-2 text-sm">📅 Blackout Dates</button>';
             calendarHTML += '</div>';
             
             calendarHTML += '</div>';
