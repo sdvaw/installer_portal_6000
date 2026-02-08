@@ -534,17 +534,18 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div id="jobModal" class="fixed inset-0 terminal-modal-overlay hidden" style="z-index: 20000;">
+    <div id="jobModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden" style="z-index: 20000;">
         <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="terminal-modal max-w-md w-full p-6">
-                <div class="scanline"></div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-terminal">> JOB_DETAILS.EXE</h3>
-                    <button onclick="closeJobModal()" class="text-terminal hover:text-white text-2xl font-bold transition-colors">
-                        [X]
-                    </button>
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 border-b border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xl font-bold">🔧 Job Details</h3>
+                        <button onclick="closeJobModal()" class="text-white hover:text-gray-200 text-2xl font-bold transition-colors bg-blue-800 hover:bg-blue-900 rounded-full w-8 h-8 flex items-center justify-center">
+                            ×
+                        </button>
+                    </div>
                 </div>
-                <div id="modalContent">
+                <div id="modalContent" class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
                     <!-- Job details will be populated here -->
                 </div>
             </div>
@@ -6927,16 +6928,44 @@
 
                     <div class="border-t border-gray-200 pt-4">
                         <div class="text-sm font-bold text-gray-900 mb-3 text-center">🔧 JOB MANAGEMENT</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button onclick="updateJobStatus('${jobId}')" class="terminal-button w-full" style="background: #ffc107; color: #000;">🔄 Update Status</button>
-                            <button onclick="capturePhoto('${jobId}')" class="terminal-button w-full" style="background: #28a745; color: #fff;">📷 Capture Photo</button>
-                            <button onclick="showDefectReportingModal('${jobId}')" class="terminal-button w-full" style="background: #dc3545; color: #fff;">🚨 Report Defect</button>
-                            <button onclick="startFinalWalkthrough('${jobId}')" class="terminal-button w-full" style="background: #17a2b8; color: #fff;">🚶 Walkthrough</button>
-                            <button onclick="startCertificateOfCompletion('${jobId}')" class="terminal-button w-full" style="background: #6f42c1; color: #fff;">📜 Certificate</button>
-                            <button onclick="getDirections('${jobId}')" class="terminal-button w-full" style="background: #fd7e14; color: #fff;">🗺️ Directions</button>
+                        
+                        <!-- Job Status Dropdown -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Job Status</label>
+                            <select id="jobStatusDropdown" onchange="handleJobStatusChange('${jobId}', this.value)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <option value="scheduled" ${job.status === 'scheduled' ? 'selected' : ''}>📋 Scheduled</option>
+                                <option value="start-job" ${job.status === 'start-job' ? 'selected' : ''}>🚀 Start Job</option>
+                                <option value="in-progress" ${job.status === 'in-progress' ? 'selected' : ''}>⚡ In Progress</option>
+                                <option value="complete-collected" ${job.status === 'complete-collected' ? 'selected' : ''}>✅ Complete - Collected - Ready For Inspection</option>
+                                <option value="complete-not-collected" ${job.status === 'complete-not-collected' ? 'selected' : ''}>💰 Complete - Not Collected - Ready For Inspection</option>
+                                <option value="not-complete-multiday" ${job.status === 'not-complete-multiday' ? 'selected' : ''}>📅 Not Complete - Multiday Job</option>
+                                <option value="not-complete-other" ${job.status === 'not-complete-other' ? 'selected' : ''}>📝 Not Complete - Other</option>
+                            </select>
                         </div>
-                        <div class="mt-3">
-                            <button onclick="reportIssueForJob('${jobId}')" class="terminal-button w-full" style="background: #f97316; color: #fff;">🚨 Report Issue</button>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="capturePhotoForJob('${jobId}', 'before')" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                📸 Before
+                            </button>
+                            <button onclick="capturePhotoForJob('${jobId}', 'after')" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                📸 After
+                            </button>
+                            <button onclick="capturePhotoForJob('${jobId}', 'defect')" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                ⚠️ Defect
+                            </button>
+                            <button onclick="startFinalWalkthrough('${jobId}')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                🚶 Walkthrough
+                            </button>
+                            <button onclick="startCertificateOfCompletion('${jobId}')" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                📜 Certificate
+                            </button>
+                            <button onclick="getDirections('${jobId}')" class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                🗺️ Directions
+                            </button>
+                            <button onclick="reportIssueForJob('${jobId}')" class="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
+                                🚨 Issue
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -6949,16 +6978,131 @@
             document.getElementById('jobModal').classList.add('hidden');
         }
 
-        // Report issue for specific job
-        function reportIssueForJob(jobId) {
-            const modal = document.getElementById('issueModal');
-            const jobIdSelect = document.getElementById('issueJobId');
+        // Handle job status change with workflow validation
+        function handleJobStatusChange(jobId, newStatus) {
+            console.log('Job status change:', jobId, '→', newStatus);
             
-            // Set the specific job
-            jobIdSelect.innerHTML = `<option value="${jobId}">${jobs.find(j => j.id === jobId)?.title || jobId}</option>`;
-            jobIdSelect.value = jobId;
+            const job = jobs.find(j => j.id === jobId);
+            if (!job) return;
             
-            modal.classList.remove('hidden');
+            // Handle different status workflows
+            switch(newStatus) {
+                case 'start-job':
+                    // Open required start photos capture
+                    openStartJobPhotos(jobId);
+                    break;
+                    
+                case 'complete-collected':
+                case 'complete-not-collected':
+                    // Validate all required photos before allowing completion
+                    validateJobCompletion(jobId, newStatus);
+                    break;
+                    
+                case 'not-complete-other':
+                    // Require note for "Other" status
+                    requestNoteForStatus(jobId, newStatus);
+                    break;
+                    
+                default:
+                    // Direct status update for other cases
+                    updateJobStatusInDatabase(jobId, newStatus);
+            }
+        }
+
+        // Open start job photos capture
+        function openStartJobPhotos(jobId) {
+            const requiredPhotos = [
+                { type: 'front', label: 'Front of building with address visible', required: true },
+                { type: 'left', label: 'Left side of property', required: true },
+                { type: 'right', label: 'Right side of property', required: true },
+                { type: 'rear', label: 'Rear of property', required: true },
+                { type: 'damage', label: 'Existing damage (with notes)', required: true }
+            ];
+            
+            showPhotoCaptureModal(jobId, requiredPhotos, 'start-job', () => {
+                // After required photos captured, update status
+                updateJobStatusInDatabase(jobId, 'in-progress');
+            });
+        }
+
+        // Validate job completion requirements
+        function validateJobCompletion(jobId, statusType) {
+            // Check if all required photos are captured
+            // For now, simulate validation - in real implementation would check photo database
+            const hasAllRequiredPhotos = confirm('Are all required photos captured for this job?\n\nClick OK to confirm completion, or Cancel to take missing photos.');
+            
+            if (hasAllRequiredPhotos) {
+                if (statusType === 'complete-not-collected') {
+                    requestPaymentNote(jobId, statusType);
+                } else {
+                    updateJobStatusInDatabase(jobId, statusType);
+                }
+            } else {
+                alert('Please capture all required photos before marking job as complete.');
+                // Could open photo capture modal here for missing photos
+            }
+        }
+
+        // Request payment note for uncollected payments
+        function requestPaymentNote(jobId, statusType) {
+            const note = prompt('Please enter payment status note:');
+            if (note) {
+                updateJobStatusInDatabase(jobId, statusType, note);
+            }
+        }
+
+        // Request note for "Other" status
+        function requestNoteForStatus(jobId, statusType) {
+            const note = prompt('Please enter explanation for "Other" status:');
+            if (note) {
+                updateJobStatusInDatabase(jobId, statusType, note);
+            }
+        }
+
+        // Update job status in database
+        async function updateJobStatusInDatabase(jobId, status, note = null) {
+            try {
+                const updateData = {
+                    status: status,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: installerData.name
+                };
+                
+                if (note) {
+                    updateData.statusNote = note;
+                }
+                
+                await db.collection('jobs').doc(jobId).update(updateData);
+                console.log('Job status updated successfully:', updateData);
+                
+                // Show success message
+                const statusMessages = {
+                    'in-progress': 'Job started successfully!',
+                    'complete-collected': 'Job completed - payment collected!',
+                    'complete-not-collected': 'Job completed - payment pending.',
+                    'not-complete-multiday': 'Job marked as multiday.',
+                    'not-complete-other': 'Job status updated with note.'
+                };
+                
+                alert(statusMessages[status] || 'Job status updated successfully!');
+                
+                // Refresh job details if modal is open
+                const modal = document.getElementById('jobModal');
+                if (!modal.classList.contains('hidden')) {
+                    showJobDetails(jobId); // Refresh modal content
+                }
+                
+            } catch (error) {
+                console.error('Failed to update job status:', error);
+                alert('Failed to update job status. Please try again.');
+            }
+        }
+
+        // Photo capture modal (placeholder for now)
+        function showPhotoCaptureModal(jobId, requiredPhotos, statusType, onComplete) {
+            alert(`Photo capture modal for ${statusType}\n\nRequired photos:\n${requiredPhotos.map(p => `- ${p.label}${p.required ? ' (Required)' : ''}`).join('\n')}\n\n(Implementation needed)`);
+            // For now, just call onComplete
+            if (onComplete) onComplete();
         }
 
         function closeIssueModal() {
