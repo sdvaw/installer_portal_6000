@@ -57,21 +57,12 @@
             }
         }
         
-        /* Retro Terminal Database Styles */
+        /* Modern Professional Styles */
         body {
-            background: #000000;
-            background-image: 
-                repeating-linear-gradient(
-                    0deg,
-                    rgba(0, 255, 0, 0.03),
-                    rgba(0, 255, 0, 0.03) 1px,
-                    transparent 1px,
-                    transparent 2px
-                );
+            background: #f9fafb;
             min-height: 100vh;
-            font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
-            color: #00ff00;
-            text-shadow: 0 0 5px #00ff00;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1f2937;
         }
 
         .terminal-panel {
@@ -381,14 +372,15 @@
 <body class="mobile-first">
     <div id="app" class="min-h-screen">
         <!-- Loading State -->
-        <div id="loading" class="flex items-center justify-center min-h-screen terminal-modal-overlay">
-            <div class="terminal-panel p-8 max-w-md mx-4">
-                <div class="scanline"></div>
-                <div class="text-center">
-                    <div class="text-4xl mb-4 flicker">🔧</div>
-                    <div class="text-xl text-terminal font-bold cursor">LOADING INSTALLER DATABASE...</div>
-                    <div class="text-sm text-terminal-muted mt-2">CONNECTING TO MAINFRAME...</div>
-                    <div class="text-xs text-terminal-muted mt-4">[████████████████████] 100%</div>
+        <div id="loading" class="flex items-center justify-center min-h-screen modern-loading">
+            <div class="modern-card p-8 max-w-md mx-4 text-center">
+                <div class="text-4xl mb-4">🔧</div>
+                <div class="text-xl font-bold text-gray-900 mb-2">Loading Installer Portal...</div>
+                <div class="text-sm text-gray-600">Initializing secure connection...</div>
+                <div class="mt-4">
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: 100%; animation: pulse 2s infinite;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -396,21 +388,20 @@
         <!-- Main Portal (Hidden Initially) -->
         <div id="portal" class="hidden">
             <!-- Header -->
-            <header class="terminal-header sticky top-0 z-50">
-                <div class="scanline"></div>
+            <header class="modern-header sticky top-0 z-50">
                 <div class="max-w-4xl mx-auto px-4 py-3">
                     <div class="flex justify-between items-center">
                         <div class="flex items-center">
                             <div class="text-2xl mr-3">🔧</div>
                             <div>
-                                <h1 class="text-lg font-bold text-terminal">INSTALLER_PORTAL.EXE - VERSION CHECK 1810</h1>
-                                <div class="text-xs text-terminal-muted">FIREBASE_OPERATIONS_SYSTEM</div>
+                                <h1 class="text-lg font-bold text-white">Installer Portal</h1>
+                                <div class="text-xs text-gray-200">Professional Management System</div>
                             </div>
                         </div>
                         <div class="flex items-center space-x-3">
-                            <span id="installerName" class="text-sm font-medium text-terminal"></span>
-                            <button onclick="logout()" class="text-terminal hover:text-white transition-colors">
-                                [LOGOUT]
+                            <span id="installerName" class="text-sm font-medium text-white"></span>
+                            <button onclick="logout()" class="text-white hover:text-gray-200 transition-colors bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">
+                                Logout
                             </button>
                         </div>
                     </div>
@@ -420,16 +411,15 @@
             <!-- Main Content -->
             <main class="max-w-4xl mx-auto px-4 py-6">
                 <!-- Installer Info -->
-                <div class="terminal-card p-4 mb-6">
-                    <div class="scanline"></div>
+                <div class="modern-card p-4 mb-6">
                     <div class="flex items-center justify-between">
                         <div>
-                            <div class="text-sm text-terminal font-medium">> CURRENT_INSTALLER:</div>
-                            <div id="installerInfo" class="text-lg font-bold text-terminal"></div>
+                            <div class="text-sm font-medium text-gray-600">Current Installer:</div>
+                            <div id="installerInfo" class="text-lg font-bold text-gray-900"></div>
                         </div>
                         <div class="text-right">
-                            <div class="text-sm text-terminal font-medium">> CREW_ASSIGNMENT:</div>
-                            <div id="crewInfo" class="text-lg font-bold text-terminal"></div>
+                            <div class="text-sm font-medium text-gray-600">Crew Assignment:</div>
+                            <div id="crewInfo" class="text-lg font-bold text-gray-900"></div>
                         </div>
                     </div>
                 </div>
@@ -437,14 +427,14 @@
                 <!-- Jobs Section -->
                 <div class="mb-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-terminal">> JOB_DATABASE_QUERY</h2>
+                        <h2 class="text-xl font-bold text-gray-900">Job Schedule</h2>
                         <div class="flex items-center space-x-2">
-                            <button onclick="previousWeek()" class="terminal-button px-3 py-2">
-                                [<<]
+                            <button onclick="previousWeek()" class="modern-button px-3 py-2">
+                                ← Previous
                             </button>
-                            <span id="weekRange" class="text-sm font-medium text-terminal"></span>
-                            <button onclick="nextWeek()" class="terminal-button px-3 py-2">
-                                [>>]
+                            <span id="weekRange" class="text-sm font-medium text-gray-700"></span>
+                            <button onclick="nextWeek()" class="modern-button px-3 py-2">
+                                Next →
                             </button>
                         </div>
                     </div>
@@ -455,27 +445,12 @@
                     </div>
 
                     <!-- No Jobs Message -->
-                    <div id="noJobs" class="hidden terminal-card p-8 text-center">
-                        <div class="scanline"></div>
+                    <div id="noJobs" class="hidden modern-card p-8 text-center">
                         <div class="text-4xl mb-4">📋</div>
-                        <div class="text-xl font-semibold text-terminal mb-2">> NO_JOBS_SCHEDULED</div>
-                        <div class="text-terminal-muted">QUERY_RETURNED_EMPTY_SET</div>
+                        <div class="text-xl font-semibold text-gray-900 mb-2">No Jobs Scheduled</div>
+                        <div class="text-gray-600">No jobs found for this week</div>
                     </div>
                 </div>
-
-                <!-- Installer Tools -->
-                <div class="mb-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-bold text-terminal">> INSTALLER_TOOLS</h2>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button onclick="showJobStatusModal()" class="terminal-button p-4 text-center">
-                            🔄 Update Status
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Quick Actions - REMOVED (moved to job cards) -->
             </main>
         </div>
     </div>
