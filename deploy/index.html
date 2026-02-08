@@ -1976,8 +1976,14 @@
 
             function toDateKey(value) {
                 if (!value) return '';
-                const d = new Date(value);
-                if (isNaN(d.getTime())) return value;
+                let d = value;
+                if (typeof value === 'object' && typeof value.toDate === 'function') {
+                    d = value.toDate();
+                }
+                if (!(d instanceof Date)) {
+                    d = new Date(d);
+                }
+                if (Number.isNaN(d.getTime())) return '';
                 return `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
             }
 
