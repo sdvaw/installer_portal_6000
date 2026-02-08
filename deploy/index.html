@@ -6990,9 +6990,17 @@
 
         // Photo capture modal (placeholder for now)
         function showPhotoCaptureModal(jobId, requiredPhotos, statusType, onComplete) {
-            alert(`Photo capture modal for ${statusType}\n\nRequired photos:\n${requiredPhotos.map(p => `- ${p.label}${p.required ? ' (Required)' : ''}`).join('\n')}\n\n(Implementation needed)`);
-            // For now, just call onComplete
-            if (onComplete) onComplete();
+            console.log('📷 Opening photo capture for:', statusType, 'Required photos:', requiredPhotos);
+            
+            // For now, simulate photo capture and proceed
+            const proceed = confirm(`Photo capture workflow for ${statusType}\n\nRequired photos:\n${requiredPhotos.map(p => `- ${p.label}${p.required ? ' (Required)' : ''}`).join('\n')}\n\nClick OK to simulate photo capture and proceed, or Cancel to abort.`);
+            
+            if (proceed && onComplete) {
+                console.log('✅ Photo capture simulated, calling onComplete');
+                onComplete();
+            } else {
+                console.log('❌ Photo capture cancelled');
+            }
         }
 
         function closeIssueModal() {
