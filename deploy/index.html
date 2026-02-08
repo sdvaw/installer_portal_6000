@@ -1982,6 +1982,9 @@
             }
 
             const dayJobs = (jobs || []).filter(job => toDateKey(job.scheduledDate) === dateStr);
+            console.log('🔍 Jobs available:', jobs);
+            console.log('🔍 Job dates:', jobs.map(j => ({ id: j.id, scheduledDate: j.scheduledDate, dateKey: toDateKey(j.scheduledDate) })));
+            console.log('🔍 Filtered dayJobs:', dayJobs);
             
             // Create dark sleek modal HTML for mobile
             const modalHTML = `
