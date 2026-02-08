@@ -6988,20 +6988,17 @@ async function uploadPhotoToFirebase(file, type, jobId) {
             }
         }
 
-        // Open start job photos capture
+        // Open start job photos capture - UPDATED TO USE RAPID PHOTO MODULE
         function openStartJobPhotos(jobId) {
-            const requiredPhotos = [
-                { type: 'front', label: 'Front of building with address visible', required: true },
-                { type: 'left', label: 'Left side of property', required: true },
-                { type: 'right', label: 'Right side of property', required: true },
-                { type: 'rear', label: 'Rear of property', required: true },
-                { type: 'damage', label: 'Existing damage (with notes)', required: true }
-            ];
+            console.log('🚀 Starting job photo workflow for:', jobId);
             
-            showPhotoCaptureModal(jobId, requiredPhotos, 'start-job', () => {
-                // After required photos captured, update status
-                updateJobStatusInDatabase(jobId, 'in-progress');
-            });
+            // Use the new rapid photo capture module for start job photos
+            showRapidPhotoCapture(jobId, 'start-job');
+            
+            // Show instructions for required start photos
+            setTimeout(() => {
+                alert('📸 START JOB PHOTOS REQUIRED\n\nPlease capture:\n• Front of building with address visible\n• Left side of property\n• Right side of property\n• Rear of property\n• Existing damage (if any)\n\nUse the rapid photo capture module to organize by window/door location.');
+            }, 500);
         }
 
         // Validate job completion requirements
