@@ -2583,6 +2583,28 @@
             console.log('🚶 Starting final walkthrough for job:', jobId);
             // closeJobPopup(); // Don't close job modal - let user stay on job details
             
+            // Load existing walkthrough data first
+            if (db) {
+                db.collection('final_walkthroughs')
+                .where('jobId', '==', jobId)
+                .orderBy('completedAt', 'desc')
+                .limit(1)
+                .get()
+                .then(snapshot => {
+                    const existingWalkthrough = snapshot.docs[0] ? snapshot.docs[0].data() : null;
+                    showWalkthroughModal(jobId, existingWalkthrough);
+                })
+                .catch(error => {
+                    console.error('❌ Error loading walkthrough data:', error);
+                    showWalkthroughModal(jobId, null);
+                });
+            } else {
+                showWalkthroughModal(jobId, null);
+            }
+        }
+        
+        function showWalkthroughModal(jobId, existingData) {
+            
             // Create final walkthrough modal
             const walkthroughModalHTML = `
                 <div id="walkthroughModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center; overflow-y: auto;">
@@ -2675,6 +2697,53 @@
             
             // Setup star ratings
             setTimeout(() => setupStarRatings(), 100);
+            
+            // Populate with existing data if available
+            if (existingData) {
+                console.log('📋 Loading existing walkthrough data:', existingData);
+                
+                // Populate ratings
+                setTimeout(() => {
+                    if (existingData.ratings) {
+                        Object.keys(existingData.ratings).forEach(item => {
+                            const rating = document.querySelector(`.star-rating[data-item="${item}"]`);
+                            if (rating) {
+                                const value = existingData.ratings[item];
+                                rating.dataset.rating = value.toString();
+                                
+                                const stars = rating.querySelectorAll('.star-btn');
+                                for (let i = 0; i < value; i++) {
+                                    stars[i].textContent = '★';
+                                    stars[i].style.color = '#ffc107';
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Populate notes
+                    if (existingData.notes) {
+                        const notesTextarea = document.getElementById('walkthroughNotes');
+                        if (notesTextarea) {
+                            notesTextarea.value = existingData.notes;
+                        }
+                    }
+                    
+                    // Load signature if exists
+                    if (existingData.customerSignature) {
+                        setTimeout(() => {
+                            const canvas = document.getElementById('walkthroughSignatureCanvas');
+                            if (canvas) {
+                                const ctx = canvas.getContext('2d');
+                                const img = new Image();
+                                img.onload = function() {
+                                    ctx.drawImage(img, 0, 0);
+                                };
+                                img.src = existingData.customerSignature;
+                            }
+                        }, 200);
+                    }
+                }, 150);
+            }
         }
         
         function setupStarRatings() {
@@ -6617,10 +6686,10 @@
                             📋 Details
                         </button>
                         <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'before')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            📸 Before
+                            📸 In Progress
                         </button>
                         <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'after')" class="bg-purple-600 text-white rounded-lg hover:bg-purple-700">
-                            📸 After
+                            📸 Final
                         </button>
                         <button onclick="event.stopPropagation(); capturePhotoForJob('${job.id}', 'defect')" class="bg-red-600 text-white rounded-lg hover:bg-red-700">
                             ⚠️ Defect
@@ -6836,10 +6905,10 @@
                         <!-- Action Buttons -->
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="capturePhotoForJob('${jobId}', 'before')" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
-                                📸 Before
+                                📸 In Progress
                             </button>
                             <button onclick="capturePhotoForJob('${jobId}', 'after')" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
-                                📸 After
+                                📸 Final
                             </button>
                             <button onclick="capturePhotoForJob('${jobId}', 'defect')" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-3 rounded-lg transition-colors">
                                 ⚠️ Defect
