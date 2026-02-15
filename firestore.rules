@@ -20,5 +20,35 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if true; // Allow all access for now (restrict later)
     }
+    
+    // Photos collection
+    match /photos/{photoId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
+    
+    // Job Photos collection
+    match /job-photos/{photoId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
+    
+    // Defects collection
+    match /defects/{defectId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
+    
+    // Final Walkthroughs collection
+    match /final_walkthroughs/{walkthroughId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
+    
+    // Certificates of Completion collection
+    match /certificates_of_completion/{certificateId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
+    
+    // Blackout Dates collection
+    match /blackout_dates/{blackoutId} {
+      allow read, write: if true; // Allow all access for now (restrict later)
+    }
   }
 }

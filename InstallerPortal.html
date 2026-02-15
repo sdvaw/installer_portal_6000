@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installer Portal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .header h1 { color: #2c3e50; font-size: 2rem; margin-bottom: 10px; }
+        .week-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; }
+        .week-nav button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; }
+        .week-nav .btn-primary { background: #3498db; color: white; }
+        .week-nav .btn-secondary { background: #6c757d; color: white; }
+        .job-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+        .job-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .job-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .job-title { font-size: 1.3rem; font-weight: 600; color: #2c3e50; }
+        .job-status { padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .status-scheduled { background: #e3f2fd; color: #1976d2; }
+        .status-in-progress { background: #fff3e0; color: #f57c00; }
+        .status-completed { background: #e8f5e8; color: #388e3c; }
+        .status-ready-inspection { background: #f3e5f5; color: #7b1fa2; }
+        .job-details { margin-bottom: 20px; }
+        .detail-row { display: flex; margin-bottom: 10px; }
+        .detail-label { font-weight: 600; min-width: 120px; color: #666; }
+        .detail-value { flex: 1; color: #333; }
+        .job-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 5% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group select, .form-group textarea, .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .photo-section { margin: 20px 0; }
+        .photo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; }
+        .photo-item { text-align: center; }
+        .photo-item img { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; }
+        .search-box { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Installer Portal</h1>
+            <p>Welcome back, <?= installerName ?> | <?= currentDate ?></p>
+        </div>
+
+        <div class="week-nav">
+            <button class="btn btn-secondary" onclick="changeWeek(-1)">← Previous Week</button>
+            <h3><?= weekRange ?></h3>
+            <button class="btn btn-secondary" onclick="changeWeek(1)">Next Week →</button>
+            <button class="btn btn-primary" onclick="showSearch()">🔍 Search Jobs</button>
+        </div>
+
+        <div class="search-box" id="searchBox" style="display: none;">
+            <input type="text" placeholder="Search jobs by title, location, or job ID..." onkeyup="searchJobs(this.value)">
+        </div>
+
+        <div class="job-grid" id="jobGrid">
+            <? for (var i = 0; i < jobs.length; i++) { ?>
+                <div class="job-card" data-job-id="<?= jobs[i].id ?>">
+                    <div class="job-header">
+                        <div>
+                            <div class="job-title"><?= jobs[i].title ?></div>
+                            <small style="color: #666;"><?= jobs[i].location ?></small>
+                        </div>
+                        <div class="job-status status-<?= jobs[i].status.toLowerCase().replace(' ', '-') ?>"><?= jobs[i].status ?></div>
+                    </div>
+
+                    <div class="job-details">
+                        <div class="detail-row">
+                            <div class="detail-label">Date:</div>
+                            <div class="detail-value"><?= formatDate(jobs[i].start) ?> - <?= formatDate(jobs[i].end) ?></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Status:</div>
+                            <div class="detail-value"><?= jobs[i].status ?></div>
+                        </div>
+                    </div>
+
+                    <div class="job-actions">
+                        <button class="btn btn-primary" onclick="viewJobDetails('<?= jobs[i].id ?>')">📋 View Details</button>
+                        <button class="btn btn-success" onclick="updateJobStatus('<?= jobs[i].id ?>', 'In Progress')">⚡ Start Work</button>
+                        <button class="btn btn-warning" onclick="reportIssue('<?= jobs[i].id ?>')">⚠️ Report Issue</button>
+                    </div>
+                </div>
+            <? } ?>
+        </div>
+    </div>
+
+    <!-- Job Details Modal -->
+    <div id="jobDetailsModal" class="modal">
+        <div class="modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Job Details</h2>
+                <button onclick="closeModal('jobDetailsModal')" style="background: none; border: none; font-size: 24px;">×</button>
+            </div>
+            
+            <div id="jobDetailsContent">
+                <!-- Job details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update Modal -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <h2>Update Job Status</h2>
+            <form onsubmit="submitStatusUpdate(event)">
+                <div class="form-group">
+                    <label>New Status:</label>
+                    <select id="newStatus" required>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Ready for Inspection">Ready for Inspection</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Notes:</label>
+                    <textarea id="statusNotes" placeholder="Add notes about this status update..."></textarea>
+                </div>
+
+                <div class="photo-section" id="photoSection" style="display: none;">
+                    <h3>📸 Required Photos</h3>
+                    <div class="photo-grid" id="photoGrid">
+                        <!-- Photos will be loaded here -->
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="addPhoto()">📷 Add Photo</button>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-success">Update Status</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('statusModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Service Issue Modal -->
+    <div id="issueModal" class="modal">
+        <div class="modal-content">
+            <h2>Report Service Issue</h2>
+            <form onsubmit="submitServiceIssue(event)">
+                <div class="form-group">
+                    <label>Issue Type:</label>
+                    <select id="issueType" required>
+                        <option value="">Select issue type...</option>
+                        <option value="Manufacturing Issue">Manufacturing Issue</option>
+                        <option value="Measurement Issue">Measurement Issue</option>
+                        <option value="Parts Shortage">Parts Shortage</option>
+                        <option value="Access Problem">Access Problem</option>
+                        <option value="Customer Request">Customer Request</option>
+                        <option value="Other">Other (Custom)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="customIssueGroup" style="display: none;">
+                    <label>Custom Issue Type:</label>
+                    <input type="text" id="customIssueType" placeholder="Describe the issue type...">
+                </div>
+
+                <div class="form-group">
+                    <label>Description:</label>
+                    <textarea id="issueDescription" required placeholder="Describe the issue in detail..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Parts/Materials Needed:</label>
+                    <textarea id="partsNeeded" placeholder="List any parts or materials needed..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-warning">Submit Issue</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('issueModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Block Off Dates Modal -->
+    <div id="blockOffModal" class="modal">
+        <div class="modal-content">
+            <h2>Block Off Dates</h2>
+            <form onsubmit="submitBlockOffDate(event)">
+                <div class="form-group">
+                    <label>Start Date:</label>
+                    <input type="date" id="blockOffStart" required>
+                </div>
+                
+                <div class="form-group">
+                    <label>End Date:</label>
+                    <input type="date" id="blockOffEnd" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Reason:</label>
+                    <textarea id="blockOffReason" required placeholder="Reason for unavailability..."></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="submit" class="btn btn-danger">Block Dates</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('blockOffModal')">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let currentWeekOffset = 0;
+        let jobs = <?= JSON.stringify(jobs) ?>;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for required photos on Ready for Inspection jobs
+            checkRequiredPhotos();
+        });
+
+        function changeWeek(direction) {
+            currentWeekOffset += direction;
+            loadJobsForWeek();
+        }
+
+        function loadJobsForWeek() {
+            // This would call the backend to load jobs for the specific week
+            window.location.href = `?email=<?= installerEmail ?>&week=${currentWeekOffset}`;
+        }
+
+        function showSearch() {
+            const searchBox = document.getElementById('searchBox');
+            searchBox.style.display = searchBox.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function searchJobs(query) {
+            const filteredJobs = jobs.filter(job => 
+                job.title.toLowerCase().includes(query.toLowerCase()) ||
+                job.location.toLowerCase().includes(query.toLowerCase()) ||
+                job.id.toLowerCase().includes(query.toLowerCase())
+            );
+            displayJobs(filteredJobs);
+        }
+
+        function displayJobs(jobsToDisplay) {
+            const jobGrid = document.getElementById('jobGrid');
+            // Re-render job cards with filtered jobs
+            // This would typically use a template system
+        }
+
+        function viewJobDetails(jobId) {
+            currentJobId = jobId;
+            const job = jobs.find(j => j.id === jobId);
+            
+            const detailsContent = document.getElementById('jobDetailsContent');
+            detailsContent.innerHTML = `
+                <div class="job-details">
+                    <div class="detail-row">
+                        <div class="detail-label">Job ID:</div>
+                        <div class="detail-value">${job.id}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Title:</div>
+                        <div class="detail-value">${job.title}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Location:</div>
+                        <div class="detail-value">${job.location}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date:</div>
+                        <div class="detail-value">${formatDate(job.start)} - ${formatDate(job.end)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status:</div>
+                        <div class="detail-value">${job.status}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Notes:</div>
+                        <div class="detail-value">${job.notes || 'No notes'}</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="updateJobStatus('${jobId}', 'In Progress')">⚡ Start Work</button>
+                    <button class="btn btn-success" onclick="updateJobStatus('${jobId}', 'Completed')">✅ Mark Complete</button>
+                    <button class="btn btn-warning" onclick="reportIssue('${jobId}')">⚠️ Report Issue</button>
+                    <button class="btn btn-secondary" onclick="showBlockOffModal()">📅 Block Off Dates</button>
+                </div>
+            `;
+            
+            document.getElementById('jobDetailsModal').style.display = 'block';
+        }
+
+        function updateJobStatus(jobId, status) {
+            currentJobId = jobId;
+            const statusSelect = document.getElementById('newStatus');
+            statusSelect.value = status;
+            
+            // Show photo section if marking as Ready for Inspection
+            const photoSection = document.getElementById('photoSection');
+            if (status === 'Ready for Inspection') {
+                photoSection.style.display = 'block';
+                loadJobPhotos(jobId);
+            } else {
+                photoSection.style.display = 'none';
+            }
+            
+            document.getElementById('statusModal').style.display = 'block';
+        }
+
+        function reportIssue(jobId) {
+            currentJobId = jobId;
+            document.getElementById('issueModal').style.display = 'block';
+        }
+
+        function showBlockOffModal() {
+            document.getElementById('blockOffModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function submitStatusUpdate(event) {
+            event.preventDefault();
+            
+            const status = document.getElementById('newStatus').value;
+            const notes = document.getElementById('statusNotes').value;
+            
+            // Validate photos for Ready for Inspection
+            if (status === 'Ready for Inspection') {
+                const photos = document.querySelectorAll('.photo-item');
+                if (photos.length === 0) {
+                    alert('⚠️ You must upload photos before marking as Ready for Inspection.');
+                    return;
+                }
+            }
+            
+            // API call to update status
+            fetch(`?api=updateJobStatus&jobId=${currentJobId}&status=${encodeURIComponent(status)}&notes=${encodeURIComponent(notes)}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('✅ Status updated successfully!');
+                        closeModal('statusModal');
+                        location.reload();
+                    } else {
+                        alert('❌ Error updating status: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Network error: ' + error.message);
+                });
+        }
+
+        function submitServiceIssue(event) {
+            event.preventDefault();
+            
+            let issueType = document.getElementById('issueType').value;
+            if (issueType === 'Other') {
+                issueType = document.getElementById('customIssueType').value;
+            }
+            
+            const description = document.getElementById('issueDescription').value;
+            const partsNeeded = document.getElementById('partsNeeded').value;
+            
+            // API call to report issue
+            fetch(`?api=reportServiceIssue&jobId=${currentJobId}&issueType=${encodeURIComponent(issueType)}&description=${encodeURIComponent(description)}&partsNeeded=${encodeURIComponent(partsNeeded)}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('✅ Service issue reported successfully!');
+                        closeModal('issueModal');
+                    } else {
+                        alert('❌ Error reporting issue: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Network error: ' + error.message);
+                });
+        }
+
+        function submitBlockOffDate(event) {
+            event.preventDefault();
+            
+            const startDate = document.getElementById('blockOffStart').value;
+            const endDate = document.getElementById('blockOffEnd').value;
+            const reason = document.getElementById('blockOffReason').value;
+            
+            // API call to add block-off date
+            fetch(`?api=addBlockOffDate&installerEmail=<?= installerEmail ?>&startDate=${startDate}&endDate=${endDate}&reason=${encodeURIComponent(reason)}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        alert('✅ Block-off dates added successfully!');
+                        closeModal('blockOffModal');
+                    } else {
+                        alert('❌ Error adding block-off dates: ' + result.error);
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Network error: ' + error.message);
+                });
+        }
+
+        function loadJobPhotos(jobId) {
+            // Load existing photos for this job
+            fetch(`?api=getJobPhotos&jobId=${jobId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        displayPhotos(result.photos);
+                    }
+                });
+        }
+
+        function displayPhotos(photos) {
+            const photoGrid = document.getElementById('photoGrid');
+            photoGrid.innerHTML = photos.map(photo => `
+                <div class="photo-item">
+                    <img src="${photo.url}" alt="${photo.description}">
+                    <p>${photo.description}</p>
+                </div>
+            `).join('');
+        }
+
+        function addPhoto() {
+            // This would open a file picker or camera interface
+            // For now, simulate photo upload
+            const photoUrl = prompt('Enter photo URL:');
+            if (photoUrl) {
+                fetch(`?api=uploadPhoto&jobId=${currentJobId}&photoUrl=${encodeURIComponent(photoUrl)}&description=Job Photo`)
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            loadJobPhotos(currentJobId);
+                            alert('✅ Photo uploaded successfully!');
+                        } else {
+                            alert('❌ Error uploading photo: ' + result.error);
+                        }
+                    });
+            }
+        }
+
+        function checkRequiredPhotos() {
+            // Check if any jobs are Ready for Inspection without photos
+            jobs.forEach(job => {
+                if (job.status === 'Ready for Inspection') {
+                    // This would check if photos exist in the database
+                    // For now, just highlight these jobs
+                }
+            });
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+
+        // Handle custom issue type
+        document.getElementById('issueType').addEventListener('change', function() {
+            const customGroup = document.getElementById('customIssueGroup');
+            if (this.value === 'Other') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+            }
+        });
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html>

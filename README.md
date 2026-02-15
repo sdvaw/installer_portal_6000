@@ -1,117 +1,95 @@
 # 🔧 Installer Portal System
 
-**Production-ready Installer Portal with Firebase backend and Google Apps Script backup system.**
+**Production-ready Installer Portal with TeamUp integration, Google Sheets database, and comprehensive admin management.**
 
-## 🚀 Quick Start
+## 🚀 Quick Start with CLASP
 
-### **Firebase Version (Primary)**
 ```bash
-# Deploy to Firebase Hosting
-firebase deploy
+# Install CLASP
+npm install -g @google/clasp
 
-# Access URL
-https://installer-portal-6000.web.app
-```
+# Clone this repository
+git clone <repository-url>
+cd installer-portal
 
-### **Google Apps Script Version (Backup)**
-```bash
-# Deploy Apps Script
-cd src/apps-script
-clasp push && clasp deploy
-```
+# Login to Google
+clasp login
 
-## 📁 Project Structure
+# Create Apps Script project
+clasp create --title "Installer Portal System"
 
-```
-📦 windsurf-project/
-├── 🔥 deploy/           # Deployed Firebase application
-├── 📝 index.html        # **MAIN DEVELOPMENT FILE**
-├── 📁 src/              # Source code components
-│   ├── 📁 apps-script/  # Google Apps Script system
-│   └── 📁 ui/           # UI components
-├── ⚙️ config/           # Configuration files
-├── 📚 docs/             # Documentation
-├── 🔧 scripts/          # Utility scripts
-├── 💾 backup/           # Critical backups
-└── 🗃️ archive/          # Archived files
+# Push code to Google
+npm run push
+
+# Deploy web app
+clasp deploy --description "Production deployment"
 ```
 
 ## ✅ Features
 
-- **🔧 Installer Portal** - Job management, photo uploads, status updates
-- **📊 Admin Dashboard** - Complete system management and analytics
-- **🔗 Firebase Integration** - Real-time database and authentication
+- **🔧 Installer Portal** - Job management, photo uploads, issue reporting
+- **📊 Admin Dashboard** - Complete system management and analytics  
+- **🔗 TeamUp Integration** - Automatic calendar syncing and job parsing
+- **📁 Google Sheets Database** - 8 integrated tabs with data validation
 - **📱 Mobile Responsive** - Works on all devices
-- **🔄 Dual System** - Firebase (primary) + Apps Script (backup)
+- **🔒 Secure** - Google authentication and role-based access
 
-## 🎯 Active Development
+## 📁 Project Structure
 
-**Current File**: `index.html` (378KB)
-- **Status**: Active development version
-- **Deployment**: Firebase Hosting
-- **Version**: v2025.01.28.1833-FIXED
+```
+installer-portal/
+├── Code.gs                    # Complete production system (2,200+ lines)
+├── clasp.json                 # CLASP configuration
+├── package.json                # NPM scripts for deployment
+├── DEPLOYMENT.md              # Detailed deployment guide
+├── .github/workflows/deploy.yml # GitHub Actions for CI/CD
+└── .gitignore                 # Git ignore rules
+```
 
-## 📋 Documentation
+## 🛠️ Available Scripts
 
-- **[PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md)** - Complete file organization
-- **[docs/](./docs/)** - Full documentation library
-- **[SYSTEM_ARCHITECTURE.md](./docs/SYSTEM_ARCHITECTURE.md)** - Technical architecture
+```bash
+npm run login      # Login to Google Apps Script
+npm run create     # Create new Apps Script project
+npm run push       # Push code to Google
+npm run deploy     # Push and deploy web app
+npm run logs       # View execution logs
+npm run status     # Check deployment status
+npm run setup      # Full setup (login + create + push)
+```
 
 ## 🔗 Access URLs
 
-### **Firebase Version (Primary)**
-- **Main**: https://installer-portal-6000.web.app
-- **Admin**: https://installer-portal-6000.web.app/admin
-- **Installer**: https://installer-portal-6000.web.app/installer/{token}
+After deployment:
 
-### **Google Apps Script Version (Backup)**
-- **URL**: [Deployed Apps Script URL]
-- **Setup**: ?action=setup
-- **Admin**: ?action=admin
+- **Setup**: `YOUR_URL?action=setup`
+- **Admin**: `YOUR_URL?action=admin`
+- **Installer**: `YOUR_URL?email=installer@company.com`
 
-## 🛠️ Development Commands
+## 📋 Requirements
 
-```bash
-# Firebase deployment
-firebase deploy
+- **Node.js** 14+ (for CLASP)
+- **Google Account** with Google Drive access
+- **TeamUp API Key** (for calendar integration)
+- **Google Sheets** access (automatically created)
 
-# Apps Script deployment
-cd src/apps-script
-clasp push && clasp deploy
+## 📖 Documentation
 
-# Install dependencies
-npm install
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide
+- **[API Documentation](./DEPLOYMENT.md#-api-endpoints)** - All available endpoints
 
-# View documentation
-open docs/README.md
-```
+## 🔄 CI/CD
 
-## 📊 System Status
+Includes GitHub Actions workflow for automatic deployment when pushing to main/master branch.
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Firebase App** | ✅ Active | Primary production system |
-| **Apps Script** | ✅ Ready | Backup system |
-| **Documentation** | ✅ Complete | Full documentation library |
-| **Configuration** | ✅ Organized | All configs in `config/` |
-| **Backups** | ✅ Current | Critical files backed up |
-
-## 🚨 Important Notes
-
-- **Main development file**: `index.html`
-- **Deployed version**: `deploy/index.html`
-- **Backup system**: `src/apps-script/Code.gs`
-- **Configuration**: All in `config/` directory
-- **Documentation**: All in `docs/` directory
+**Required Secrets:**
+- `CLASP_ID` - Google Apps Script project ID
+- `CLASP_CREDENTIALS` - CLASP authentication credentials
 
 ## 📞 Support
 
-**Dual System Architecture**:
-- **Primary**: Firebase Hosting with real-time updates
-- **Backup**: Google Apps Script with TeamUp integration
-
-Both systems are fully functional and documented.
+Built with Google Apps Script - free hosting, automatic scaling, and enterprise-grade security.
 
 ---
 
-**🚀 Ready for production deployment!**
+**Ready for production deployment!** 🚀

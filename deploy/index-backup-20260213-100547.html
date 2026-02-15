@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Installer Portal - v2025.01.18.2030</title>
+    <title>Installer Portal - v2025.01.25.1810</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
@@ -206,7 +206,7 @@
         }
 
         .terminal-header::after {
-            content: "DATABASE SYSTEM v1.0";
+            content: "DATABASE SYSTEM v2025.01.25.1810";
             position: absolute;
             top: 5px;
             right: 10px;
@@ -403,7 +403,7 @@
                         <div class="flex items-center">
                             <div class="text-2xl mr-3">🔧</div>
                             <div>
-                                <h1 class="text-lg font-bold text-terminal">INSTALLER_PORTAL.EXE</h1>
+                                <h1 class="text-lg font-bold text-terminal">INSTALLER_PORTAL.EXE - VERSION CHECK 1810</h1>
                                 <div class="text-xs text-terminal-muted">FIREBASE_OPERATIONS_SYSTEM</div>
                             </div>
                         </div>
@@ -469,11 +469,8 @@
                         <h2 class="text-xl font-bold text-terminal">> INSTALLER_TOOLS</h2>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button onclick="showBlackoutDatesModal()" class="terminal-button p-4 text-center">
-                            📅 Blackout Dates
-                        </button>
-                        <button onclick="syncTeamUpEvents()" class="terminal-button p-4 text-center">
-                            🔄 Sync Calendar
+                        <button onclick="showJobStatusModal()" class="terminal-button p-4 text-center">
+                            🔄 Update Status
                         </button>
                     </div>
                 </div>
@@ -537,7 +534,7 @@
     </div>
 
     <!-- Job Details Modal -->
-    <div id="jobModal" class="fixed inset-0 terminal-modal-overlay z-50 hidden">
+    <div id="jobModal" class="fixed inset-0 terminal-modal-overlay hidden" style="z-index: 20000;">
         <div class="flex items-center justify-center min-h-screen p-4">
             <div class="terminal-modal max-w-md w-full p-6">
                 <div class="scanline"></div>
@@ -645,10 +642,16 @@
         }
 
         // State
-        let currentWeekOffset = 0;
+        // Global variables
+        let currentUser = null;
+        let userRole = null;
         let installerData = null;
         let jobs = [];
         let jobsUnsubscribe = null;
+        let currentWeekOffset = 0;
+        
+        // Debug Configuration
+        let DEBUG_MODE = false; // Set to true to show Firebase query sections
         
         // TeamUp Configuration
         let teamupConfig = {
@@ -693,36 +696,38 @@
             }
         });
 
-        // Landing page function
+        // Direct login choice function (replaces landing page)
         function loadLandingPage() {
             const loadingElement = document.getElementById('loading');
             if (loadingElement) {
                 loadingElement.classList.add('hidden');
             }
             
-            // Show landing page
+            // Show direct login choice screen with terminal theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div class="text-center">
-                            <h1 class="text-4xl font-bold text-gray-900">🔧 Installer Portal</h1>
-                            <p class="mt-2 text-gray-600">Secure access for installers and administrators</p>
-                        </div>
-                        
-                        <div class="bg-white rounded-lg shadow-sm p-6">
+                        <div class="terminal-card p-8">
+                            <div class="text-center mb-8">
+                                <h1 class="text-4xl font-bold text-terminal mb-2">🔧 Installer Portal</h1>
+                                <p class="text-terminal-muted">Choose your access type</p>
+                            </div>
+                            
                             <div class="space-y-4">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900">📋 Installer Access</h3>
-                                    <p class="text-sm text-gray-600">Use your unique portal link sent to your email</p>
-                                </div>
+                                <button onclick="loadInstallerPortal()" class="w-full terminal-button py-4 px-6 text-lg font-bold">
+                                    🔧 Installer Login
+                                </button>
                                 
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900">👑 Administrator Access</h3>
-                                    <button onclick="window.location.href='/admin'" class="mt-2 w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">
-                                        Admin Login
-                                    </button>
-                                </div>
+                                <button onclick="loadAdminPortal()" class="w-full terminal-button py-4 px-6 text-lg font-bold">
+                                    👑 Administrator Login
+                                </button>
+                            </div>
+                            
+                            <div class="mt-6 text-center">
+                                <p class="text-xs text-terminal-muted">
+                                    Installer access requires unique portal link
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -737,51 +742,53 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show admin login screen
+            // Show admin login screen with terminal theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div>
-                            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                                👑 Admin Portal
-                            </h2>
-                            <p class="mt-2 text-center text-sm text-gray-600">
-                                Administrator access only
-                            </p>
-                            <div class="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg">
-                                <p class="text-sm font-medium text-yellow-800">
-                                    <strong>🔐 Demo Credentials:</strong><br>
-                                    Email: admin@company.com<br>
-                                    Password: admin123
+                        <div class="terminal-card p-8">
+                            <div class="text-center mb-8">
+                                <h2 class="text-3xl font-bold text-terminal mb-2">
+                                    👑 Admin Portal
+                                </h2>
+                                <p class="text-sm text-terminal-muted">
+                                    Administrator access only
                                 </p>
+                                <div class="mt-4 p-3 border border-terminal rounded-lg bg-black">
+                                    <p class="text-sm font-medium text-terminal">
+                                        <strong>🔐 Demo Credentials:</strong><br>
+                                        Email: admin@company.com<br>
+                                        Password: admin123
+                                    </p>
+                                </div>
                             </div>
+                            <form id="adminLoginForm" class="space-y-6">
+                                <div>
+                                    <label for="adminEmail" class="block text-sm font-medium text-terminal mb-2">
+                                        Admin Email
+                                    </label>
+                                    <input id="adminEmail" name="email" type="email" autocomplete="email" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter admin email" value="admin@company.com">
+                                </div>
+
+                                <div>
+                                    <label for="adminPassword" class="block text-sm font-medium text-terminal mb-2">
+                                        Admin Password
+                                    </label>
+                                    <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter admin password" value="admin123">
+                                </div>
+
+                                <div>
+                                    <button type="submit" class="w-full terminal-button py-3 px-4 text-sm font-bold">
+                                        🔐 Admin Sign In
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form id="adminLoginForm" class="mt-8 space-y-6">
-                            <div>
-                                <label for="adminEmail" class="block text-sm font-medium text-gray-700">
-                                    Admin Email
-                                </label>
-                                <input id="adminEmail" name="email" type="email" autocomplete="email" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter admin email" value="admin@company.com">
-                            </div>
-
-                            <div>
-                                <label for="adminPassword" class="block text-sm font-medium text-gray-700">
-                                    Admin Password
-                                </label>
-                                <input id="adminPassword" name="password" type="password" autocomplete="current-password" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter admin password" value="admin123">
-                            </div>
-
-                            <div>
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    🔐 Admin Sign In
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             `;
@@ -830,44 +837,46 @@
                 loadingElement.classList.add('hidden');
             }
             
-            // Show installer login screen
+            // Show installer login screen with terminal theme
             const app = document.getElementById('app');
             app.innerHTML = `
-                <div class="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4">
+                <div class="min-h-screen bg-black flex items-center justify-center py-12 px-4">
                     <div class="max-w-md w-full space-y-8">
-                        <div>
-                            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                                🔧 Installer Portal
-                            </h2>
-                            <p class="mt-2 text-center text-sm text-gray-600">
-                                Welcome Installer #${installerId}
-                            </p>
+                        <div class="terminal-card p-8">
+                            <div class="text-center mb-8">
+                                <h2 class="text-3xl font-bold text-terminal mb-2">
+                                    🔧 Installer Portal
+                                </h2>
+                                <p class="text-sm text-terminal-muted">
+                                    Welcome Installer #${installerId}
+                                </p>
+                            </div>
+                            <form id="installerLoginForm" class="space-y-6">
+                                <div>
+                                    <label for="installerEmail" class="block text-sm font-medium text-terminal mb-2">
+                                        Email
+                                    </label>
+                                    <input id="installerEmail" name="email" type="email" autocomplete="email" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter your email">
+                                </div>
+
+                                <div>
+                                    <label for="installerPassword" class="block text-sm font-medium text-terminal mb-2">
+                                        Password
+                                    </label>
+                                    <input id="installerPassword" name="password" type="password" autocomplete="current-password" required 
+                                           class="w-full px-3 py-2 bg-black border border-terminal text-terminal rounded-md focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
+                                           placeholder="Enter your password">
+                                </div>
+
+                                <div>
+                                    <button type="submit" class="w-full terminal-button py-3 px-4 text-sm font-bold">
+                                        🔐 Installer Sign In
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form id="installerLoginForm" class="mt-8 space-y-6">
-                            <div>
-                                <label for="installerEmail" class="block text-sm font-medium text-gray-700">
-                                    Email
-                                </label>
-                                <input id="installerEmail" name="email" type="email" autocomplete="email" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter your email">
-                            </div>
-
-                            <div>
-                                <label for="installerPassword" class="block text-sm font-medium text-gray-700">
-                                    Password
-                                </label>
-                                <input id="installerPassword" name="password" type="password" autocomplete="current-password" required 
-                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Enter your password">
-                            </div>
-
-                            <div>
-                                <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                    🔐 Installer Sign In
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             `;
@@ -1043,7 +1052,7 @@
                         </div>
                         
                         <!-- Admin Actions -->
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div class="terminal-card p-4 border-l-4 border-green-500">
                                 <div class="scanline"></div>
                                 <h3 class="font-semibold text-terminal mb-2">> INSTALLER_MANAGEMENT</h3>
@@ -1059,24 +1068,6 @@
                                 <p class="text-sm text-terminal-muted mb-3">CONFIGURE_TEAMUP_SYNC</p>
                                 <button onclick="showSystemSettings()" class="terminal-button">
                                     [SETTINGS]
-                                </button>
-                            </div>
-                            
-                            <div class="terminal-card p-4 border-l-4 border-yellow-500">
-                                <div class="scanline"></div>
-                                <h3 class="font-semibold text-terminal mb-2">> CALENDAR_VIEW</h3>
-                                <p class="text-sm text-terminal-muted mb-3">VIEW_ALL_SCHEDULES</p>
-                                <button onclick="showAdminCalendarView()" class="terminal-button">
-                                    [CALENDARS]
-                                </button>
-                            </div>
-                            
-                            <div class="terminal-card p-4 border-l-4 border-orange-500">
-                                <div class="scanline"></div>
-                                <h3 class="font-semibold text-terminal mb-2">> PROVISIONING</h3>
-                                <p class="text-sm text-terminal-muted mb-3">CREATE_NEW_ACCOUNTS</p>
-                                <button onclick="showNewInstallerProvisioning()" class="terminal-button">
-                                    [PROVISION]
                                 </button>
                             </div>
                         </div>
@@ -1258,6 +1249,7 @@
                             <p class="text-gray-600">View all installer schedules and TeamUp calendars</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            ${DEBUG_MODE ? `
                             <button onclick="queryFirebaseSQL()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                                 📊 SQL Query
                             </button>
@@ -1270,10 +1262,12 @@
                             <button onclick="debugSpecificEvent('2024204974')" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700">
                                 🎯 DEBUG BRADENTON JOB
                             </button>
+                            ` : ''}
                         </div>
                     </div>
                     
                     <!-- Calendar Controls -->
+                    ${DEBUG_MODE ? `
                     <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
                         <div class="flex flex-col md:flex-row gap-4">
                             <div>
@@ -1296,6 +1290,7 @@
                             </div>
                         </div>
                     </div>
+                    ` : ''}
                     
                     <!-- Calendar Content -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1489,6 +1484,9 @@
                             <button onclick="showAddInstallerForm()" class="terminal-button">
                                 [ADD_INSTALLER]
                             </button>
+                            <button onclick="syncTeamUpInstallers()" class="terminal-button">
+                                [SYNC_TEAMUP]
+                            </button>
                         </div>
                     </div>
                     
@@ -1626,8 +1624,12 @@
                             <h4 class="text-xl font-bold text-terminal mb-2">${installer.name || 'Unknown'}</h4>
                             <p class="text-sm text-terminal-muted">ID: ${installer.id}</p>
                         </div>
-                        <span class="px-4 py-2 text-sm font-bold ${installer.status === 'active' ? 'bg-green-900 text-green-400 border-green-500' : 'bg-red-900 text-red-400 border-red-500'} rounded-full border">
-                            ${installer.status?.toUpperCase() || 'UNKNOWN'}
+                        <span class="px-4 py-2 text-sm font-bold ${
+                            installer.status === 'active' ? 'bg-green-900 text-green-400 border-green-500' : 
+                            installer.status === 'pending_provision' ? 'bg-yellow-900 text-yellow-400 border-yellow-500' :
+                            'bg-red-900 text-red-400 border-red-500'
+                        } rounded-full border">
+                            ${installer.status === 'pending_provision' ? 'PENDING_PROVISION' : (installer.status?.toUpperCase() || 'UNKNOWN')}
                         </span>
                     </div>
                     
@@ -1643,6 +1645,16 @@
                     </div>
                     
                     <div class="flex flex-wrap gap-3">
+                        ${installer.status === 'pending_provision' ? `
+                        <button onclick="provisionInstaller('${installer.id}')" 
+                                class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform bg-green-600 text-white">
+                            ✅ PROVISION
+                        </button>
+                        ` : ''}
+                        <button onclick="openInstallerPortal('${installer.id}', '${installer.email}', '${installer.phone || 'installer123'}')" 
+                                class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform bg-blue-600 text-white">
+                            🌐 OPEN_PORTAL
+                        </button>
                         <button onclick="copyInstallerLink('${installer.id}', '${installer.name}', '${installer.email}', '${installer.phone || 'installer123'}')" 
                                 class="terminal-button py-3 px-6 text-sm font-medium hover:scale-105 transition-transform">
                             📋 COPY_LINK
@@ -1658,6 +1670,119 @@
                     </div>
                 </div>
             `).join('');
+        }
+
+        // Provision installer function
+        function provisionInstaller(installerId) {
+            const installer = installers.find(i => i.id === installerId);
+            if (!installer) return;
+            
+            console.log('✅ Provisioning installer:', installer.name);
+            
+            // Update installer status to active
+            installer.status = 'active';
+            installer.provisionedAt = new Date();
+            
+            // Save to Firebase if available
+            if (db) {
+                db.collection('installers').add(installer)
+                    .then(() => {
+                        console.log('✅ Installer saved to Firebase');
+                        renderInstallerCards();
+                        alert(`✅ Installer "${installer.name}" has been provisioned successfully!\n\nStatus: Active\nEmail: ${installer.email}\n\nThey can now access their portal.`);
+                    })
+                    .catch(error => {
+                        console.error('❌ Failed to save installer:', error);
+                        alert(`❌ Failed to save installer: ${error.message}`);
+                    });
+            } else {
+                // Just update local state
+                renderInstallerCards();
+                alert(`✅ Installer "${installer.name}" has been provisioned!\n\nStatus: Active\nEmail: ${installer.email}\n\nNote: Not saved to Firebase (demo mode)`);
+            }
+        }
+
+        // Sync TeamUp installers function
+        async function syncTeamUpInstallers() {
+            console.log('🔄 Syncing TeamUp installers...');
+            
+            if (!teamupConfig.apiKey || !teamupConfig.calendarId) {
+                alert('⚠️ TeamUp not configured. Please configure TeamUp settings first.');
+                return;
+            }
+            
+            try {
+                // Load TeamUp subcalendars (installers)
+                const response = await fetch(`https://api.teamup.com/${teamupConfig.calendarId}/subcalendars`, {
+                    headers: { 'Teamup-Token': teamupConfig.apiKey }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`TeamUp API error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const teamUpInstallers = data.subcalendars || [];
+                
+                console.log(`📋 Found ${teamUpInstallers.length} installers in TeamUp`);
+                
+                // Get existing installer names
+                const existingInstallerNames = new Set();
+                installers.forEach(installer => {
+                    if (installer.name) existingInstallerNames.add(installer.name.toLowerCase());
+                });
+                
+                // Find installers needing provisioning (not in our system)
+                const pendingInstallers = teamUpInstallers.filter(teamUpInstaller => 
+                    teamUpInstaller.name && 
+                    !existingInstallerNames.has(teamUpInstaller.name.toLowerCase())
+                );
+                
+                console.log(`🆕 Found ${pendingInstallers.length} installers needing provisioning`);
+                
+                // Add pending installers to the list with a special status (but don't save to Firebase yet)
+                pendingInstallers.forEach(teamUpInstaller => {
+                    const newInstaller = {
+                        id: `teamup-${teamUpInstaller.id}`,
+                        name: teamUpInstaller.name,
+                        email: '', // Empty - admin must fill this in
+                        phone: '', // Empty - admin must fill this in
+                        status: 'pending_provision',
+                        teamupId: teamUpInstaller.id,
+                        teamupColor: teamUpInstaller.color,
+                        createdAt: new Date(),
+                        notes: `From TeamUp: ${teamUpInstaller.notes || 'No description'}`,
+                        source: 'teamup'
+                    };
+                    installers.push(newInstaller);
+                });
+                
+                // Re-render the installer list
+                renderInstallerCards();
+                
+                alert(`✅ Added ${pendingInstallers.length} installers from TeamUp for provisioning!\n\nThey appear with "PENDING_PROVISION" status.\n\nEdit each installer to add their email and phone, then click PROVISION.`);
+                
+            } catch (error) {
+                console.error('❌ Failed to sync TeamUp installers:', error);
+                alert(`❌ Failed to sync TeamUp installers: ${error.message}`);
+            }
+        }
+
+        // Open installer portal directly with token
+        function openInstallerPortal(installerId, email, password) {
+            console.log('🌐 Opening installer portal:', installerId);
+            
+            // Generate secure token with timestamp
+            const timestamp = Date.now().toString();
+            const tokenData = `${installerId}:${email}:${timestamp}`;
+            const token = btoa(tokenData);
+            
+            const loginLink = window.location.origin + '/installer-login?installer=' + installerId + '&token=' + token;
+            
+            console.log('🌐 Generated portal link:', loginLink);
+            
+            // Open in new tab
+            window.open(loginLink, '_blank');
         }
 
         // Copy installer login link function
@@ -1697,6 +1822,12 @@
             const newStatus = installer.status === 'active' ? 'inactive' : 'active';
             
             if (db) {
+                // Check if this is a TeamUp installer (can't update directly)
+                if (installer.id.startsWith('teamup-')) {
+                    alert('⚠️ Cannot update status for TeamUp installer. Please edit the installer and add email/phone to provision them first.');
+                    return;
+                }
+                
                 db.collection('installers').doc(installerId).update({ status: newStatus })
                     .then(() => {
                         installer.status = newStatus;
@@ -1724,7 +1855,7 @@
                 console.log('🔑 Detected installer login token');
                 showInstallerLogin(token, installerId);
             } else {
-                console.log('🔍 No login token found, showing default installer portal');
+                console.log('🔍 No login token found - will let routing handle default page');
             }
         }
 
@@ -1946,131 +2077,6 @@
             window.history.replaceState({}, document.title, window.location.pathname);
         }
 
-        // Load installer jobs using subcalendar_name field
-        function loadInstallerJobsWithCalendar(installer) {
-            console.log('🔍 Loading jobs for installer using calendar field:', installer.name);
-            
-            const jobsListEl = document.getElementById('jobsList');
-            if (!jobsListEl) {
-                console.error('❌ jobsList element not found');
-                alert('❌ jobsList element not found!');
-                return;
-            }
-            
-            // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs for ' + installer.name + '...</div>';
-            
-            // Load actual jobs from Firestore
-            if (db && installer.id) {
-                alert('🔧 Matching installer name to subcalendar_name field: ' + installer.name);
-                
-                // Query jobs where subcalendar_name matches installer name
-                db.collection('jobs').get()
-                    .then(snapshot => {
-                        if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
-                            return;
-                        }
-                        
-                        let matchedJobs = [];
-                        
-                        snapshot.forEach(doc => {
-                            const jobData = doc.data();
-                            
-                            // Check if subcalendar_name field matches this installer
-                            if (jobData.subcalendar_name) {
-                                const calendarName = jobData.subcalendar_name;
-                                const installerName = installer.name;
-                                
-                                console.log('🔍 Matching check:');
-                                console.log('  Calendar name:', calendarName);
-                                console.log('  Installer name:', installerName);
-                                
-                                // Simple match: if installer name is in calendar name, they get all jobs from that calendar
-                                if (calendarName.includes(installerName)) {
-                                    matchedJobs.push({
-                                        id: doc.id,
-                                        data: jobData
-                                    });
-                                    console.log('🎯 Found job for ' + installer.name + ':', doc.id, jobData.subcalendar_name);
-                                } else {
-                                    console.log('❌ No match for ' + installer.name + ' with calendar:', jobData.subcalendar_name);
-                                }
-                            }
-                        });
-                        
-                        alert('📅 Loaded ' + matchedJobs.length + ' jobs for ' + installer.name + ' matched by subcalendar_name field!');
-                        console.log('🔍 Alert shown, now processing jobs for display...');
-                        
-                        // Display matched jobs in compact mobile view
-                        let calendarHTML = '<div style="color: #333; background: white; padding: 5px; max-width: 100%; margin: 0 auto;">';
-                        calendarHTML += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">';
-                        calendarHTML += '<h2 style="margin: 0; font-size: 16px;">📅 ' + installer.name + '</h2>';
-                        calendarHTML += '<div style="display: flex; gap: 8px;">';
-                        calendarHTML += '<button onclick="changeWeek(-1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">◀</button>';
-                        calendarHTML += '<button onclick="changeWeek(1)" style="background: #2196F3; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">▶</button>';
-                        calendarHTML += '</div></div>';
-                        
-                        if (matchedJobs.length === 0) {
-                            calendarHTML += '<div style="text-align: center; padding: 20px; color: #666;">No jobs found</div>';
-                        } else {
-                            console.log('🔍 Processing', matchedJobs.length, 'matched jobs for display');
-                            
-                            // Group jobs by date
-                            const jobsByDate = {};
-                            matchedJobs.forEach(job => {
-                                const data = job.data;
-                                let dateKey = 'No date';
-                                if (data.scheduledDate && data.scheduledDate.seconds) {
-                                    dateKey = new Date(data.scheduledDate.seconds * 1000).toLocaleDateString();
-                                }
-                                if (!jobsByDate[dateKey]) jobsByDate[dateKey] = [];
-                                jobsByDate[dateKey].push(job);
-                            });
-                            
-                            // Display compact job list
-                            Object.keys(jobsByDate).sort().forEach(date => {
-                                calendarHTML += '<div style="margin-bottom: 15px;">';
-                                calendarHTML += '<div style="background: #f5f5f5; padding: 5px 8px; font-size: 12px; color: #666; border-bottom: 1px solid #ddd;">' + date + '</div>';
-                                
-                                jobsByDate[date].forEach(job => {
-                                    const data = job.data;
-                                    const jobId = job.id;
-                                    
-                                    console.log('🔍 Creating job element for:', jobId, data.title);
-                                    
-                                    calendarHTML += `
-                                        <div style="padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" 
-                                             onclick="showJobPopup('${jobId}', '${encodeURIComponent(JSON.stringify(job.data))}')">
-                                            <div style="font-weight: bold; color: #2196F3; font-size: 14px;">
-                                                ${data.title || 'No Title'}
-                                            </div>
-                                            <div style="color: #999; font-size: 11px;">
-                                                ${data.windowDoorCounts || ''}
-                                            </div>
-                                        </div>
-                                    `;
-                                });
-                                
-                                calendarHTML += '</div>';
-                            });
-                        }
-                        
-                        calendarHTML += '</div>';
-                        jobsListEl.innerHTML = calendarHTML;
-                        console.log('🔍 Job list HTML updated successfully');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        alert('❌ Error loading jobs: ' + error.message);
-                    });
-                
-            } else {
-                alert('❌ Database not available or installer ID missing');
-                jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">❌ Database not available</div>';
-            }
-        }
-        
         // Week navigation functions
         function changeWeek(direction) {
             currentWeekOffset += direction;
@@ -2078,6 +2084,63 @@
             // Reload jobs with new week offset
             if (window.installerData) {
                 loadInstallerJobsWithCalendar(window.installerData);
+            }
+        }
+        
+        function showDayJobs(dateStr) {
+            console.log('📅 Showing jobs for date:', dateStr);
+
+            function toDateKey(value) {
+                if (!value) return '';
+
+                let d = value;
+                if (typeof value === 'object' && typeof value.toDate === 'function') {
+                    d = value.toDate();
+                }
+                if (!(d instanceof Date)) {
+                    d = new Date(d);
+                }
+                if (Number.isNaN(d.getTime())) return '';
+                return `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
+            }
+
+            const dayJobs = (jobs || []).filter(job => toDateKey(job.scheduledDate) === dateStr);
+            
+            // Create modal HTML for mobile
+            const modalHTML = `
+                <div id="dayJobsModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: #1a1a1a; border: 2px solid #00ff00; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; font-family: monospace;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
+                            <h3 style="margin: 0; color: #00ff00;">📅 ${dateStr}</h3>
+                            <button onclick="closeDayJobsModal()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕</button>
+                        </div>
+                        
+                        <div style="color: #00ff00; margin-bottom: 15px; font-size: 14px;">${dayJobs.length} jobs scheduled</div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${dayJobs.length === 0 ? `
+                                <div style="color: #888; font-size: 12px; padding: 10px; border: 1px dashed #00ff00;">No jobs scheduled for this day.</div>
+                            ` : dayJobs.map(job => `
+                                <div onclick="closeDayJobsModal(); setTimeout(() => showJobDetails('${job.id}'), 0);" style="background: #2a2a2a; border: 1px solid #00ff00; padding: 15px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                    <div style="color: #00ff00; font-weight: bold; margin-bottom: 5px;">${job.title || job.id}</div>
+                                    <div style="color: #888; font-size: 12px; margin-bottom: 3px;">👤 ${job.customer || ''}</div>
+                                    <div style="color: #888; font-size: 12px; margin-bottom: 5px;">📍 ${job.address || ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            console.log('✅ Day jobs modal displayed for:', dateStr);
+        }
+        
+        function closeDayJobsModal() {
+            const modal = document.getElementById('dayJobsModal');
+            if (modal) {
+                modal.remove();
             }
         }
         
@@ -2091,58 +2154,66 @@
         }
         
         // Job popup modal functions
-        function showJobPopup(jobId, jobDataEncoded) {
-            try {
-                const jobData = JSON.parse(decodeURIComponent(jobDataEncoded));
-                console.log('🔍 Showing job popup for:', jobId, jobData);
-                
-                // Create modal HTML
-                const modalHTML = `
-                    <div id="jobModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
-                        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                                <h3 style="margin: 0; color: #2196F3;">📋 ${jobData.title || 'Job Details'}</h3>
-                                <button onclick="closeJobPopup()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+        function showJobPopup(jobId) {
+            console.log('🔍 Showing job popup for:', jobId);
+            
+            // Demo job data
+            const jobData = {
+                id: jobId,
+                title: 'Window Installation - Living Room',
+                customer: 'John Smith',
+                address: '123 Main Street, Springfield',
+                phone: '555-0123',
+                windows: 3,
+                doors: 1,
+                status: 'scheduled',
+                notes: 'Install new double-hung windows'
+            };
+            
+            // Create mobile job details modal
+            const modalHTML = `
+                <div id="jobModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 20000; display: flex; align-items: center; justify-content: center;">
+                    <div style="background: #1a1a1a; border: 2px solid #00ff00; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 90vh; overflow-y: auto; font-family: monospace;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #00ff00; padding-bottom: 10px;">
+                            <h3 style="margin: 0; color: #00ff00; font-size: 16px;">📋 ${jobData.title}</h3>
+                            <button onclick="closeJobPopup()" style="background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">✕</button>
+                        </div>
+                        
+                        <div style="color: #00ff00; margin-bottom: 20px;">
+                            <div style="margin-bottom: 8px;"><strong>👤 Customer:</strong> ${jobData.customer}</div>
+                            <div style="margin-bottom: 8px;"><strong>📍 Address:</strong> ${jobData.address}</div>
+                            <div style="margin-bottom: 8px;"><strong>📞 Phone:</strong> ${jobData.phone}</div>
+                            <div style="margin-bottom: 8px;"><strong>🪟 Windows:</strong> ${jobData.windows}</div>
+                            <div style="margin-bottom: 8px;"><strong>🚪 Doors:</strong> ${jobData.doors}</div>
+                            <div style="margin-bottom: 8px;"><strong>📊 Status:</strong> <span style="color: #ffc107;">${jobData.status}</span></div>
+                            <div style="margin-bottom: 8px;"><strong>📝 Notes:</strong> ${jobData.notes}</div>
+                        </div>
+                        
+                        <div style="border-top: 1px solid #00ff00; padding-top: 15px;">
+                            <div style="color: #00ff00; font-weight: bold; margin-bottom: 10px; text-align: center;">🔧 JOB MANAGEMENT</div>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <button onclick="updateJobStatus('${jobId}')" style="background: #ffc107; color: #000; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🔄 Update Status</button>
+                                <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📷 Capture Photo</button>
                             </div>
                             
-                            <div style="margin-bottom: 15px;">
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">👤 Customer</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.customer || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📍 Address</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.address || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📞 Phone</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.phone || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">🪟 Windows/Doors</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.windowDoorCounts || 'N/A'}</div>
-                                
-                                <div style="font-weight: bold; color: #333; margin-bottom: 5px;">📅 Scheduled Date</div>
-                                <div style="color: #666; margin-bottom: 15px;">${jobData.scheduledDate ? new Date(jobData.scheduledDate.seconds * 1000).toLocaleDateString() : 'N/A'}</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                                <button onclick="showDefectReportingModal('${jobId}')" style="background: #dc3545; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🚨 Report Defect</button>
+                                <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🚶 Walkthrough</button>
                             </div>
                             
-                            <div style="display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 15px;">
-                                <button onclick="try { console.log('🔍 Status button clicked for job:', '${jobId}'); updateJobStatus('${jobId}'); } catch(error) { console.error('❌ Error in status update:', error); alert('❌ Error: ' + error.message); }" style="background: #ffc107; color: #333; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🔄 Update Status</button>
-                                <button onclick="capturePhoto('${jobId}')" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📷 Capture Photo</button>
-                                <button onclick="showDefectReportingModal('${jobId}')" style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚨 Report Defect</button>
-                            </div>
-                            <div style="display: flex; gap: 10px; padding-top: 10px;">
-                                <button onclick="startFinalWalkthrough('${jobId}')" style="background: #17a2b8; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🚶 Final Walkthrough</button>
-                                <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">📜 Certificate</button>
-                                <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; flex: 1;">🗺️ Directions</button>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button onclick="startCertificateOfCompletion('${jobId}')" style="background: #6f42c1; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">📜 Certificate</button>
+                                <button onclick="getDirections('${jobId}')" style="background: #fd7e14; color: white; border: 1px solid #00ff00; padding: 12px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">🗺️ Directions</button>
                             </div>
                         </div>
                     </div>
-                `;
-                
-                // Add modal to page
-                document.body.insertAdjacentHTML('beforeend', modalHTML);
-                
-            } catch (error) {
-                console.error('❌ Error showing job popup:', error);
-                alert('❌ Error showing job details: ' + error.message);
-            }
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            console.log('✅ Job details modal displayed');
         }
         
         function closeJobPopup() {
@@ -2914,10 +2985,9 @@
             listElement.innerHTML = '<div style="text-align: center; padding: 20px;">Loading...</div>';
             
             if (db && window.installerData) {
+                // Simplified query without complex ordering to avoid index requirement
                 db.collection('blackout_dates')
                 .where('installerId', '==', window.installerData.id)
-                .where('status', '==', 'active')
-                .orderBy('startDate')
                 .get()
                 .then(snapshot => {
                     if (snapshot.empty) {
@@ -2925,9 +2995,25 @@
                         return;
                     }
                     
-                    let blackoutHTML = '<div style="display: grid; gap: 10px;">';
+                    // Filter active dates and sort client-side
+                    const activeBlackouts = [];
                     snapshot.forEach(doc => {
                         const blackout = doc.data();
+                        if (blackout.status === 'active') {
+                            activeBlackouts.push({ id: doc.id, ...blackout });
+                        }
+                    });
+                    
+                    // Sort by start date
+                    activeBlackouts.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+                    
+                    if (activeBlackouts.length === 0) {
+                        listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No active blackout dates found</div>';
+                        return;
+                    }
+                    
+                    let blackoutHTML = '<div style="display: grid; gap: 10px;">';
+                    activeBlackouts.forEach(blackout => {
                         const startDate = new Date(blackout.startDate).toLocaleDateString();
                         const endDate = new Date(blackout.endDate).toLocaleDateString();
                         
@@ -2943,7 +3029,7 @@
                                         </div>
                                         ${blackout.notes ? `<div style="font-size: 12px; color: #888; margin-top: 4px;">${blackout.notes}</div>` : ''}
                                     </div>
-                                    <button onclick="deleteBlackoutDate('${doc.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️</button>
+                                    <button onclick="deleteBlackoutDate('${blackout.id}')" style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️</button>
                                 </div>
                             </div>
                         `;
@@ -2951,11 +3037,15 @@
                     blackoutHTML += '</div>';
                     
                     listElement.innerHTML = blackoutHTML;
+                    console.log(`✅ Loaded ${activeBlackouts.length} blackout dates`);
                 })
                 .catch(error => {
                     console.error('❌ Error loading blackout dates:', error);
                     listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading blackout dates</div>';
                 });
+            } else {
+                console.log('⚠️ Cannot load blackout dates - db or installerData not available');
+                listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">Database not available</div>';
             }
         }
         
@@ -3725,13 +3815,34 @@
                 }
                 
                 console.log('🔍 Updating job with data:', updateData);
-                
-                db.collection('jobs').doc(jobId).update(updateData)
+
+                const jobsCol = db.collection('jobs');
+
+                jobsCol.doc(jobId).update(updateData)
+                .catch(error => {
+                    const msg = (error && error.message) ? error.message : '';
+                    const isMissingDoc = msg.includes('No document to update') || msg.includes('NOT_FOUND') || msg.includes('not-found');
+                    if (!isMissingDoc) {
+                        throw error;
+                    }
+
+                    return jobsCol.where('id', '==', jobId).limit(1).get().then(snapshot => {
+                        if (!snapshot.empty) {
+                            return jobsCol.doc(snapshot.docs[0].id).update(updateData);
+                        }
+                        return jobsCol.doc(jobId).set(updateData, { merge: true });
+                    });
+                })
                 .then(() => {
                     console.log('✅ Status updated successfully!');
                     alert('✅ Status updated successfully!');
                     closeStatusModal();
-                    closeJobPopup();
+
+                    const jobModal = document.getElementById('jobModal');
+                    if (jobModal && !jobModal.classList.contains('hidden')) {
+                        closeJobModal();
+                    }
+
                     // Reload jobs to show updated status
                     if (window.installerData) {
                         loadInstallerJobsWithCalendar(window.installerData);
@@ -3766,18 +3877,19 @@
             }
         }
         
-        // Load installer jobs
+        // Load installer jobs using subcalendar_name field
         function loadInstallerJobsWithCalendar(installer) {
-            console.log('🔍 Loading jobs for installer:', installer.name, 'Week offset:', currentWeekOffset);
+            console.log('🔍 Loading mobile week calendar for installer:', installer.name);
             
             const jobsListEl = document.getElementById('jobsList');
             if (!jobsListEl) {
                 console.error('❌ jobsList element not found');
+                alert('❌ jobsList element not found!');
                 return;
             }
             
             // Show loading state first
-            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading jobs...</div>';
+            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">🔄 Loading week...</div>';
             
             // Calculate week date range
             const today = new Date();
@@ -3795,98 +3907,94 @@
             weekEnd.setHours(23, 59, 59, 999);
             
             console.log('📅 Week range:', weekStart.toDateString(), 'to', weekEnd.toDateString());
+
+            function toDateKey(value) {
+                if (!value) return '';
+                let d = value;
+                if (typeof value === 'object' && typeof value.toDate === 'function') {
+                    d = value.toDate();
+                }
+                if (!(d instanceof Date)) {
+                    d = new Date(d);
+                }
+                if (Number.isNaN(d.getTime())) return '';
+                return `${d.getMonth() + 1}-${d.getDate()}-${d.getFullYear()}`;
+            }
+
+            function renderCalendar() {
+                // Create mobile-optimized week calendar HTML
+                let calendarHTML = '<div class="terminal-card p-3">';
             
-            // Load actual jobs from Firestore
-            if (db && installer.id) {
-                // Get all jobs and filter by week range
-                db.collection('jobs').get()
-                    .then(snapshot => {
-                        if (snapshot.empty) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found</div>';
-                            return;
-                        }
-                        
-                        let matchedJobs = [];
-                        
-                        snapshot.forEach(doc => {
-                            const jobData = doc.data();
-                            console.log('🔍 Processing job:', doc.id, jobData);
-                            
-                            // Match jobs to installer by calendar name
-                            if (jobData.subcalendar_name && 
-                                (jobData.subcalendar_name.includes(installer.name) || 
-                                 jobData.subcalendar_name.includes('Installer - ' + installer.name))) {
-                                
-                                // Check if job falls within the current week range
-                                let jobDate = null;
-                                if (jobData.scheduledDate && jobData.scheduledDate.seconds) {
-                                    jobDate = new Date(jobData.scheduledDate.seconds * 1000);
-                                } else if (jobData.start && jobData.start.seconds) {
-                                    jobDate = new Date(jobData.start.seconds * 1000);
-                                }
-                                
-                                if (jobDate && jobDate >= weekStart && jobDate <= weekEnd) {
-                                    matchedJobs.push({
-                                        id: doc.id,
-                                        ...jobData
-                                    });
-                                }
-                            }
-                        });
-                        
-                        if (matchedJobs.length === 0) {
-                            jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px;">No jobs found for this week</div>';
-                            return;
-                        }
-                        
-                        // Display matched jobs
-                        let jobsHTML = '<div style="display: grid; gap: 10px;">';
-                        matchedJobs.forEach(job => {
-                            const jobDate = job.scheduledDate && job.scheduledDate.seconds ? 
-                                new Date(job.scheduledDate.seconds * 1000).toLocaleDateString() : 'No date';
-                            const jobTitle = job.title || 'No title';
-                            const jobAddress = job.address || job.location || 'No address';
-                            const jobCustomer = job.customer || 'No customer';
-                            const jobPhone = job.phone || 'No phone';
-                            const jobEmail = job.email || 'No email';
-                            const jobStatus = job.status || 'scheduled';
-                            const windowDoorCounts = job.windowDoorCounts || {};
-                            
-                            jobsHTML += `
-                                <div onclick="showJobPopup('${job.id}', '${encodeURIComponent(JSON.stringify(job))}')" 
-                                     style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
-                                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.15)';"
-                                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)';">
-                                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px;">${jobTitle}</div>
-                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">📅 ${jobDate}</div>
-                                            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">👤 ${jobCustomer}</div>
-                                            <div style="font-size: 12px; color: #666;">📍 ${jobAddress}</div>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <div style="background: ${jobStatus === 'completed' ? '#4CAF50' : jobStatus === 'in-progress' ? '#FF9800' : '#2196F3'}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin-bottom: 4px;">
-                                                ${jobStatus || 'scheduled'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div style="display: flex; gap: 8px; font-size: 11px; color: #888;">
-                                        ${windowDoorCounts.Windows ? `<span>🪟 ${windowDoorCounts.Windows}</span>` : ''}
-                                        ${windowDoorCounts.Doors ? `<span>🚪 ${windowDoorCounts.Doors}</span>` : ''}
-                                        ${windowDoorCounts.SGD ? `<span>🚪 ${windowDoorCounts.SGD}</span>` : ''}
-                                    </div>
-                                </div>
-                            `;
-                        });
-                        jobsHTML += '</div>';
-                        
-                        jobsListEl.innerHTML = jobsHTML;
-                        console.log('✅ Jobs loaded successfully for week:', matchedJobs.length, 'jobs');
-                    })
-                    .catch(error => {
-                        console.error('❌ Error loading jobs:', error);
-                        jobsListEl.innerHTML = '<div style="text-align: center; padding: 20px; color: red;">Error loading jobs</div>';
-                    });
+            // Week navigation - mobile friendly (smaller header)
+            calendarHTML += '<div class="flex justify-between items-center mb-2">';
+            calendarHTML += '<h3 class="text-sm font-bold text-terminal">📅 ' + weekStart.toLocaleDateString() + '</h3>';
+            calendarHTML += '<div class="flex gap-1">';
+            calendarHTML += '<button onclick="changeWeek(-1)" class="terminal-button px-2 py-1 text-xs">◀</button>';
+            calendarHTML += '<button onclick="changeWeek(1)" class="terminal-button px-2 py-1 text-xs">▶</button>';
+            calendarHTML += '</div></div>';
+            
+            // Create week grid - mobile optimized (7 days in a row)
+            calendarHTML += '<div class="grid grid-cols-7 gap-1 mb-3">';
+            const dayNames = ['M', 'T', 'W', 'Th', 'F', 'S', 'Su'];
+            
+            for (let i = 0; i < 7; i++) {
+                const currentDay = new Date(weekStart.getTime() + (i * 24 * 60 * 60 * 1000));
+                const dateStr = currentDay.toLocaleDateString();
+                const dayNum = currentDay.getDate();
+                const dayName = dayNames[i];
+
+                const dateKey = dateStr.replace(/\//g, '-');
+                const jobCount = (jobs || []).filter(job => toDateKey(job.scheduledDate) === dateKey).length;
+                
+                calendarHTML += '<div onclick="showDayJobs(\'' + dateKey + '\')" class="terminal-card p-2 text-center cursor-pointer hover:bg-gray-800 min-h-[70px] flex flex-col justify-center">';
+                calendarHTML += '<div class="text-xs text-terminal-muted">' + dayName + '</div>';
+                calendarHTML += '<div class="text-sm font-bold text-terminal">' + dayNum + '</div>';
+                if (jobCount > 0) {
+                    calendarHTML += '<div class="text-xs bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center mx-auto mt-1">' + jobCount + '</div>';
+                }
+                calendarHTML += '</div>';
+            }
+            
+            calendarHTML += '</div>';
+            
+            // Blackout dates button - mobile friendly
+            calendarHTML += '<div class="text-center mt-3">';
+            calendarHTML += '<button onclick="showBlackoutDatesModal()" class="terminal-button px-4 py-2 text-sm">📅 Blackout Dates</button>';
+            calendarHTML += '</div>';
+            
+            calendarHTML += '</div>';
+            
+            jobsListEl.innerHTML = calendarHTML;
+            console.log('✅ Mobile week calendar displayed successfully');
+            }
+
+            // Load jobs for this installer/week from Firebase so counts & day view match reality
+            if (db && installer) {
+                const installerName = installer.name;
+                const installerId = installer.id || installer.uid || installer.installerId;
+
+                db.collection('jobs')
+                .where('scheduledDate', '>=', weekStart)
+                .where('scheduledDate', '<=', weekEnd)
+                .get()
+                .then(snapshot => {
+                    const allWeekJobs = [];
+                    snapshot.forEach(doc => allWeekJobs.push({ id: doc.id, ...doc.data() }));
+
+                    jobs = allWeekJobs.filter(j =>
+                        (installerName && (j.assignedInstaller === installerName || j.subcalendar_name === installerName || j.calendar_name === installerName)) ||
+                        (installerId && (j.installerId === installerId || j.assignedInstaller === installerId))
+                    );
+
+                    console.log(`📦 Loaded ${jobs.length} jobs for calendar week for installer`, { installerName, installerId });
+                    renderCalendar();
+                })
+                .catch(err => {
+                    console.error('❌ Failed to load jobs for calendar:', err);
+                    renderCalendar();
+                });
+            } else {
+                renderCalendar();
             }
         }
         
@@ -4488,9 +4596,34 @@
                 // Update existing installer
                 if (db) {
                     try {
-                        await db.collection('installers').doc(editingInstaller.id).update(formData);
-                        console.log('✅ Installer updated in Firebase');
-                        alert('✅ Installer updated successfully!');
+                        // Check if this is a TeamUp installer (needs to be created first)
+                        if (editingInstaller.id.startsWith('teamup-')) {
+                            // Create new document in Firebase for TeamUp installer
+                            const installerData = {
+                                ...formData,
+                                teamupId: editingInstaller.teamupId,
+                                teamupColor: editingInstaller.teamupColor,
+                                source: 'teamup',
+                                createdAt: editingInstaller.createdAt,
+                                status: 'active' // Set to active when edited
+                            };
+                            
+                            const docRef = await db.collection('installers').add(installerData);
+                            console.log('✅ TeamUp installer created in Firebase with ID:', docRef.id);
+                            
+                            // Update local installer with new Firebase ID
+                            const localIndex = installers.findIndex(i => i.id === editingInstaller.id);
+                            if (localIndex !== -1) {
+                                installers[localIndex] = { id: docRef.id, ...installerData };
+                            }
+                            
+                            alert('✅ Installer provisioned successfully!');
+                        } else {
+                            // Regular update for existing Firebase installer
+                            await db.collection('installers').doc(editingInstaller.id).update(formData);
+                            console.log('✅ Installer updated in Firebase');
+                            alert('✅ Installer updated successfully!');
+                        }
                     } catch (error) {
                         console.error('❌ Failed to update installer:', error);
                         alert('❌ Failed to update installer: ' + error.message);
@@ -5733,6 +5866,7 @@
                             <h2 class="text-xl font-bold text-gray-900 mb-4">🔧 Admin Dashboard</h2>
                 
                             <!-- Firebase Query Tool -->
+                            ${DEBUG_MODE ? `
                             <div style="background: #e3f2fd; border: 1px solid #2196f3; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
                                 <h3 style="color: #1976d2; margin-bottom: 10px;">🔍 Firebase Query Tool (SQL-like)</h3>
                                 <p style="color: #666; margin-bottom: 10px;">Query Firebase database using familiar SQL-like commands.</p>
@@ -5760,6 +5894,7 @@
                                     <strong>Results appear in browser console (F12)</strong>
                                 </div>
                             </div>
+                            ` : ''}
                 
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <div class="text-center">
@@ -5904,6 +6039,60 @@
             }
         }
 
+        // Simple provisioning function
+        function showSimpleProvisioning() {
+            console.log('Loading simple provisioning...');
+            
+            const mainElement = document.querySelector('main');
+            if (mainElement) {
+                mainElement.innerHTML = `
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-terminal">> INSTALLER_PROVISIONING</h2>
+                            <button onclick="renderAdminDashboard()" class="terminal-button">
+                                [BACK_TO_DASHBOARD]
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="terminal-card p-6">
+                        <div class="scanline"></div>
+                        <h3 class="text-xl font-bold text-terminal mb-4">> PROVISIONING_OPTIONS</h3>
+                        <div class="text-terminal-muted mb-6">
+                            <p>📋 Create and manage installer accounts</p>
+                            <p>🔧 TeamUp integration: ${teamupConfig.apiKey ? 'Configured' : 'Not configured'}</p>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <button onclick="showAddInstallerForm()" class="terminal-button w-full">
+                                ➕ ADD_NEW_INSTALLER
+                            </button>
+                            <button onclick="showInstallerManagement()" class="terminal-button w-full">
+                                📋 MANAGE_EXISTING_INSTALLERS
+                            </button>
+                            ${!teamupConfig.apiKey ? `
+                            <button onclick="showSystemSettings()" class="terminal-button w-full">
+                                ⚙️ CONFIGURE_TEAMUP_SETTINGS
+                            </button>
+                            ` : ''}
+                        </div>
+                        
+                        ${!teamupConfig.apiKey ? `
+                        <div class="mt-6 p-4 border border-yellow-600 rounded-lg bg-yellow-900/20">
+                            <p class="text-yellow-400 text-sm">⚠️ TeamUp API not configured</p>
+                            <p class="text-yellow-400 text-sm mt-2">Configure TeamUp to enable automatic installer provisioning</p>
+                        </div>
+                        ` : `
+                        <div class="mt-6 p-4 border border-green-600 rounded-lg bg-green-900/20">
+                            <p class="text-green-400 text-sm">✅ TeamUp integration ready</p>
+                            <p class="text-green-400 text-sm mt-2">Can sync installers from TeamUp calendars</p>
+                        </div>
+                        `}
+                    </div>
+                `;
+            }
+        }
+
         // New Installer Provisioning Functions
         function showNewInstallerProvisioning() {
             console.log('Loading new installer provisioning...');
@@ -5970,9 +6159,6 @@
                                 </button>
                                 <button onclick="showIssueReportModal()" class="w-full bg-red-600 text-white px-4 py-3 rounded hover:bg-red-700 transition-colors">
                                     🚨 Report Issue
-                                </button>
-                                <button onclick="showBlackoutDatesModal()" class="w-full bg-purple-600 text-white px-4 py-3 rounded hover:bg-purple-700 transition-colors">
-                                    📅 Blackout Dates
                                 </button>
                                 <button onclick="syncTeamUpEvents()" class="w-full bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition-colors">
                                     🔄 Sync Calendar
@@ -6360,7 +6546,6 @@
         // Render installer dashboard
         function renderInstallerDashboard() {
             // Show the regular installer dashboard
-            renderInstallerJobs();
             updateWeekRange();
         }
 
@@ -6413,7 +6598,6 @@
                     address: '789 Pine Street, Springfield',
                     scheduledDate: new Date(Date.now() - 4 * 60 * 60 * 1000),
                     status: 'completed',
-                    crew: 'Crew A',
                     notes: 'Fix broken window seal'
                 }
             ];
@@ -6423,7 +6607,6 @@
             document.getElementById('installerInfo').textContent = installerData.name;
             document.getElementById('crewInfo').textContent = installerData.crews.join(', ');
             
-            renderInstallerJobs();
             updateWeekRange();
             showPortal();
         }
@@ -6741,6 +6924,21 @@
                         <div class="mt-1 text-gray-900">${job.notes}</div>
                     </div>
                     ` : ''}
+
+                    <div class="border-t border-gray-200 pt-4">
+                        <div class="text-sm font-bold text-gray-900 mb-3 text-center">🔧 JOB MANAGEMENT</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="updateJobStatus('${jobId}')" class="terminal-button w-full" style="background: #ffc107; color: #000;">🔄 Update Status</button>
+                            <button onclick="capturePhoto('${jobId}')" class="terminal-button w-full" style="background: #28a745; color: #fff;">📷 Capture Photo</button>
+                            <button onclick="showDefectReportingModal('${jobId}')" class="terminal-button w-full" style="background: #dc3545; color: #fff;">🚨 Report Defect</button>
+                            <button onclick="startFinalWalkthrough('${jobId}')" class="terminal-button w-full" style="background: #17a2b8; color: #fff;">🚶 Walkthrough</button>
+                            <button onclick="startCertificateOfCompletion('${jobId}')" class="terminal-button w-full" style="background: #6f42c1; color: #fff;">📜 Certificate</button>
+                            <button onclick="getDirections('${jobId}')" class="terminal-button w-full" style="background: #fd7e14; color: #fff;">🗺️ Directions</button>
+                        </div>
+                        <div class="mt-3">
+                            <button onclick="reportIssueForJob('${jobId}')" class="terminal-button w-full" style="background: #f97316; color: #fff;">🚨 Report Issue</button>
+                        </div>
+                    </div>
                 </div>
             `;
             
