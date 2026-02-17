@@ -1064,9 +1064,9 @@
             console.log('🔍 Full URL:', window.location.href);
             
             if (path.includes('/admin')) {
-                // Admin portal
-                console.log('Loading admin portal...');
-                loadAdminPortal();
+                // Admin portal - show clean login first
+                console.log('Loading admin login page...');
+                loadLandingPage();
             } else if (path.includes('/installer-login')) {
                 // Installer login page
                 console.log('Loading installer login page...');
@@ -1547,19 +1547,6 @@
                             </div>
                         </div>
 
-                        <!-- New Installers Alert -->
-                        <div id="newInstallersAlert" style="display: none; background: var(--warn); border: 1px solid var(--warn); border-radius: var(--r-card); padding: 1.5rem; box-shadow: var(--shadow-md); margin-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                <h3 style="font-size: 1.125rem; font-weight: 600; color: white; margin: 0;">🔔 New Installers Ready for Provisioning</h3>
-                                <button onclick="dismissNewInstallersAlert()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer;">
-                                    Dismiss
-                                </button>
-                            </div>
-                            <div id="newInstallersList" style="display: grid; gap: 0.75rem;">
-                                <!-- New installers will be listed here -->
-                            </div>
-                        </div>
-
                         <!-- Quick Actions -->
                         <div style="background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-card); padding: 1.5rem; box-shadow: var(--shadow-md);">
                             <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Quick Actions</h3>
@@ -1573,6 +1560,19 @@
                                 <button onclick="showAdminCalendarView()" style="padding: 0.75rem 1rem; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 0.5rem; color: var(--text); font-weight: 500; cursor: pointer;">
                                     📅 View Calendar
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- New Installers Alert - Moved to Bottom -->
+                        <div id="newInstallersAlert" style="display: none; background: var(--surface); border: 1px solid var(--hairline); border-radius: var(--r-card); padding: 1.5rem; box-shadow: var(--shadow-md); margin-top: 2rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--text); margin: 0;">🔔 New Installers Ready for Provisioning</h3>
+                                <button onclick="dismissNewInstallersAlert()" style="background: var(--surface-2); border: 1px solid var(--hairline); color: var(--text); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer;">
+                                    Dismiss
+                                </button>
+                            </div>
+                            <div id="newInstallersList" style="display: grid; gap: 0.75rem;">
+                                <!-- New installers will be listed here -->
                             </div>
                         </div>
                     </main>
