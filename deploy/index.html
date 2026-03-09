@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Armor Vue — Admin Portal</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div id="app"></div>
+<div id="flash" class="hidden" style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;max-width:420px;"></div>
+<div id="modal-root"></div>
+
+<!-- Firebase config + TeamUp module -->
+<script src="js/firebase-config.js?v=1773015005"></script>
+<script src="js/teamup.js?v=1773015005"></script>
+
+<script>
+// ============================================================
+// ARMOR VUE ADMIN PORTAL — Phase 2
+// ============================================================
+
+const app        = document.getElementById('app');
+const modalRoot  = document.getElementById('modal-root');
+let currentSection = 'dashboard';
+
+// ============================================================
+// FLASH MESSAGES
+// ============================================================
+function flash(type, msg, ms = 4500) {
+    const el = document.getElementById('flash');
+    el.className = 'alert alert-' + type;
+    el.textContent = msg;
+    clearTimeout(window._flashTimer);
+    window._flashTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+// Guard: once the dashboard is showing, don't let another tab's
+// auth change (e.g. a management user logging into reports.html)
+// kick the admin out. Only an explicit logout resets this.
+let _dashboardActive = false;
+
+auth.onAuthStateChanged(user => {
+    if (user && user.uid === ADMIN_UID) {
+        _dashboardActive = true;
+        showDashboard();
+    } else if (!_dashboardActive) {
+        // Only redirect to login on initial load, not due to a cross-tab auth change
+        if (user) {
+            showLogin('This account does not have admin access.');
+        } else {
+            showLogin();
+        }
+    }
+});
+
+function handleLogout() {
+    _dashboardActive = false;
+    auth.signOut().then(() => showLogin());
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function showLogin(errorMsg) {
+    app.innerHTML = `
+        <div class="login-page">
+            <div class="login-card">
+                <div class="login-logo">
+                    <div class="brand">Armor Vue</div>
+                    <div class="sub">Admin Portal</div>
+                </div>
+                ${errorMsg ? `<div class="alert alert-error mb-4">${errorMsg}</div>` : ''}
+                <div id="login-error" class="hidden alert alert-error mb-4"></div>
+                <form id="login-form" autocomplete="off">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input class="form-input" type="email" id="email" required autocomplete="off" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div style="position:relative">
+                            <input class="form-input" type="password" id="password" required autocomplete="off" placeholder="••••••••" style="padding-right:3rem">
+                            <button type="button" onclick="const f=document.getElementById('password');f.type=f.type==='password'?'text':'password';this.textContent=f.type==='password'?'👁':'🙈'" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0">👁</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary w-full btn-lg mt-2" type="submit" id="login-btn">Sign In</button>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="sendAdminReset()">Forgot password?</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+    document.getElementById('login-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const pw    = document.getElementById('password').value;
+        const btn   = document.getElementById('login-btn');
+        const err   = document.getElementById('login-error');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Signing in…';
+        err.classList.add('hidden');
+        auth.signInWithEmailAndPassword(email, pw).catch((e) => {
+            err.textContent = 'Login failed: ' + (e.code || e.message);
+            err.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        });
+    });
+}
+
+async function sendAdminReset() {
+    const email = (document.getElementById('email').value || '').trim();
+    const err   = document.getElementById('login-error');
+    if (!email) {
+        err.textContent = 'Enter your email address above first, then click Forgot password.';
+        err.classList.remove('hidden');
+        return;
+    }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        err.textContent = '';
+        err.classList.add('hidden');
+        const info = document.getElementById('login-error');
+        info.textContent = `Password reset email sent to ${email}. Check your inbox.`;
+        info.className = 'alert alert-info mb-4';
+        info.classList.remove('hidden');
+    } catch(e) {
+        err.textContent = 'Could not send reset email: ' + e.message;
+        err.classList.remove('hidden');
+    }
+}
+
+// ============================================================
+// DASHBOARD SHELL
+// ============================================================
+function showDashboard() {
+    app.innerHTML = `
+        <nav class="admin-nav">
+            <div class="admin-nav-brand"><span>AV</span> Armor Vue Admin</div>
+            <div class="admin-nav-links" id="nav-links">
+                <button class="nav-link active"  onclick="switchSection('dashboard')">Dashboard</button>
+                <button class="nav-link"          onclick="switchSection('installers')">Installers</button>
+                <button class="nav-link"          onclick="switchSection('settings')">System</button>
+                <button class="nav-link"          onclick="switchSection('teamup')">TeamUp Status</button>
+            </div>
+            <div class="admin-nav-actions">
+                <a href="reports.html" target="_blank" class="btn btn-secondary btn-sm">📋 Dashboard</a>
+                <button class="btn btn-secondary btn-sm" onclick="runSync()" id="sync-btn">⟳ Sync TeamUp</button>
+                <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
+            </div>
+        </nav>
+        <main class="admin-content">
+            <div id="section-dashboard"></div>
+            <div id="section-installers"  class="hidden"></div>
+            <div id="section-settings"    class="hidden"></div>
+            <div id="section-teamup"      class="hidden"></div>
+            <div id="section-management"  class="hidden"></div>
+            <div id="section-staff"       class="hidden"></div>
+        </main>`;
+    renderDashboard();
+}
+
+function switchSection(name) {
+    currentSection = name;
+    document.querySelectorAll('.nav-link').forEach(btn => {
+        const matches = btn.textContent.toLowerCase().replace(/\s/g,'').startsWith(name.slice(0,4));
+        btn.classList.toggle('active', matches);
+    });
+    ['dashboard','installers','settings','teamup','management','staff'].forEach(s => {
+        document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
+    });
+    if (name === 'dashboard')  renderDashboard();
+    if (name === 'installers') renderInstallers();
+    if (name === 'settings')   renderSettings();
+    if (name === 'teamup')     renderTeamUpStatus();
+    if (name === 'management') renderManagement();
+    if (name === 'staff')      renderStaff();
+}
+
+// ============================================================
+// TEAMUP SYNC (triggered from nav or status page)
+// ============================================================
+async function runSync() {
+    const btn = document.getElementById('sync-btn');
+    if (!btn) return;
+    btn.disabled = true;
+    btn.textContent = '⟳ Syncing…';
+    try {
+        const result = await TeamUp.sync(msg => console.log('[Sync]', msg));
+        let syncMsg = `Sync complete — ${result.newInstallers} new installer(s), ${result.jobCount} job(s) updated.`;
+        if (result.fixedInstallers > 0) syncMsg += ` Repaired ${result.fixedInstallers} installer ID mismatch(es).`;
+        flash('ok', syncMsg);
+        // Refresh current section (clear loaded flag so section re-renders)
+        const refreshEl = document.getElementById('section-' + currentSection);
+        if (refreshEl) { refreshEl.innerHTML = ''; delete refreshEl.dataset.loaded; }
+        if (currentSection === 'dashboard')  renderDashboard();
+        if (currentSection === 'installers') renderInstallers();
+        if (currentSection === 'teamup')     renderTeamUpStatus();
+        if (currentSection === 'management') { renderManagement(); }
+        else loadMgmtStats();
+    } catch (err) {
+        flash('error', 'Sync failed: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⟳ Sync TeamUp';
+    }
+}
+
+// ============================================================
+// DASHBOARD SECTION
+// ============================================================
+async function renderDashboard() {
+    const el = document.getElementById('section-dashboard');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="mb-6">
+            <h2>Dashboard</h2>
+            <p class="text-muted text-sm">Welcome back. Here's what needs your attention.</p>
+        </div>
+        <div class="grid-3 mb-6">
+            <div class="stat-card" id="card-pending">
+                <div class="stat-label">Pending Provisioning</div>
+                <div class="stat-value" id="stat-pending"><span class="spinner"></span></div>
+                <div class="stat-note">Installers awaiting setup</div>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="switchSection('installers')" style="margin-top:.75rem">View →</button>
+            </div>
+            <div class="stat-card" id="card-blackout">
+                <div class="stat-label">Blackout Requests</div>
+                <div class="stat-value" id="stat-blackout"><span class="spinner"></span></div>
+                <div class="stat-note">Pending approval</div>
+                <button class="btn btn-sm btn-secondary mt-2" id="btn-blackout-view" style="margin-top:.75rem;display:none" onclick="document.getElementById('card-blackout-detail').scrollIntoView({behavior:'smooth'})">View ↓</button>
+            </div>
+            <div class="stat-card" id="card-active">
+                <div class="stat-label">Active Installers</div>
+                <div class="stat-value" id="stat-active"><span class="spinner"></span></div>
+                <div class="stat-note">Provisioned and active</div>
+            </div>
+        </div>
+        <div class="card mb-6">
+            <h3 class="mb-4">System Status</h3>
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="badge badge-info">Firebase</span>
+                    <span class="text-sm text-ok">Connected</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="badge badge-info">TeamUp</span>
+                    <span class="text-sm" id="teamup-sync-label">Checking…</span>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-6" id="card-blackout-detail" style="display:none;border-color:var(--info)">
+            <h3 class="mb-3" style="color:var(--info)">📅 Blackout Requests — Pending Approval</h3>
+            <div id="blackout-detail-body" class="text-sm"></div>
+        </div>
+        <div class="card mb-6" id="card-fin-warning" style="display:none;border-color:var(--warn)">
+            <h3 class="mb-3" style="color:var(--warn)">⚠ Missing Payment Info</h3>
+            <div id="fin-warning-body" class="text-sm"></div>
+        </div>
+        <div class="card mb-6" id="card-ew-warning" style="display:none;border-color:var(--info)">
+            <h3 class="mb-3" style="color:var(--info)">🔧 Extra Work Requests — Need Review</h3>
+            <div id="ew-warning-body" class="text-sm"></div>
+        </div>
+        <div class="card mb-6" id="card-wt-warning" style="display:none;border-color:var(--warn)">
+            <h3 class="mb-3" style="color:var(--warn)">⚠ Incomplete Walkthroughs</h3>
+            <div id="wt-warning-body" class="text-sm"></div>
+        </div>
+        <div class="card">
+            <h3 class="mb-4">Quick Actions</h3>
+            <div class="flex gap-3 flex-wrap">
+                <button class="btn btn-primary" onclick="switchSection('installers')">Manage Installers</button>
+                <button class="btn btn-secondary" onclick="runSync()">Sync TeamUp Now</button>
+                <button class="btn btn-secondary" onclick="switchSection('settings')">Settings</button>
+            </div>
+        </div>`;
+    try {
+        const now         = new Date();
+        const twoDaysOut  = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+        const [pending, blackouts, active, settings, upcomingSnap, ewSnap, wtSnap] = await Promise.all([
+            db.collection('installers').where('status','==','pending').get(),
+            db.collection('blackout_requests').where('status','==','pending').get(),
+            db.collection('installers').where('status','==','active').get(),
+            db.collection('settings').doc('teamup').get(),
+            db.collection('jobs').where('startDt','>=',now).where('startDt','<=',twoDaysOut).get(),
+            db.collection('extra_work_requests').where('status','in',['pending','counter_pending']).get(),
+            db.collection('job_records').where('walkthroughIncomplete','==',true).get()
+        ]);
+        document.getElementById('stat-pending').textContent  = pending.size;
+        document.getElementById('stat-blackout').textContent = blackouts.size;
+        document.getElementById('stat-active').textContent   = active.size;
+        if (pending.size > 0)    document.getElementById('card-pending').classList.add('warn');
+        if (blackouts.size > 0)  document.getElementById('card-blackout').classList.add('warn');
+        if (active.size  > 0)    document.getElementById('card-active').classList.add('ok');
+
+        // Blackout request details
+        if (blackouts.size > 0) {
+            document.getElementById('btn-blackout-view').style.display = '';
+            document.getElementById('card-blackout-detail').style.display = '';
+            const body = document.getElementById('blackout-detail-body');
+            const sorted = blackouts.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => (a.dates?.[0] || '') < (b.dates?.[0] || '') ? -1 : 1);
+            body.innerHTML = sorted.map(r => {
+                const dateStr = (r.dates || []).map(d => {
+                    const dt = new Date(d + 'T12:00:00');
+                    return dt.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+                }).join(', ');
+                const reqAt = r.requestedAt?.toDate ? r.requestedAt.toDate().toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+                return `<div style="border:1px solid var(--border);border-radius:6px;padding:.65rem .75rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600">${esc(r.installerName || r.installerId)}</div>
+                        <div style="color:var(--muted);margin-top:.15rem">📅 ${esc(dateStr)}${r.reason ? ' — ' + esc(r.reason) : ''}${reqAt ? ' · Requested ' + reqAt : ''}</div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;flex-shrink:0">
+                        <button class="btn btn-sm btn-primary" onclick="approveBlackout('${r.id}')">✓ Approve</button>
+                        <button class="btn btn-sm btn-secondary" onclick="denyBlackout('${r.id}')">✕ Deny</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        const syncEl = document.getElementById('teamup-sync-label');
+        if (settings.exists && settings.data().lastSyncedAt) {
+            const d = settings.data().lastSyncedAt.toDate();
+            syncEl.className = 'text-sm text-ok';
+            syncEl.textContent = 'Last synced: ' + d.toLocaleString();
+        } else {
+            syncEl.className = 'text-sm text-warn';
+            syncEl.textContent = 'Not yet synced — configure in Settings';
+        }
+
+        // Financial warnings for jobs starting within 2 days
+        const missingFin = upcomingSnap.docs
+            .filter(d => !d.data().financials?.balanceDue)
+            .map(d => ({ id: d.id, ...d.data() }));
+        if (missingFin.length > 0) {
+            const card = document.getElementById('card-fin-warning');
+            const body = document.getElementById('fin-warning-body');
+            card.style.display = '';
+            const todayStr    = new Date().toDateString();
+            const tomorrowStr = new Date(now.getTime() + 86400000).toDateString();
+            body.innerHTML = `<p class="text-muted mb-3">${missingFin.length} job${missingFin.length > 1 ? 's' : ''} starting within 2 days — Balance Due not set</p>` +
+                missingFin.map(j => {
+                    const startDt  = j.startDt?.toDate ? j.startDt.toDate() : new Date(j.startDt);
+                    const dayLabel = startDt.toDateString() === todayStr    ? 'Today'
+                                   : startDt.toDateString() === tomorrowStr ? 'Tomorrow'
+                                   : 'In 2 days';
+                    return `<div class="flex items-center gap-3 mb-2">
+                        <span style="flex:1">${esc(j.customerName || j.id)} — <span class="text-muted">${dayLabel}</span></span>
+                        <button class="btn btn-sm btn-secondary" onclick="showFinancialsModal('${j.id}','${esc(j.customerName || '')}')">Fill In</button>
+                    </div>`;
+                }).join('');
+        }
+
+        // Extra work requests needing review
+        if (ewSnap.size > 0) {
+            const ewCard = document.getElementById('card-ew-warning');
+            const ewBody = document.getElementById('ew-warning-body');
+            if (ewCard && ewBody) {
+                ewCard.style.display = '';
+                ewBody.innerHTML = `<p class="text-muted mb-3">${ewSnap.size} request${ewSnap.size !== 1 ? 's' : ''} awaiting your review</p>` +
+                    ewSnap.docs.map(d => {
+                        const r = { id: d.id, ...d.data() };
+                        const statusLabel = r.status === 'counter_pending' ? 'Counter offer' : 'Pending approval';
+                        return `<div class="flex items-center gap-3 mb-2">
+                            <span style="flex:1"><strong>${esc(r.installerName)}</strong> — ${esc(r.customerName || r.jobNumber)} <span class="text-muted">(${statusLabel})</span></span>
+                            <button class="btn btn-sm btn-secondary" onclick="showExtraWorkReview('${r.id}')">Review</button>
+                        </div>`;
+                    }).join('');
+            }
+        }
+
+        // Incomplete walkthroughs
+        if (wtSnap && wtSnap.size > 0) {
+            const wtCard = document.getElementById('card-wt-warning');
+            const wtBody = document.getElementById('wt-warning-body');
+            if (wtCard && wtBody) {
+                wtCard.style.display = '';
+                wtBody.innerHTML = wtSnap.docs.map(d => {
+                    const r = d.data();
+                    const unchecked = (r.walkthroughChecklist || []).filter(i => !i.acknowledgedAt);
+                    const jobLabel  = r.jobNumber ? `Job #${r.jobNumber}` : r.jobId;
+                    const installer = r.signatures?.walkthrough?.installerName || r.installerId;
+                    const noteHtml  = r.walkthroughCustomerNote
+                        ? `<div style="margin-top:.25rem;color:var(--muted)">Customer note: ${esc(r.walkthroughCustomerNote)}</div>`
+                        : '';
+                    const itemList  = unchecked.map(i => `<li>${esc(i.label)}</li>`).join('');
+                    return `<div style="border:1px solid var(--border);border-radius:6px;padding:.6rem .75rem;margin-bottom:.6rem">
+                        <div style="font-weight:600">${esc(installer)} — ${esc(jobLabel)}</div>
+                        <ul style="margin:.3rem 0 0 1rem;padding:0;font-size:.8rem;color:var(--muted)">${itemList}</ul>
+                        ${noteHtml}
+                    </div>`;
+                }).join('');
+            }
+        }
+    } catch(err) { flash('error', 'Dashboard error: ' + err.message); }
+}
+
+// ============================================================
+// BLACKOUT REQUEST ACTIONS
+// ============================================================
+async function approveBlackout(id) {
+    try {
+        await db.collection('blackout_requests').doc(id).update({ status: 'approved' });
+        flash('ok', 'Blackout request approved.');
+        renderDashboard();
+    } catch(err) { flash('error', 'Could not approve: ' + err.message); }
+}
+
+async function denyBlackout(id) {
+    try {
+        await db.collection('blackout_requests').doc(id).update({ status: 'denied' });
+        flash('ok', 'Blackout request denied.');
+        renderDashboard();
+    } catch(err) { flash('error', 'Could not deny: ' + err.message); }
+}
+
+// ============================================================
+// INSTALLER MANAGEMENT SECTION
+// ============================================================
+let provisionedData = [];
+let pendingData     = [];
+let provPage = 0, pendPage = 0;
+const PAGE = 15;
+let provSort = { col: 'displayName', dir: 1 };
+let provFilter = { search: '', status: 'all' };
+
+async function renderInstallers() {
+    const el = document.getElementById('section-installers');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2>Installer Management</h2>
+                <p class="text-muted text-sm">Manage provisioned installers and provision new ones.</p>
+            </div>
+            <button class="btn btn-primary" onclick="runSync()">⟳ Sync TeamUp</button>
+        </div>
+
+        <!-- Pending Provisioning -->
+        <div class="card mb-6">
+            <h3 class="mb-4">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
+            <div id="pending-table-wrap">
+                <div class="text-center p-4"><span class="spinner"></span></div>
+            </div>
+        </div>
+
+        <!-- Provisioned Installers -->
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h3>Provisioned Installers <span id="prov-count" class="badge badge-active" style="margin-left:.5rem"></span></h3>
+            </div>
+            <div class="table-controls">
+                <input class="form-input" type="search" placeholder="Search name, company, email…" oninput="filterProvisioned(this.value)" style="flex:2">
+                <select class="form-input" onchange="filterProvisionedStatus(this.value)" style="flex:1;max-width:180px">
+                    <option value="all">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div id="prov-table-wrap">
+                <div class="text-center p-4"><span class="spinner"></span></div>
+            </div>
+            <div id="prov-pagination" class="pagination"></div>
+        </div>`;
+
+    await loadInstallerData();
+}
+
+async function loadInstallerData() {
+    try {
+        const [provSnap, pendSnap] = await Promise.all([
+            db.collection('installers').where('status','in',['active','inactive']).get(),
+            db.collection('installers').where('status','not-in',['active','inactive']).get()
+        ]);
+        provisionedData = provSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Pending table shows everything not yet active/inactive (pending, unknown statuses, etc.)
+        pendingData     = pendSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderPendingTable();
+        renderProvisionedTable();
+    } catch(err) { flash('error', 'Could not load installers: ' + err.message); }
+}
+
+function renderPendingTable() {
+    const wrap = document.getElementById('pending-table-wrap');
+    const countEl = document.getElementById('pending-count');
+    if (!wrap) return;
+    countEl.textContent = pendingData.length;
+    if (pendingData.length === 0) {
+        wrap.innerHTML = '<p class="text-muted text-sm p-4">No pending installers. Run a TeamUp sync to discover new ones.</p>';
+        return;
+    }
+    wrap.innerHTML = `
+        <table class="data-table">
+            <thead><tr>
+                <th>TeamUp Name</th>
+                <th>Company</th>
+                <th>Discovered</th>
+                <th>Action</th>
+            </tr></thead>
+            <tbody>
+                ${pendingData.map(i => `
+                    <tr>
+                        <td>${esc(i.teamupName)}</td>
+                        <td>${esc(i.company) || '<span class="text-muted">—</span>'}</td>
+                        <td class="text-sm text-muted">${i.createdAt ? new Date(i.createdAt.toDate()).toLocaleDateString() : '—'}</td>
+                        <td><button class="btn btn-primary btn-sm" onclick="openProvisionModal('${i.id}')">Provision</button></td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+function getFilteredProvisioned() {
+    let data = [...provisionedData];
+    if (provFilter.search) {
+        const q = provFilter.search.toLowerCase();
+        data = data.filter(i =>
+            (i.displayName||'').toLowerCase().includes(q) ||
+            (i.company||'').toLowerCase().includes(q) ||
+            (i.email||'').toLowerCase().includes(q)
+        );
+    }
+    if (provFilter.status !== 'all') {
+        data = data.filter(i => i.status === provFilter.status);
+    }
+    data.sort((a,b) => {
+        const av = (a[provSort.col]||'').toString().toLowerCase();
+        const bv = (b[provSort.col]||'').toString().toLowerCase();
+        return av < bv ? -provSort.dir : av > bv ? provSort.dir : 0;
+    });
+    return data;
+}
+
+function renderProvisionedTable() {
+    const wrap  = document.getElementById('prov-table-wrap');
+    const pgEl  = document.getElementById('prov-pagination');
+    const cntEl = document.getElementById('prov-count');
+    if (!wrap) return;
+
+    const data  = getFilteredProvisioned();
+    const total = data.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE));
+    provPage = Math.min(provPage, pages - 1);
+    const slice = data.slice(provPage * PAGE, (provPage + 1) * PAGE);
+
+    cntEl.textContent = total;
+
+    if (total === 0) {
+        wrap.innerHTML = '<p class="text-muted text-sm p-4">No installers match your filter.</p>';
+        pgEl.innerHTML = '';
+        return;
+    }
+
+    const sortArrow = col => provSort.col === col ? (provSort.dir === 1 ? ' ↑' : ' ↓') : '';
+
+    wrap.innerHTML = `
+        <table class="data-table">
+            <thead><tr>
+                <th onclick="sortProvisioned('displayName')">Name${sortArrow('displayName')}</th>
+                <th onclick="sortProvisioned('company')">Company${sortArrow('company')}</th>
+                <th onclick="sortProvisioned('email')">Email${sortArrow('email')}</th>
+                <th>TeamUp ID</th>
+                <th>Status</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+            </tr></thead>
+            <tbody>
+                ${slice.map(i => `
+                    <tr>
+                        <td><strong>${esc(i.displayName)}</strong></td>
+                        <td class="text-muted text-sm">${esc(i.company) || '—'}</td>
+                        <td class="text-sm">${esc(i.email) || '<span class="text-muted">—</span>'}</td>
+                        <td class="text-sm text-muted">${i.teamupId || '<span style="color:var(--danger)">missing</span>'}</td>
+                        <td><span class="badge badge-${i.status}">${i.status}</span></td>
+                        <td class="text-sm text-muted">${i.lastLogin ? new Date(i.lastLogin.toDate()).toLocaleDateString() : 'Never'}</td>
+                        <td class="flex gap-2">
+                            <button class="btn btn-sm btn-secondary" onclick="openEditModal('${i.id}')">Details</button>
+                            <button class="btn btn-sm btn-secondary" onclick="resendLink('${i.id}')" title="Resend sign-in link">⟳ Link</button>
+                            <button class="btn btn-sm btn-${i.status==='active'?'danger':'primary'}" onclick="toggleStatus('${i.id}','${i.status}')">
+                                ${i.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                        </td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
+
+    pgEl.innerHTML = total <= PAGE ? '' : `
+        <span>${provPage*PAGE+1}–${Math.min((provPage+1)*PAGE,total)} of ${total}</span>
+        <div class="flex gap-2">
+            <button class="btn btn-sm btn-secondary" onclick="provPageChange(-1)" ${provPage===0?'disabled':''}>← Prev</button>
+            <button class="btn btn-sm btn-secondary" onclick="provPageChange(1)"  ${provPage>=pages-1?'disabled':''}>Next →</button>
+        </div>`;
+}
+
+function filterProvisioned(val)       { provFilter.search = val; provPage = 0; renderProvisionedTable(); }
+function filterProvisionedStatus(val) { provFilter.status = val; provPage = 0; renderProvisionedTable(); }
+function sortProvisioned(col)         { provSort.dir = provSort.col===col ? -provSort.dir : 1; provSort.col = col; renderProvisionedTable(); }
+function provPageChange(dir)          { provPage += dir; renderProvisionedTable(); }
+
+async function toggleStatus(id, current) {
+    const next = current === 'active' ? 'inactive' : 'active';
+    if (!confirm(`Set this installer to ${next}?`)) return;
+    try {
+        await db.collection('installers').doc(id).update({ status: next });
+        await logChange(id, 'status_changed', { from: current, to: next });
+        provisionedData = provisionedData.map(i => i.id===id ? {...i, status:next} : i);
+        renderProvisionedTable();
+        flash('ok', `Installer set to ${next}.`);
+    } catch(err) { flash('error', 'Update failed: ' + err.message); }
+}
+
+async function resendLink(installerId) {
+    const installer = provisionedData.find(i => i.id === installerId);
+    if (!installer || !installer.email) {
+        flash('error', 'No email address on file for this installer.');
+        return;
+    }
+    if (!confirm(`Resend sign-in link to ${installer.email}?`)) return;
+    try {
+        const actionCodeSettings = {
+            url: 'https://installer-portal-6000.web.app/installer.html',
+            handleCodeInApp: true
+        };
+        await auth.sendSignInLinkToEmail(installer.email, actionCodeSettings);
+        flash('ok', `New sign-in link sent to ${installer.email}.`);
+    } catch(err) {
+        flash('error', 'Could not send link: ' + err.message);
+    }
+}
+
+async function resetInstallerLogin(installerId) {
+    if (!confirm('Clear this installer\'s stored login binding? They will need to use a fresh sign-in link next time.')) return;
+    try {
+        await db.collection('installers').doc(installerId).update({ firebaseUid: null });
+        provisionedData = provisionedData.map(i => i.id === installerId ? { ...i, firebaseUid: null } : i);
+        flash('ok', 'Login binding cleared. Send the installer a fresh sign-in link.');
+    } catch(err) {
+        flash('error', 'Reset failed: ' + err.message);
+    }
+}
+
+// ============================================================
+// PROVISION MODAL
+// ============================================================
+function openProvisionModal(installerId) {
+    const installer = pendingData.find(i => i.id === installerId);
+    if (!installer) return;
+
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Provision Installer</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-4">
+                        A sign-in link will be emailed to the installer. They tap the link to access their portal — no password needed.
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">TeamUp Name</label>
+                        <input class="form-input" value="${esc(installer.teamupName)}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Display Name *</label>
+                        <input class="form-input" id="prov-name" value="${esc(installer.displayName)}" placeholder="First name or full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Company</label>
+                        <input class="form-input" id="prov-company" value="${esc(installer.company)}" placeholder="Company name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Address *</label>
+                        <input class="form-input" id="prov-email" type="email" placeholder="installer@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input class="form-input" id="prov-phone" type="tel" placeholder="(555) 000-0000">
+                    </div>
+                    <div id="prov-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="prov-submit" onclick="submitProvisioning('${installerId}')">
+                        Provision &amp; Send Link
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function submitProvisioning(installerId) {
+    const name    = document.getElementById('prov-name').value.trim();
+    const company = document.getElementById('prov-company').value.trim();
+    const email   = document.getElementById('prov-email').value.trim();
+    const phone   = document.getElementById('prov-phone').value.trim();
+    const errEl   = document.getElementById('prov-error');
+    const btn     = document.getElementById('prov-submit');
+
+    errEl.classList.add('hidden');
+    if (!name || !email) {
+        errEl.textContent = 'Display name and email are required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (!isValidEmail(email)) {
+        errEl.textContent = 'Please enter a valid email address.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Provisioning…';
+
+    try {
+        // Send magic link to installer
+        const actionCodeSettings = {
+            url: 'https://installer-portal-6000.web.app/installer.html',
+            handleCodeInApp: true
+        };
+        await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+
+        // Update installer doc
+        await db.collection('installers').doc(installerId).update({
+            displayName:   name,
+            company:       company,
+            email:         email,
+            phone:         phone,
+            status:        'active',
+            provisionedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Audit log
+        await logChange(installerId, 'provisioned', { name, company, email, phone });
+
+        // Move from pending to provisioned in local state
+        const installer = pendingData.find(i => i.id === installerId);
+        pendingData = pendingData.filter(i => i.id !== installerId);
+        provisionedData.push({ ...installer, displayName: name, company, email, phone, status: 'active' });
+
+        closeModal();
+        renderPendingTable();
+        renderProvisionedTable();
+        flash('ok', `${name} provisioned. Sign-in link sent to ${email}.`);
+    } catch(err) {
+        errEl.textContent = err.message.includes('auth/email-already-in-use')
+            ? 'An account with this email already exists.'
+            : 'Provisioning failed: ' + err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Provision & Send Link';
+    }
+}
+
+// ============================================================
+// EDIT INSTALLER MODAL
+// ============================================================
+function openEditModal(installerId) {
+    const installer = provisionedData.find(i => i.id === installerId);
+    if (!installer) return;
+
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Installer Details</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="tabs">
+                        <button class="tab-btn active" onclick="switchModalTab('details',this)">Details</button>
+                        <button class="tab-btn" onclick="switchModalTab('history',this)">History</button>
+                    </div>
+
+                    <!-- Details Tab -->
+                    <div id="modal-tab-details" class="tab-panel active">
+                        <div class="flex gap-2 mb-4">
+                            <a class="btn btn-secondary btn-sm" href="https://installer-portal-6000.web.app/installer.html" target="_blank">↗ Open Installer Portal</a>
+                            <button class="btn btn-ghost btn-sm" onclick="copyPortalLink()">⎘ Copy Link</button>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Display Name</label>
+                            <input class="form-input" id="edit-name" value="${esc(installer.displayName)}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Company</label>
+                            <input class="form-input" id="edit-company" value="${esc(installer.company||'')}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input class="form-input" id="edit-email" type="email" value="${esc(installer.email||'')}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input class="form-input" id="edit-phone" type="tel" value="${esc(installer.phone||'')}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Status</label>
+                            <select class="form-input" id="edit-status">
+                                <option value="active"   ${installer.status==='active'   ?'selected':''}>Active</option>
+                                <option value="inactive" ${installer.status==='inactive' ?'selected':''}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">TeamUp Subcalendar ID <span class="text-muted" style="font-weight:400;font-size:.8rem">— must match TeamUp exactly</span></label>
+                            <input class="form-input" id="edit-teamupid" type="number" value="${installer.teamupId||''}" placeholder="e.g. 14326321">
+                            ${installer.teamupName ? `<div class="text-muted" style="font-size:.75rem;margin-top:.25rem">TeamUp name: ${esc(installer.teamupName)}</div>` : ''}
+                        </div>
+                        <div id="edit-error" class="hidden alert alert-error"></div>
+                    </div>
+
+                    <!-- History Tab -->
+                    <div id="modal-tab-history" class="tab-panel">
+                        <div id="history-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="flex-wrap:wrap;gap:.5rem">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-secondary" onclick="resetInstallerLogin('${installerId}')" title="Clears the stored Firebase UID so the installer's next magic link login binds correctly">⟳ Reset Login</button>
+                    <button class="btn btn-primary" id="edit-submit" onclick="submitEdit('${installerId}')">Save Changes</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function switchModalTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('modal-tab-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'history') loadHistory(btn.closest('.modal').querySelector('[onclick*="submitEdit"]').getAttribute('onclick').match(/'([^']+)'/)[1]);
+}
+
+async function loadHistory(installerId) {
+    const el = document.getElementById('history-content');
+    if (!el) return;
+    try {
+        const snap = await db.collection('installer_history')
+            .where('installerId','==', installerId)
+            .orderBy('timestamp','desc')
+            .limit(20)
+            .get();
+        if (snap.empty) { el.innerHTML = '<p class="text-muted text-sm p-4">No history yet.</p>'; return; }
+        el.innerHTML = snap.docs.map(d => {
+            const data = d.data();
+            const date = data.timestamp ? data.timestamp.toDate().toLocaleString() : '—';
+            return `<div class="card card-sm mb-2">
+                <div class="flex justify-between">
+                    <span class="font-medium text-sm">${esc(data.changeType||'change')}</span>
+                    <span class="text-xs text-muted">${date}</span>
+                </div>
+                <div class="text-xs text-muted mt-2">${esc(JSON.stringify(data.data||{}))}</div>
+            </div>`;
+        }).join('');
+    } catch(err) { el.innerHTML = '<p class="text-muted text-sm p-4">Could not load history.</p>'; }
+}
+
+async function submitEdit(installerId) {
+    const name      = document.getElementById('edit-name').value.trim();
+    const company   = document.getElementById('edit-company').value.trim();
+    const email     = document.getElementById('edit-email').value.trim();
+    const phone     = document.getElementById('edit-phone').value.trim();
+    const status    = document.getElementById('edit-status').value;
+    const teamupRaw = document.getElementById('edit-teamupid').value.trim();
+    const errEl     = document.getElementById('edit-error');
+    const btn       = document.getElementById('edit-submit');
+
+    errEl.classList.add('hidden');
+    if (!name) { errEl.textContent = 'Display name is required.'; errEl.classList.remove('hidden'); return; }
+    if (email && !isValidEmail(email)) { errEl.textContent = 'Invalid email address.'; errEl.classList.remove('hidden'); return; }
+    if (teamupRaw && !/^\d+$/.test(teamupRaw)) { errEl.textContent = 'TeamUp Subcalendar ID must be a number.'; errEl.classList.remove('hidden'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+    try {
+        const updates = { displayName: name, company, email: email.toLowerCase(), phone, status };
+        if (teamupRaw) updates.teamupId = parseInt(teamupRaw, 10);
+        await db.collection('installers').doc(installerId).update(updates);
+        await logChange(installerId, 'details_updated', updates);
+        provisionedData = provisionedData.map(i => i.id === installerId ? { ...i, ...updates } : i);
+        closeModal();
+        renderProvisionedTable();
+        flash('ok', 'Installer updated.');
+    } catch(err) {
+        errEl.textContent = 'Save failed: ' + err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Save Changes';
+    }
+}
+
+// ============================================================
+// SETTINGS SECTION
+// ============================================================
+let _renderingSettings = false;
+async function renderSettings() {
+    if (_renderingSettings) return;
+    _renderingSettings = true;
+    const el = document.getElementById('section-settings');
+    if (!el) { _renderingSettings = false; return; }
+    el.innerHTML = `
+        <div class="mb-6">
+            <h2>System</h2>
+            <p class="text-muted text-sm">Configure integrations, statuses, staff, sync, and database tools.</p>
+        </div>
+
+        <!-- TeamUp Sync (open by default) -->
+        <details class="card mb-4" open>
+            <summary><div class="card-summary-text"><h3>TeamUp Sync</h3><p>Pull latest people and jobs from TeamUp into Firestore.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+                    <button class="btn btn-primary" onclick="runSync()">⟳ Sync Now</button>
+                </div>
+                <div class="grid-3">
+                    <div class="stat-card"><div class="stat-label">Last Sync</div><div class="text-sm" id="mgmt-last-sync">Loading…</div></div>
+                    <div class="stat-card"><div class="stat-label">Jobs in DB</div><div class="stat-value" id="mgmt-job-count"><span class="spinner"></span></div></div>
+                    <div class="stat-card"><div class="stat-label">Installers in DB</div><div class="stat-value" id="mgmt-inst-count"><span class="spinner"></span></div></div>
+                </div>
+            </div>
+        </details>
+
+        <!-- TeamUp Config -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>TeamUp Configuration</h3><p>API key and calendar ID.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <form id="teamup-settings-form">
+                    <div class="form-group">
+                        <label class="form-label">API Key</label>
+                        <input class="form-input" id="set-apikey" type="password" placeholder="TeamUp API key" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Calendar ID</label>
+                        <input class="form-input" id="set-calid" placeholder="e.g. ksapnewx3qkt3x2qpw">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sync Interval (minutes)</label>
+                        <select class="form-input" id="set-interval">
+                            <option value="5">5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="240">4 hours</option>
+                        </select>
+                    </div>
+                    <div id="settings-msg" class="hidden alert mb-4"></div>
+                    <div class="flex gap-3">
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                        <button type="button" class="btn btn-secondary" onclick="testTeamUp()">Test Connection</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+
+        <!-- Job Statuses (open by default) -->
+        <details class="card mb-4" open>
+            <summary><div class="card-summary-text"><h3>Job Statuses</h3><p>Define statuses available to installers. Built-in statuses can be edited but not deleted.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:1rem">
+                    <button class="btn btn-secondary btn-sm" onclick="seedBuiltInStatuses()">Seed Defaults</button>
+                    <button class="btn btn-primary btn-sm" onclick="openStatusModal()">+ Add Status</button>
+                </div>
+                <div id="status-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
+        <!-- COC Agreement -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>COC Agreement Text</h3><p>Text shown to customers before signing the Certificate of Completion.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <p class="text-muted text-sm mb-4">Use <code>{AMOUNT}</code> where the balance due should appear.</p>
+                <div class="form-group">
+                    <textarea class="form-input" id="set-coc-text" rows="7" style="font-size:.85rem;line-height:1.6;resize:vertical"></textarea>
+                </div>
+                <div id="coc-settings-msg" class="hidden alert mb-3"></div>
+                <button class="btn btn-primary" onclick="saveCocText()">Save Agreement Text</button>
+            </div>
+        </details>
+
+        <!-- Photo Requirements -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Photo Requirements</h3><p>Required photos for job start and per-opening capture.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:1rem">
+                    <button class="btn btn-secondary btn-sm" onclick="seedPhotoRequirements()">Seed Defaults</button>
+                    <button class="btn btn-primary btn-sm" onclick="addPhotoReq()">+ Add Requirement</button>
+                </div>
+                <div id="photo-reqs-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
+        <!-- Defect Types -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Defect Types</h3><p>List installers choose from when reporting a defect on an opening.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="addDefectType()">+ Add Type</button>
+                </div>
+                <div id="defect-types-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
+        <!-- Staff -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Staff Accounts</h3><p>Finance, service, and manager accounts for the dashboard portal.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="openAddStaffModal()">+ Add Staff</button>
+                </div>
+                <div id="staff-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
+        <!-- Database Tools -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Database Tools</h3><p>Destructive operations — deleted data cannot be recovered.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div id="mgmt-log" class="hidden mb-4 p-3" style="background:var(--surface-2);border-radius:6px;font-family:monospace;font-size:.8rem;line-height:1.6;max-height:200px;overflow-y:auto"></div>
+                <div class="flex gap-3 flex-wrap">
+                    <button class="btn btn-danger" onclick="confirmDeleteCollection('installers','Clear Installers','Deletes all installer documents. Jobs and job records are not affected.')">Clear Installers</button>
+                    <button class="btn btn-danger" onclick="confirmDeleteCollection('jobs','Clear Jobs','Deletes all cached TeamUp job documents. They will be repopulated on next sync.')">Clear Jobs</button>
+                    <button class="btn btn-danger" onclick="confirmDeleteCollection('job_records','Clear Job Records','Deletes all job records, photo metadata, signatures, and status history.')">Clear Job Records</button>
+                    <button class="btn btn-danger" onclick="confirmFullReset()">Full Reset</button>
+                </div>
+            </div>
+        </details>`;
+
+    await loadSettings();
+    await loadStatusList();
+    await loadPhotoReqs();
+    await loadDefectTypes();
+    loadStaffList();
+    loadMgmtStats();
+
+    document.getElementById('teamup-settings-form').addEventListener('submit', saveSettings);
+    _renderingSettings = false;
+}
+
+const DEFAULT_COC_AGREEMENT_ADMIN =
+    'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.';
+
+async function loadSettings() {
+    try {
+        const [teamupDoc, portalDoc] = await Promise.all([
+            db.collection('settings').doc('teamup').get(),
+            db.collection('settings').doc('portal').get()
+        ]);
+        // Guard against race condition where section was re-rendered while fetching
+        const apikeyEl   = document.getElementById('set-apikey');
+        const calidEl    = document.getElementById('set-calid');
+        const intervalEl = document.getElementById('set-interval');
+        const cocEl      = document.getElementById('set-coc-text');
+        if (!apikeyEl) return; // section was replaced; nothing to populate
+
+        if (teamupDoc.exists) {
+            const d = teamupDoc.data();
+            apikeyEl.value  = d.apiKey     || '';
+            calidEl.value   = d.calendarId || '';
+            if (d.syncInterval && intervalEl) {
+                const opt = [...intervalEl.options].find(o => o.value === String(d.syncInterval));
+                if (opt) opt.selected = true;
+            }
+        }
+        if (cocEl) {
+            cocEl.value = (portalDoc.exists && portalDoc.data().cocAgreementText)
+                ? portalDoc.data().cocAgreementText
+                : DEFAULT_COC_AGREEMENT_ADMIN;
+        }
+    } catch(err) { flash('error', 'Could not load settings: ' + err.message); }
+}
+
+async function saveCocText() {
+    const text  = (document.getElementById('set-coc-text').value || '').trim();
+    const msgEl = document.getElementById('coc-settings-msg');
+    try {
+        await db.collection('settings').doc('portal').set({ cocAgreementText: text }, { merge: true });
+        msgEl.className = 'alert alert-ok';
+        msgEl.textContent = 'Agreement text saved.';
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 3000);
+    } catch(err) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Could not save: ' + err.message;
+        msgEl.classList.remove('hidden');
+    }
+}
+
+async function saveSettings(e) {
+    e.preventDefault();
+    const apiKey       = document.getElementById('set-apikey').value.trim();
+    const calendarId   = document.getElementById('set-calid').value.trim();
+    const syncInterval = document.getElementById('set-interval').value;
+    const msgEl                = document.getElementById('settings-msg');
+
+    if (!apiKey || !calendarId) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'API Key and Calendar ID are required.';
+        msgEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        await db.collection('settings').doc('teamup').set({
+            apiKey, calendarId, syncInterval
+        }, { merge: true });
+        msgEl.className = 'alert alert-ok';
+        msgEl.textContent = 'Settings saved.';
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 3000);
+    } catch(err) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Save failed: ' + err.message;
+        msgEl.classList.remove('hidden');
+    }
+}
+
+async function testTeamUp() {
+    const apiKey     = document.getElementById('set-apikey').value.trim();
+    const calendarId = document.getElementById('set-calid').value.trim();
+    const msgEl      = document.getElementById('settings-msg');
+
+    if (!apiKey || !calendarId) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Enter API Key and Calendar ID first.';
+        msgEl.classList.remove('hidden');
+        return;
+    }
+
+    msgEl.className = 'alert alert-info';
+    msgEl.innerHTML = '<span class="spinner"></span> Testing…';
+    msgEl.classList.remove('hidden');
+
+    try {
+        const count = await TeamUp.testConnection(apiKey, calendarId);
+        msgEl.className = 'alert alert-ok';
+        msgEl.textContent = `Connection successful — ${count} subcalendar(s) found.`;
+    } catch(err) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Connection failed: ' + err.message;
+    }
+}
+
+// ============================================================
+// JOB STATUS MANAGEMENT
+// ============================================================
+const BUILT_IN_STATUSES = [
+    { val: 'in_progress',             label: 'In Progress',                                        color: '#94A3B8', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'completed_collected',     label: 'Completed — Collected — Ready For Inspection',       color: '#22C55E', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_not_collected', label: 'Completed — Not Collected — Ready For Inspection',   color: '#22C55E', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Reason not collected (required)',     notePlaceholder: 'e.g. Customer not home, will follow up…',  countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_partial',       label: 'Complete — Partial Payment Collected',               color: '#60A5FA', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Partial payment details (required)',  notePlaceholder: 'e.g. $500 cash, balance to be collected…', countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'not_complete_multiday',   label: 'Not Complete — Multiday',                           color: '#F59E0B', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'not_complete',            label: 'Not Complete',                                       color: '#EF4444', requiresSignatures: false, requiresNote: true,  noteLabel: 'Reason (required)',                   notePlaceholder: 'Describe why the job is not complete…',    countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'complete_need_service',   label: 'Complete — Need Service',                            color: '#EF4444', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: false, showInService: true,  isBuiltIn: true },
+];
+
+let _statusList = [];
+
+async function loadStatusList() {
+    const el = document.getElementById('status-list');
+    if (!el) return;
+    try {
+        const snap = await db.collection('settings').doc('portal').get();
+        _statusList = (snap.exists && Array.isArray(snap.data().statuses)) ? snap.data().statuses : [];
+        const seedWrap = document.getElementById('status-seed-wrap');
+        if (_statusList.length === 0) {
+            el.innerHTML = '<p class="text-sm text-muted">No statuses configured. Seed built-in defaults to get started.</p>';
+            if (seedWrap) seedWrap.classList.remove('hidden');
+            return;
+        }
+        if (seedWrap) seedWrap.classList.add('hidden');
+        el.innerHTML = _statusList.map((s, i) => {
+            const flags = [
+                s.requiresSignatures ? '<span class="badge badge-info" style="font-size:.65rem">Req. Sig</span>' : '',
+                s.requiresNote       ? '<span class="badge badge-pending" style="font-size:.65rem">Req. Note</span>' : '',
+                s.showInFinance      ? '<span class="badge badge-active" style="font-size:.65rem">Finance</span>' : '',
+                s.showInService      ? '<span class="badge badge-active" style="font-size:.65rem">Service</span>' : '',
+                s.countsAsComplete   ? '<span class="badge badge-info" style="font-size:.65rem">Completes Job</span>' : '',
+            ].filter(Boolean).join(' ');
+            return `<div style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;border-bottom:1px solid var(--hairline)">
+                <span style="width:14px;height:14px;border-radius:50%;background:${esc(s.color)};flex-shrink:0"></span>
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:.875rem">${esc(s.label)}</div>
+                    <div style="margin-top:.25rem;display:flex;gap:.3rem;flex-wrap:wrap">${flags}</div>
+                </div>
+                <div style="display:flex;gap:.4rem;flex-shrink:0">
+                    <button class="btn btn-sm btn-secondary" onclick="openStatusModal(${i})">Edit</button>
+                    ${s.isBuiltIn ? '<button class="btn btn-sm btn-secondary" disabled title="Built-in status">Delete</button>' : `<button class="btn btn-sm btn-danger" onclick="deleteStatus(${i})">Delete</button>`}
+                </div>
+            </div>`;
+        }).join('');
+    } catch(err) { if (el) el.innerHTML = `<p class="text-sm text-muted">Could not load statuses: ${esc(err.message)}</p>`; }
+}
+
+function openStatusModal(editIdx) {
+    const s = editIdx !== undefined ? _statusList[editIdx] : null;
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:520px">
+                <div class="modal-header">
+                    <h3>${s ? 'Edit Status' : 'Add Status'}</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Label *</label>
+                        <input class="form-input" id="sm-label" value="${s ? esc(s.label) : ''}" placeholder="e.g. Completed — Partial Payment">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Color</label>
+                        <input type="color" id="sm-color" value="${s ? esc(s.color) : '#22C55E'}" style="width:60px;height:36px;border:none;background:none;cursor:pointer;padding:0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label mb-2">Flags</label>
+                        <div style="display:flex;flex-direction:column;gap:.5rem">
+                            <label style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;cursor:pointer">
+                                <input type="checkbox" id="sm-req-sig" ${s?.requiresSignatures ? 'checked' : ''}> Requires Signatures (locks until walkthrough &amp; COC signed)
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;cursor:pointer">
+                                <input type="checkbox" id="sm-counts" ${s?.countsAsComplete ? 'checked' : ''}> Counts as Complete (sets completedAt on job record)
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;cursor:pointer">
+                                <input type="checkbox" id="sm-finance" ${s?.showInFinance ? 'checked' : ''}> Show in Finance Queue
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;cursor:pointer">
+                                <input type="checkbox" id="sm-service" ${s?.showInService ? 'checked' : ''}> Show in Service Queue
+                            </label>
+                            <label style="display:flex;align-items:center;gap:.6rem;font-size:.875rem;cursor:pointer">
+                                <input type="checkbox" id="sm-req-note" onchange="document.getElementById('sm-note-fields').classList.toggle('hidden',!this.checked)" ${s?.requiresNote ? 'checked' : ''}> Requires Note from Installer
+                            </label>
+                        </div>
+                    </div>
+                    <div id="sm-note-fields" class="${s?.requiresNote ? '' : 'hidden'}">
+                        <div class="form-group">
+                            <label class="form-label">Note Label</label>
+                            <input class="form-input" id="sm-note-label" value="${s ? esc(s.noteLabel) : ''}" placeholder="e.g. Reason (required)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Note Placeholder</label>
+                            <input class="form-input" id="sm-note-ph" value="${s ? esc(s.notePlaceholder) : ''}" placeholder="e.g. Describe why…">
+                        </div>
+                    </div>
+                    <div id="sm-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveStatus(${editIdx !== undefined ? editIdx : 'undefined'})">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveStatus(editIdx) {
+    const label = document.getElementById('sm-label').value.trim();
+    const errEl = document.getElementById('sm-error');
+    if (!label) { errEl.textContent = 'Label is required.'; errEl.classList.remove('hidden'); return; }
+    const requiresNote = document.getElementById('sm-req-note').checked;
+    const status = {
+        label,
+        color:             document.getElementById('sm-color').value,
+        requiresSignatures: document.getElementById('sm-req-sig').checked,
+        requiresNote,
+        noteLabel:         requiresNote ? (document.getElementById('sm-note-label').value.trim() || 'Note (required)') : '',
+        notePlaceholder:   requiresNote ? (document.getElementById('sm-note-ph').value.trim() || '') : '',
+        countsAsComplete:  document.getElementById('sm-counts').checked,
+        showInFinance:     document.getElementById('sm-finance').checked,
+        showInService:     document.getElementById('sm-service').checked,
+    };
+    if (editIdx !== undefined && editIdx < _statusList.length) {
+        // Preserve immutable fields
+        status.val      = _statusList[editIdx].val;
+        status.isBuiltIn = _statusList[editIdx].isBuiltIn || false;
+        _statusList[editIdx] = status;
+    } else {
+        // Auto-generate val from label
+        status.val      = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        status.isBuiltIn = false;
+        _statusList.push(status);
+    }
+    try {
+        await db.collection('settings').doc('portal').set({ statuses: _statusList }, { merge: true });
+        closeModal();
+        flash('ok', 'Status saved.');
+        await loadStatusList();
+    } catch(err) { errEl.textContent = 'Could not save: ' + err.message; errEl.classList.remove('hidden'); }
+}
+
+async function deleteStatus(idx) {
+    if (_statusList[idx]?.isBuiltIn) return;
+    if (!confirm(`Delete status "${_statusList[idx]?.label}"?`)) return;
+    _statusList.splice(idx, 1);
+    try {
+        await db.collection('settings').doc('portal').set({ statuses: _statusList }, { merge: true });
+        flash('ok', 'Status deleted.');
+        await loadStatusList();
+    } catch(err) { flash('error', 'Could not delete: ' + err.message); }
+}
+
+async function seedBuiltInStatuses() {
+    if (!confirm('This will overwrite any existing status list with the 7 built-in defaults. Continue?')) return;
+    try {
+        await db.collection('settings').doc('portal').set({ statuses: BUILT_IN_STATUSES }, { merge: true });
+        flash('ok', 'Built-in statuses seeded.');
+        await loadStatusList();
+    } catch(err) { flash('error', 'Could not seed: ' + err.message); }
+}
+
+// ============================================================
+// Photo Requirements
+const OPENING_PHOTO_DEFAULTS = [
+    'Before Install', 'Bucking', 'Sealant', 'Fasteners', 'Final Inside', 'Final Outside'
+];
+
+async function loadPhotoReqs() {
+    const el = document.getElementById('photo-reqs-list');
+    if (!el) return;
+    try {
+        let snap;
+        try { snap = await db.collection('photo_requirements').orderBy('order').get(); }
+        catch(e) { snap = await db.collection('photo_requirements').get(); }
+
+        let reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Seed default opening photos if none exist yet
+        if (!reqs.some(r => (r.category || 'opening') === 'opening')) {
+            const batch = db.batch();
+            OPENING_PHOTO_DEFAULTS.forEach((name, i) => {
+                batch.set(db.collection('photo_requirements').doc(), {
+                    name, description: '', category: 'opening',
+                    appliesTo: ['all'], required: true, allowMultiple: false, order: i
+                });
+            });
+            await batch.commit();
+            try { snap = await db.collection('photo_requirements').orderBy('order').get(); }
+            catch(e) { snap = await db.collection('photo_requirements').get(); }
+            reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        renderPhotoReqList(reqs);
+    } catch(err) {
+        try {
+            const snap = await db.collection('photo_requirements').get();
+            renderPhotoReqList(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch(e) { el.innerHTML = '<p class="text-muted text-sm">Could not load requirements.</p>'; }
+    }
+}
+
+function renderPhotoReqList(reqs) {
+    const el = document.getElementById('photo-reqs-list');
+    if (!el) return;
+    if (reqs.length === 0) {
+        el.innerHTML = '<p class="text-muted text-sm">No photo requirements configured yet. Add one above.</p>';
+        return;
+    }
+
+    const startReqs   = reqs.filter(r => (r.category || 'opening') === 'start');
+    const openingReqs = reqs.filter(r => (r.category || 'opening') === 'opening');
+
+    function reqCard(r) {
+        const meta = r.category === 'start'
+            ? `${r.allowMultiple ? 'Multiple allowed' : 'Single capture'} — ${r.required ? 'Required' : 'Optional'}`
+            : `${r.required ? 'Required' : 'Optional'} — Applies to: ${(r.appliesTo || ['all']).join(', ')}`;
+        return `
+        <div class="card card-sm mb-2 flex justify-between items-center">
+            <div>
+                <div class="font-medium text-sm">${esc(r.name)}</div>
+                <div class="text-xs text-muted">${esc(r.description || '')} — ${meta}</div>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-sm btn-secondary" onclick="editPhotoReq('${r.id}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deletePhotoReq('${r.id}')">Delete</button>
+            </div>
+        </div>`;
+    }
+
+    let html = '';
+    if (startReqs.length) {
+        html += `<div class="text-xs text-muted font-medium mb-1" style="text-transform:uppercase;letter-spacing:.06em">Start Photos</div>`;
+        html += startReqs.map(reqCard).join('');
+    }
+    if (openingReqs.length) {
+        if (startReqs.length) html += `<div style="margin-top:1rem"></div>`;
+        html += `<div class="text-xs text-muted font-medium mb-1" style="text-transform:uppercase;letter-spacing:.06em">Per-Opening Photos</div>`;
+        html += openingReqs.map(reqCard).join('');
+    }
+    el.innerHTML = html;
+}
+
+function addPhotoReq() { openPhotoReqModal(null); }
+function editPhotoReq(id) {
+    db.collection('photo_requirements').doc(id).get().then(doc => {
+        if (doc.exists) openPhotoReqModal({ id: doc.id, ...doc.data() });
+    });
+}
+
+function openPhotoReqModal(req) {
+    const isStart     = (req?.category || 'opening') === 'start';
+    const multiCheck  = req?.allowMultiple ? 'checked' : '';
+    const reqCheck    = (!req || req.required !== false) ? 'checked' : '';
+
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>${req ? 'Edit' : 'Add'} Photo Requirement</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Photo Type</label>
+                        <div style="display:flex;gap:.5rem">
+                            <button id="pr-type-opening" class="btn btn-sm ${isStart ? 'btn-secondary' : 'btn-primary'}"
+                                    onclick="prSetType('opening')">Per-Opening Photo</button>
+                            <button id="pr-type-start" class="btn btn-sm ${isStart ? 'btn-primary' : 'btn-secondary'}"
+                                    onclick="prSetType('start')">Start Photo</button>
+                        </div>
+                        <input type="hidden" id="pr-category" value="${isStart ? 'start' : 'opening'}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input class="form-input" id="pr-name" value="${req ? esc(req.name) : ''}" placeholder="e.g. Before Install">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input class="form-input" id="pr-desc" value="${req ? esc(req.description||'') : ''}" placeholder="Brief description for installers">
+                    </div>
+                    <div class="form-group" id="pr-applies-group" style="${isStart ? 'display:none' : ''}">
+                        <label class="form-label">Applies To</label>
+                        <select class="form-input" id="pr-applies">
+                            <option value="all"    ${(!req||req.appliesTo?.includes('all'))?'selected':''}>All openings</option>
+                            <option value="window" ${(req?.appliesTo?.includes('window')&&!req.appliesTo?.includes('all'))?'selected':''}>Windows only</option>
+                            <option value="door"   ${(req?.appliesTo?.includes('door')&&!req.appliesTo?.includes('all'))?'selected':''}>Doors only</option>
+                            <option value="sgd"    ${(req?.appliesTo?.includes('sgd')&&!req.appliesTo?.includes('all'))?'selected':''}>Sliding glass doors only</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="pr-multi-group" style="${isStart ? '' : 'display:none'}">
+                        <label class="form-label">
+                            <input type="checkbox" id="pr-multi" ${multiCheck}> Allow multiple captures (e.g. photograph all sides)
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="pr-required" ${reqCheck}> Required
+                        </label>
+                    </div>
+                    <div id="pr-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="savePhotoReq('${req?.id||''}')">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function prSetType(type) {
+    document.getElementById('pr-category').value = type;
+    document.getElementById('pr-type-opening').className = `btn btn-sm ${type === 'opening' ? 'btn-primary' : 'btn-secondary'}`;
+    document.getElementById('pr-type-start').className   = `btn btn-sm ${type === 'start'   ? 'btn-primary' : 'btn-secondary'}`;
+    document.getElementById('pr-applies-group').style.display = type === 'opening' ? '' : 'none';
+    document.getElementById('pr-multi-group').style.display   = type === 'start'   ? '' : 'none';
+}
+
+async function savePhotoReq(id) {
+    const name        = document.getElementById('pr-name').value.trim();
+    const desc        = document.getElementById('pr-desc').value.trim();
+    const category    = document.getElementById('pr-category').value;
+    const applies     = document.getElementById('pr-applies')?.value || 'all';
+    const allowMulti  = document.getElementById('pr-multi')?.checked || false;
+    const required    = document.getElementById('pr-required').checked;
+    const errEl       = document.getElementById('pr-error');
+
+    if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('hidden'); return; }
+
+    const data = {
+        name,
+        description: desc,
+        category,
+        required,
+        ...(category === 'opening'
+            ? { appliesTo: [applies], allowMultiple: false }
+            : { appliesTo: ['all'],   allowMultiple: allowMulti })
+    };
+
+    try {
+        if (id) {
+            await db.collection('photo_requirements').doc(id).update(data);
+        } else {
+            const snap = await db.collection('photo_requirements').get();
+            await db.collection('photo_requirements').add({ ...data, order: snap.size });
+        }
+        closeModal();
+        await loadPhotoReqs();
+        flash('ok', 'Photo requirement saved.');
+    } catch(err) {
+        errEl.textContent = 'Save failed: ' + err.message;
+        errEl.classList.remove('hidden');
+    }
+}
+
+async function deletePhotoReq(id) {
+    if (!confirm('Delete this photo requirement?')) return;
+    try {
+        await db.collection('photo_requirements').doc(id).delete();
+        await loadPhotoReqs();
+        flash('ok', 'Requirement deleted.');
+    } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// DEFECT TYPES (admin configurable)
+// ============================================================
+const DEFECT_TYPE_DEFAULTS = [
+    'Measure Issue', 'Manufacturer Defect', 'Shipping Issue',
+    'Damage', 'Missing Material', 'Other'
+];
+
+async function loadDefectTypes() {
+    const el = document.getElementById('defect-types-list');
+    if (!el) return;
+    try {
+        let snap;
+        try { snap = await db.collection('defect_types').orderBy('order').get(); }
+        catch(e) { snap = await db.collection('defect_types').get(); }
+
+        let types = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                             .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        // Seed defaults if empty
+        if (types.length === 0) {
+            const batch = db.batch();
+            DEFECT_TYPE_DEFAULTS.forEach((name, i) => {
+                batch.set(db.collection('defect_types').doc(), { name, order: i });
+            });
+            await batch.commit();
+            const snap2 = await db.collection('defect_types').get();
+            types = snap2.docs.map(d => ({ id: d.id, ...d.data() }))
+                               .sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+
+        renderDefectTypeList(types);
+    } catch(err) {
+        if (el) el.innerHTML = '<p class="text-muted text-sm">Could not load defect types.</p>';
+    }
+}
+
+function renderDefectTypeList(types) {
+    const el = document.getElementById('defect-types-list');
+    if (!el) return;
+    if (!types.length) {
+        el.innerHTML = '<p class="text-muted text-sm">No defect types configured.</p>';
+        return;
+    }
+    el.innerHTML = types.map(t => `
+        <div class="card card-sm mb-2 flex justify-between items-center">
+            <div class="font-medium text-sm">${esc(t.name)}</div>
+            <div class="flex gap-2">
+                <button class="btn btn-sm btn-secondary" onclick="editDefectType('${t.id}','${esc(t.name).replace(/'/g, "\\'")}')">Edit</button>
+                <button class="btn btn-sm btn-danger"    onclick="deleteDefectType('${t.id}')">Delete</button>
+            </div>
+        </div>`).join('');
+}
+
+function addDefectType()            { openDefectTypeModal('', ''); }
+function editDefectType(id, name)   { openDefectTypeModal(id, name); }
+
+function openDefectTypeModal(id, name) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>${id ? 'Edit' : 'Add'} Defect Type</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input class="form-input" id="dt-name" value="${esc(name)}" placeholder="e.g. Measure Issue">
+                    </div>
+                    <div id="dt-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveDefectType('${esc(id)}')">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveDefectType(id) {
+    const name  = (document.getElementById('dt-name')?.value || '').trim();
+    const errEl = document.getElementById('dt-error');
+    if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('hidden'); return; }
+    try {
+        if (id) {
+            await db.collection('defect_types').doc(id).update({ name });
+        } else {
+            const snap = await db.collection('defect_types').get();
+            await db.collection('defect_types').add({ name, order: snap.size });
+        }
+        closeModal();
+        await loadDefectTypes();
+        flash('ok', 'Defect type saved.');
+    } catch(err) {
+        errEl.textContent = 'Save failed: ' + err.message;
+        errEl.classList.remove('hidden');
+    }
+}
+
+async function deleteDefectType(id) {
+    if (!confirm('Delete this defect type?')) return;
+    try {
+        await db.collection('defect_types').doc(id).delete();
+        await loadDefectTypes();
+        flash('ok', 'Defect type deleted.');
+    } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// TEAMUP STATUS SECTION
+// ============================================================
+async function renderTeamUpStatus() {
+    const el = document.getElementById('section-teamup');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2>TeamUp Status</h2>
+                <p class="text-muted text-sm">View sync status and trigger a manual sync.</p>
+            </div>
+            <button class="btn btn-primary" onclick="runSync()">⟳ Sync Now</button>
+        </div>
+
+        <div class="grid-3 mb-6">
+            <div class="stat-card">
+                <div class="stat-label">Last Sync</div>
+                <div class="text-sm" id="tu-last-sync">Loading…</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Jobs in Database</div>
+                <div class="stat-value" id="tu-job-count"><span class="spinner"></span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Installers (TeamUp)</div>
+                <div class="stat-value" id="tu-inst-count"><span class="spinner"></span></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="mb-4">Sync Log</h3>
+            <div id="tu-sync-log" class="text-sm text-muted">Press "Sync Now" to run a sync and see the log here.</div>
+        </div>`;
+
+    try {
+        const settings = await db.collection('settings').doc('teamup').get();
+        const lastSyncEl = document.getElementById('tu-last-sync');
+        if (settings.exists && settings.data().lastSyncedAt) {
+            lastSyncEl.className = 'text-sm text-ok';
+            lastSyncEl.textContent = settings.data().lastSyncedAt.toDate().toLocaleString();
+        } else {
+            lastSyncEl.className = 'text-sm text-warn';
+            lastSyncEl.textContent = 'Never synced';
+        }
+        const d = settings.exists ? settings.data() : {};
+        document.getElementById('tu-job-count').textContent  = d.cachedJobCount ?? '—';
+        document.getElementById('tu-inst-count').textContent = d.cachedInstallerCount ?? '—';
+    } catch(err) { flash('error', 'Could not load status: ' + err.message); }
+}
+
+// ============================================================
+// MANAGEMENT SECTION
+// ============================================================
+function renderManagement() {
+    // Merged into System (Settings) tab — redirect there
+    switchSection('settings');
+}
+
+
+async function loadMgmtStats() {
+    try {
+        const settings = await db.collection('settings').doc('teamup').get();
+        const lastSyncEl = document.getElementById('mgmt-last-sync');
+        const jc = document.getElementById('mgmt-job-count');
+        const ic = document.getElementById('mgmt-inst-count');
+        if (lastSyncEl) {
+            if (settings.exists && settings.data().lastSyncedAt) {
+                lastSyncEl.className = 'text-sm text-ok';
+                lastSyncEl.textContent = settings.data().lastSyncedAt.toDate().toLocaleString();
+            } else {
+                lastSyncEl.className = 'text-sm text-warn';
+                lastSyncEl.textContent = 'Never synced';
+            }
+        }
+        if (settings.exists) {
+            const d = settings.data();
+            if (jc) jc.textContent = d.cachedJobCount ?? '—';
+            if (ic) ic.textContent = d.cachedInstallerCount ?? '—';
+        } else {
+            if (jc) jc.textContent = '—';
+            if (ic) ic.textContent = '—';
+        }
+    } catch(err) {
+        const jc = document.getElementById('mgmt-job-count');
+        const ic = document.getElementById('mgmt-inst-count');
+        const ls = document.getElementById('mgmt-last-sync');
+        if (jc) jc.textContent = '—';
+        if (ic) ic.textContent = '—';
+        if (ls) ls.textContent = 'Error loading';
+    }
+}
+
+function confirmDeleteCollection(collection, title, description) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:420px">
+                <div class="modal-header">
+                    <h3 style="color:var(--error)">${title}</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">${description}</p>
+                    <p class="mb-4 text-sm text-muted">Type <strong>DELETE</strong> below to confirm.</p>
+                    <input class="form-input" id="delete-confirm-input" type="text" placeholder="DELETE" autocomplete="off">
+                    <div id="delete-error" class="hidden alert alert-error mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-danger" onclick="executeDeleteCollection('${collection}','${title}')">Delete</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function confirmFullReset() {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:420px">
+                <div class="modal-header">
+                    <h3 style="color:var(--error)">Full Reset</h3>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Deletes <strong>installers</strong>, <strong>jobs</strong>, and <strong>job_records</strong>. Settings and photo requirements are preserved.</p>
+                    <p class="mb-4 text-sm text-muted">Type <strong>DELETE</strong> below to confirm.</p>
+                    <input class="form-input" id="delete-confirm-input" type="text" placeholder="DELETE" autocomplete="off">
+                    <div id="delete-error" class="hidden alert alert-error mt-3"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-danger" onclick="executeFullReset()">Full Reset</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function executeDeleteCollection(collection, title) {
+    const input = document.getElementById('delete-confirm-input');
+    const errEl = document.getElementById('delete-error');
+    if (input.value.trim() !== 'DELETE') {
+        errEl.textContent = 'You must type DELETE exactly to confirm.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    closeModal();
+    const log = mgmtLog();
+    log(`Deleting ${collection}…`);
+    try {
+        const count = await deleteCollection(collection, log);
+        log(`Done — ${count} documents deleted.`);
+        flash('ok', `${title} complete.`);
+        loadMgmtStats();
+    } catch(err) {
+        log(`Error: ${err.message}`);
+        flash('error', `Delete failed: ${err.message}`);
+    }
+}
+
+async function executeFullReset() {
+    const input = document.getElementById('delete-confirm-input');
+    const errEl = document.getElementById('delete-error');
+    if (input.value.trim() !== 'DELETE') {
+        errEl.textContent = 'You must type DELETE exactly to confirm.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    closeModal();
+    const log = mgmtLog();
+    log('Starting full reset…');
+    try {
+        for (const col of ['installers','jobs','job_records']) {
+            log(`Deleting ${col}…`);
+            const count = await deleteCollection(col, log);
+            log(`  → ${count} documents deleted`);
+        }
+        log('Full reset complete.');
+        flash('ok', 'Full reset complete. Run a TeamUp sync to repopulate.');
+        loadMgmtStats();
+    } catch(err) {
+        log(`Error: ${err.message}`);
+        flash('error', `Reset failed: ${err.message}`);
+    }
+}
+
+async function deleteCollection(collectionName, log) {
+    const snap = await db.collection(collectionName).get();
+    if (snap.empty) { if (log) log(`${collectionName}: already empty`); return 0; }
+    const batchSize = 400;
+    for (let i = 0; i < snap.docs.length; i += batchSize) {
+        const batch = db.batch();
+        snap.docs.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+    }
+    return snap.docs.length;
+}
+
+function mgmtLog() {
+    const logEl = document.getElementById('mgmt-log');
+    if (logEl) logEl.classList.remove('hidden');
+    return (msg) => {
+        if (!logEl) return;
+        logEl.innerHTML += `<div>${msg}</div>`;
+        logEl.scrollTop = logEl.scrollHeight;
+    };
+}
+
+async function seedPhotoRequirements() {
+    const defaults = [
+        { name: 'Job Site Sign',    description: 'Photograph the job site sign in place before starting', category: 'start',   allowMultiple: false, required: true,  order: 0 },
+        { name: 'Front of House',   description: 'Include the address number if visible',                  category: 'start',   allowMultiple: false, required: true,  order: 1 },
+        { name: 'Side 1',           description: 'Left side of the structure',                             category: 'start',   allowMultiple: false, required: true,  order: 2 },
+        { name: 'Side 2',           description: 'Right side of the structure',                            category: 'start',   allowMultiple: false, required: true,  order: 3 },
+        { name: 'Rear',             description: 'Back of the structure',                                  category: 'start',   allowMultiple: false, required: true,  order: 4 },
+        { name: 'Additional Sides', description: 'Any extra sides, angles, or areas (optional)',           category: 'start',   allowMultiple: true,  required: false, order: 5 },
+        { name: 'Before Install',   description: 'Opening before any work begins',                         category: 'opening', allowMultiple: false, required: true,  order: 0 },
+        { name: 'After Install',    description: 'Finished opening after install',                         category: 'opening', allowMultiple: false, required: true,  order: 1 }
+    ];
+
+    const log = mgmtLog();
+    log('Checking existing photo requirements…');
+    try {
+        const snap = await db.collection('photo_requirements').get();
+        if (!snap.empty) {
+            log(`Already have ${snap.size} requirements — skipping seed.`);
+            flash('ok', `Photo requirements already configured (${snap.size} items). No changes made.`);
+            return;
+        }
+        const batch = db.batch();
+        defaults.forEach(req => {
+            const ref = db.collection('photo_requirements').doc();
+            batch.set(ref, { ...req, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        });
+        await batch.commit();
+        log(`Seeded ${defaults.length} default photo requirements.`);
+        flash('ok', `Seeded ${defaults.length} default photo requirements.`);
+    } catch(err) {
+        log(`Error: ${err.message}`);
+        flash('error', 'Seed failed: ' + err.message);
+    }
+}
+
+// ============================================================
+// ============================================================
+// PRINT PICKER — find records for a job and open print page
+// ============================================================
+async function openPrintPicker(jobId) {
+    try {
+        const snap = await db.collection('job_records')
+            .where('jobId', '==', jobId).get();
+        if (snap.empty) { flash('warn', 'No job records found for this job yet.'); return; }
+        if (snap.size === 1) {
+            window.open('print-job.html?recordId=' + encodeURIComponent(snap.docs[0].id), '_blank');
+            return;
+        }
+        // Multiple installers — show picker
+        modalRoot.innerHTML = `
+            <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+                <div class="modal" style="max-width:380px">
+                    <div class="modal-header">
+                        <h3>Print — Select Installer</h3>
+                        <button class="modal-close" onclick="closeModal()">✕</button>
+                    </div>
+                    <div class="modal-body">
+                        ${snap.docs.map(d => {
+                            const r = d.data();
+                            return `<button class="btn btn-secondary w-full mb-2" style="text-align:left"
+                                onclick="window.open('print-job.html?recordId=${encodeURIComponent(d.id)}','_blank');closeModal()">
+                                ${esc(r.installerName || r.installerId)}
+                            </button>`;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>`;
+    } catch(err) { flash('error', 'Could not load records: ' + err.message); }
+}
+
+// ============================================================
+// JOB FINANCIALS MODAL
+// ============================================================
+function showFinancialsModal(jobId, customerName) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:400px">
+                <div class="modal-header">
+                    <h3>Payment Info — ${esc(customerName || jobId)}</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Balance Due ($)</label>
+                        <input class="form-input" type="number" id="fin-balance" min="0" step="0.01" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Payment Method</label>
+                        <select class="form-input" id="fin-method">
+                            <option value="">— Select —</option>
+                            <option value="Check">Check</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Financing">Financing</option>
+                            <option value="Credit Card">Credit Card</option>
+                        </select>
+                    </div>
+                    <div id="fin-err" class="hidden alert alert-error mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveFinancials('${jobId}')">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveFinancials(jobId) {
+    const balance = (document.getElementById('fin-balance').value || '').trim();
+    const method  = document.getElementById('fin-method').value;
+    const errEl   = document.getElementById('fin-err');
+    if (!balance || !method) {
+        errEl.textContent = 'Please enter both Balance Due and Payment Method.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    try {
+        await db.collection('jobs').doc(jobId).update({
+            'financials.balanceDue':    balance,
+            'financials.paymentMethod': method
+        });
+        closeModal();
+        flash('ok', 'Payment info saved.');
+        // Refresh whichever section is active
+        if (currentSection === 'dashboard')  renderDashboard();
+    } catch(err) {
+        const errEl = document.getElementById('fin-err');
+        if (errEl) { errEl.textContent = 'Save failed: ' + err.message; errEl.classList.remove('hidden'); }
+    }
+}
+
+// ============================================================
+// EXTRA WORK REQUEST ADMIN REVIEW
+// ============================================================
+
+async function showExtraWorkReview(requestId) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:560px">
+                <div class="modal-body text-center p-8"><span class="spinner spinner-lg"></span></div>
+            </div>
+        </div>`;
+    try {
+        const doc = await db.collection('extra_work_requests').doc(requestId).get();
+        if (!doc.exists) { flash('error','Request not found.'); modalRoot.innerHTML=''; return; }
+        const r = { id: doc.id, ...doc.data() };
+
+        const thread = (r.thread || []).map(t => `
+            <div style="padding:.4rem .75rem;border-left:3px solid ${t.by==='admin'?'var(--ok)':'var(--accent)'};margin-bottom:.5rem;font-size:.85rem">
+                <div style="font-weight:600">${t.by==='admin'?'You (Manager)':'Installer'} — ${esc(t.action)}</div>
+                ${t.amount!=null?`<div>Amount: $${t.amount}</div>`:''}
+                ${t.note?`<div style="color:var(--muted)">${esc(t.note)}</div>`:''}
+                <div style="font-size:.75rem;color:var(--muted)">${new Date(t.at).toLocaleString()}</div>
+            </div>`).join('');
+
+        const photos = (r.photos||[]).map(p =>
+            `<a href="${p.url}" target="_blank"><img src="${p.url}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;border:1px solid var(--hairline)"></a>`
+        ).join('');
+
+        const counterNote = r.status === 'counter_pending'
+            ? `<div class="mb-3" style="background:rgba(96,165,250,.1);border:1px solid var(--info);border-radius:8px;padding:.75rem">
+                   Installer counter offer: <strong>$${r.installerCounterAmount}</strong>${r.installerCounterNote?' — '+esc(r.installerCounterNote):''}
+               </div>`
+            : '';
+        const suggestedAmt = r.status === 'counter_pending' ? r.installerCounterAmount : r.amountRequested;
+
+        modalRoot.innerHTML = `
+            <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:560px">
+                <div class="modal-header">
+                    <h3>Extra Work Review</h3>
+                    <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+                    <div class="flex gap-4 mb-4 text-sm">
+                        <div style="flex:1"><span class="text-muted">Job</span><br><strong>${esc(r.customerName||r.jobNumber||r.jobId)}</strong></div>
+                        <div style="flex:1"><span class="text-muted">Installer</span><br><strong>${esc(r.installerName)}</strong></div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted text-sm mb-1">Description</div>
+                        <div style="font-weight:500">${esc(r.description)}</div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-muted text-sm mb-1">Amount Requested</div>
+                        <div style="font-weight:600;font-size:1.1rem">$${r.amountRequested}</div>
+                    </div>
+                    ${photos ? `<div class="flex gap-2 flex-wrap mb-3">${photos}</div>` : ''}
+                    ${counterNote}
+                    <div class="mb-4">${thread}</div>
+                    <div class="card mb-3" style="border-color:var(--ok)">
+                        <h4 class="mb-3" style="color:var(--ok)">Approve</h4>
+                        <div class="form-group">
+                            <label class="form-label">Amount to approve ($)</label>
+                            <input class="form-input" type="number" id="ew-approve-amt" min="1" step="1" value="${suggestedAmt||r.amountRequested}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Note to installer (optional)</label>
+                            <textarea class="form-input" id="ew-approve-note" rows="2" placeholder="Any notes…"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="adminApproveExtraWork('${requestId}')">Approve</button>
+                    </div>
+                    <div class="card" style="border-color:var(--error)">
+                        <h4 class="mb-3" style="color:var(--error)">Deny</h4>
+                        <div class="form-group">
+                            <label class="form-label">Reason (optional)</label>
+                            <textarea class="form-input" id="ew-deny-note" rows="2" placeholder="Reason for denial…"></textarea>
+                        </div>
+                        <button class="btn btn-secondary" style="border-color:var(--error);color:var(--error)" onclick="adminDenyExtraWork('${requestId}')">Deny Request</button>
+                    </div>
+                </div>
+            </div>
+            </div>`;
+    } catch(err) {
+        flash('error','Could not load request: ' + err.message);
+        modalRoot.innerHTML = '';
+    }
+}
+
+async function adminApproveExtraWork(requestId) {
+    const amtEl  = document.getElementById('ew-approve-amt');
+    const noteEl = document.getElementById('ew-approve-note');
+    const amt    = amtEl  ? parseFloat(amtEl.value) : NaN;
+    const note   = noteEl ? noteEl.value.trim() : '';
+    if (!amt || amt <= 0) { flash('error','Enter a valid approval amount.'); return; }
+    const now = new Date().toISOString();
+    try {
+        await db.collection('extra_work_requests').doc(requestId).update({
+            status:         'approved',
+            amountApproved: amt,
+            adminNote:      note,
+            updatedAt:      firebase.firestore.FieldValue.serverTimestamp(),
+            thread:         firebase.firestore.FieldValue.arrayUnion(
+                { by:'admin', action:'approved', amount:amt, note, at:now }
+            )
+        });
+        flash('ok', 'Request approved.');
+        closeModal();
+        renderDashboard();
+    } catch(err) { flash('error','Approval failed: ' + err.message); }
+}
+
+async function adminDenyExtraWork(requestId) {
+    const noteEl = document.getElementById('ew-deny-note');
+    const note   = noteEl ? noteEl.value.trim() : '';
+    const now    = new Date().toISOString();
+    try {
+        await db.collection('extra_work_requests').doc(requestId).update({
+            status:    'denied',
+            adminNote: note,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            thread:    firebase.firestore.FieldValue.arrayUnion(
+                { by:'admin', action:'denied', amount:null, note, at:now }
+            )
+        });
+        flash('ok', 'Request denied.');
+        closeModal();
+        renderDashboard();
+    } catch(err) { flash('error','Denial failed: ' + err.message); }
+}
+
+// ============================================================
+// STAFF SECTION (Management Portal Users)
+// ============================================================
+let _staffList = [];
+
+function renderStaff() {
+    switchSection('settings');
+}
+
+async function loadStaffList() {
+    const el = document.getElementById('staff-list');
+    if (!el) return;
+    try {
+        const snap = await db.collection('management_users').get();
+        _staffList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (_staffList.length === 0) {
+            el.innerHTML = '<p class="text-sm text-muted p-4">No staff accounts yet. Add one to get started.</p>';
+            return;
+        }
+        const roleLabel = r => ({ manager: 'Manager', finance: 'Finance', service: 'Service' }[r] || r);
+        el.innerHTML = `
+            <table class="data-table">
+                <thead><tr>
+                    <th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th>
+                </tr></thead>
+                <tbody>
+                    ${_staffList.map(u => `
+                        <tr>
+                            <td><strong>${esc(u.displayName)}</strong></td>
+                            <td class="text-sm">${esc(u.email)}</td>
+                            <td><span class="badge badge-info">${roleLabel(u.role)}</span></td>
+                            <td><span class="badge badge-${u.status === 'active' ? 'active' : 'inactive'}">${u.status}</span></td>
+                            <td class="flex gap-2">
+                                <button class="btn btn-sm btn-secondary" onclick="openEditStaffModal('${u.id}')">Edit Role</button>
+                                <button class="btn btn-sm btn-${u.status === 'active' ? 'danger' : 'primary'}" onclick="toggleStaffStatus('${u.id}','${u.status}')">
+                                    ${u.status === 'active' ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteStaff('${u.id}')">Delete</button>
+                            </td>
+                        </tr>`).join('')}
+                </tbody>
+            </table>`;
+    } catch(err) { el.innerHTML = `<p class="text-sm text-muted p-4">Could not load staff: ${esc(err.message)}</p>`; }
+}
+
+function openAddStaffModal() {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:420px">
+                <div class="modal-header">
+                    <h3>Add Staff Account</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info mb-4" style="font-size:.85rem">Creates a Firebase Auth account. Staff log in at management.html with email + password.</div>
+                    <div class="form-group">
+                        <label class="form-label">Display Name *</label>
+                        <input class="form-input" id="stf-name" placeholder="e.g. Sarah Finance">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input class="form-input" id="stf-email" type="email" placeholder="staff@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input class="form-input" id="stf-pw" type="password" placeholder="Min 6 characters">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role *</label>
+                        <select class="form-input" id="stf-role">
+                            <option value="finance">Finance</option>
+                            <option value="service">Service</option>
+                            <option value="manager">Manager</option>
+                        </select>
+                    </div>
+                    <div id="stf-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="stf-submit" onclick="saveNewStaff()">Create Account</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveNewStaff() {
+    const name  = document.getElementById('stf-name').value.trim();
+    const email = document.getElementById('stf-email').value.trim();
+    const pw    = document.getElementById('stf-pw').value;
+    const role  = document.getElementById('stf-role').value;
+    const errEl = document.getElementById('stf-error');
+    const btn   = document.getElementById('stf-submit');
+    errEl.classList.add('hidden');
+    if (!name || !email || !pw || pw.length < 6) {
+        errEl.textContent = 'All fields required. Password must be at least 6 characters.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Creating…';
+    try {
+        // Use Firebase REST API directly — no secondary app, admin stays signed in
+        const apiKey = window.FIREBASE_CONFIG.apiKey;
+        const resp = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password: pw, returnSecureToken: true })
+            }
+        );
+        let data = await resp.json();
+        if (!resp.ok) {
+            const msg = data.error?.message || 'Failed to create account';
+            if (msg === 'EMAIL_EXISTS') {
+                // Auth account exists but Firestore doc may be missing — try to recover
+                const recoverResp = await fetch(
+                    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email, password: pw, returnSecureToken: true }) }
+                );
+                const recoverData = await recoverResp.json();
+                if (!recoverResp.ok) {
+                    throw new Error('This email is already registered. If this is an orphaned account, delete it from the Firebase Console and try again.');
+                }
+                // Check if Firestore doc already exists
+                const existing = await db.collection('management_users').doc(recoverData.localId).get();
+                if (existing.exists) {
+                    throw new Error('This staff member already exists in the list. Try refreshing the page.');
+                }
+                data = recoverData; // use recovered account's UID
+            } else {
+                throw new Error(msg);
+            }
+        }
+        await db.collection('management_users').doc(data.localId).set({
+            uid: data.localId, email, displayName: name, role, status: 'active',
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        closeModal();
+        flash('ok', `${name} created as ${role}.`);
+        await loadStaffList();
+    } catch(err) {
+        errEl.textContent = err.message || 'Could not create account.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Create Account';
+    }
+}
+
+function openEditStaffModal(uid) {
+    const u = _staffList.find(s => s.id === uid);
+    if (!u) return;
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:380px">
+                <div class="modal-header">
+                    <h3>Edit Role — ${esc(u.displayName)}</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-input" id="stf-edit-role">
+                            <option value="finance" ${u.role==='finance'?'selected':''}>Finance</option>
+                            <option value="service" ${u.role==='service'?'selected':''}>Service</option>
+                            <option value="manager" ${u.role==='manager'?'selected':''}>Manager</option>
+                        </select>
+                    </div>
+                    <div id="stf-edit-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveStaffRole('${uid}')">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveStaffRole(uid) {
+    const role  = document.getElementById('stf-edit-role').value;
+    const errEl = document.getElementById('stf-edit-error');
+    try {
+        await db.collection('management_users').doc(uid).update({ role });
+        closeModal();
+        flash('ok', 'Role updated.');
+        await loadStaffList();
+    } catch(err) {
+        errEl.textContent = 'Could not save: ' + err.message;
+        errEl.classList.remove('hidden');
+    }
+}
+
+async function toggleStaffStatus(uid, current) {
+    const next = current === 'active' ? 'inactive' : 'active';
+    if (!confirm(`Set this staff member to ${next}?`)) return;
+    try {
+        await db.collection('management_users').doc(uid).update({ status: next });
+        flash('ok', `Status set to ${next}.`);
+        await loadStaffList();
+    } catch(err) { flash('error', 'Update failed: ' + err.message); }
+}
+
+async function deleteStaff(uid) {
+    const u = _staffList.find(s => s.id === uid);
+    if (!confirm(`Delete ${u?.displayName || 'this staff member'}? Their Firebase Auth account remains but they cannot log in.`)) return;
+    try {
+        await db.collection('management_users').doc(uid).delete();
+        flash('ok', 'Staff member deleted.');
+        await loadStaffList();
+    } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// MODAL UTILITIES
+// ============================================================
+function closeModal() { modalRoot.innerHTML = ''; }
+
+// ============================================================
+// SHARED UTILITIES
+// ============================================================
+function copyPortalLink() {
+    const url = 'https://installer-portal-6000.web.app/installer.html';
+    navigator.clipboard.writeText(url).then(() => flash('ok', 'Portal link copied to clipboard.'));
+}
+
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+
+async function logChange(installerId, changeType, data) {
+    try {
+        await db.collection('installer_history').add({
+            installerId,
+            changeType,
+            data,
+            changedBy: auth.currentUser ? auth.currentUser.email : 'system',
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch(e) { console.warn('Could not write audit log:', e); }
+}
+</script>
+</body>
+</html>

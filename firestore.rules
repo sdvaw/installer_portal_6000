@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2';
+    }
+
+    function isManagementUser() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/management_users/$(request.auth.uid));
+    }
+
+    // --------------------------------------------------------
+    // SETTINGS — admin full access
+    //            management users can read portal doc (statuses, COC text)
+    //            but NOT teamup doc (contains API keys)
+    // --------------------------------------------------------
+    match /settings/{doc} {
+      allow read, write: if isAdmin();
+      allow read: if isManagementUser() && doc == 'portal';
+    }
+
+    // --------------------------------------------------------
+    // INSTALLERS — admin: full access
+    //              installer: read own record, set firebaseUid on first login
+    // --------------------------------------------------------
+    match /installers/{installerId} {
+      allow read, write: if isAdmin();
+      // Installer can read their own record (matched by uid or email)
+      allow read: if isSignedIn() && (
+        resource.data.firebaseUid == request.auth.uid ||
+        resource.data.email == request.auth.token.email
+      );
+      // Management users can read all installer records (for reports)
+      allow read: if isManagementUser();
+      // Installer can set firebaseUid + lastLogin on first sign-in, and signatureUrl any time
+      allow update: if isSignedIn()
+        && (resource.data.firebaseUid == request.auth.uid
+            || resource.data.email == request.auth.token.email)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['firebaseUid', 'lastLogin', 'signatureUrl']);
+    }
+
+    // --------------------------------------------------------
+    // JOBS — cached from TeamUp (read-only source)
+    //        admin: read + write (sync process writes here)
+    //        installer: read only (to see their schedule)
+    // --------------------------------------------------------
+    match /jobs/{jobId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // JOB RECORDS — written by installers during jobs
+    //               any authenticated user can read + write
+    //               (installers only see their own via the app)
+    // --------------------------------------------------------
+    match /job_records/{recordId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --------------------------------------------------------
+    // PHOTO REQUIREMENTS — admin configures, installers read
+    // --------------------------------------------------------
+    match /photo_requirements/{reqId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // BLACKOUT REQUESTS — installers submit, admin reads all
+    // --------------------------------------------------------
+    match /blackout_requests/{reqId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn()
+        && resource.data.installerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.installerId == request.auth.uid;
+    }
+
+    // --------------------------------------------------------
+    // EXTRA WORK REQUESTS — installers submit, admin reviews
+    //                        mirrors job_records pattern
+    // --------------------------------------------------------
+    match /extra_work_requests/{reqId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --------------------------------------------------------
+    // DEFECT TYPES — admin configures, installers read
+    // --------------------------------------------------------
+    match /defect_types/{typeId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // INSTALLER HISTORY — audit log, admin only
+    // --------------------------------------------------------
+    match /installer_history/{histId} {
+      allow read, write: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // MANAGEMENT USERS — admin manages, user reads own record
+    // --------------------------------------------------------
+    match /management_users/{uid} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --------------------------------------------------------
+    // MANAGEMENT ACTIONS — management users create/read check-offs
+    // --------------------------------------------------------
+    match /management_actions/{id} {
+      allow read, write: if isAdmin();
+      allow read: if isManagementUser();
+      allow create: if isManagementUser()
+        && request.resource.data.acknowledgedBy == request.auth.uid;
+    }
+
+    // --------------------------------------------------------
+    // REMINDERS — service follow-up reminders, shared team-wide
+    // --------------------------------------------------------
+    match /reminders/{remId} {
+      allow read, write: if isAdmin();
+      allow read: if isManagementUser();
+      allow create: if isManagementUser()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isManagementUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+    }
+
+  }
+}

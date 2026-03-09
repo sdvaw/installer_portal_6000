@@ -1,0 +1,4175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0B0F14">
+  <title>Armor Vue — Installer Portal</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <style>
+    /* Installer portal overrides */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .bottom-nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: .6rem .5rem;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: .65rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color var(--dur);
+    }
+    .bottom-nav-btn .icon { font-size: 1.3rem; line-height: 1; }
+    .bottom-nav-btn.active { color: var(--accent); }
+
+    .installer-page { display: none; padding: 1rem; padding-bottom: 80px; max-width: 640px; margin: 0 auto; }
+    .installer-page.active { display: block; }
+
+    /* Job card on schedule */
+    .schedule-job-card {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: 1rem;
+      margin-bottom: .6rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color var(--dur);
+    }
+    .schedule-job-card:active { border-color: var(--accent); }
+    .schedule-job-card .job-num  { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    .schedule-job-card .job-name { font-weight: 600; font-size: 1rem; margin: .15rem 0; }
+    .schedule-job-card .job-meta { font-size: .8rem; color: var(--muted); }
+
+    /* Day header */
+    .day-selected-label {
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      padding: .5rem 0 .5rem;
+      border-bottom: 1px solid var(--hairline);
+      margin-bottom: .75rem;
+    }
+    .no-jobs-day { font-size: .85rem; color: var(--disabled); padding: .5rem 0 .25rem; }
+
+    /* Horizontal day strip */
+    .week-strip {
+      display: flex;
+      gap: .35rem;
+      margin-bottom: 1.1rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .week-strip::-webkit-scrollbar { display: none; }
+    .day-chip {
+      flex: 1;
+      min-width: 42px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      padding: .55rem .2rem .45rem;
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all var(--dur);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .day-chip.today  { border-color: var(--accent); color: var(--accent); }
+    .day-chip.active { background: var(--accent); border-color: var(--accent); color: #000 !important; }
+    .day-chip-name { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .day-chip-num  { font-size: 1.05rem; font-weight: 700; line-height: 1.1; color: var(--text); }
+    .day-chip.active .day-chip-num { color: #000; }
+    .day-chip-count { font-size: .7rem; font-weight: 600; min-height: 14px; }
+
+    /* Week nav */
+    .week-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      gap: .5rem;
+    }
+    .week-nav h2 { font-size: 1rem; text-align: center; flex: 1; }
+
+    /* Job detail */
+    .detail-back {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      color: var(--accent);
+      font-size: .875rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .detail-section {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: 1rem;
+      margin-bottom: .75rem;
+    }
+    .detail-section h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .6rem; }
+    .detail-row { display: flex; gap: .5rem; font-size: .875rem; margin-bottom: .4rem; }
+    .detail-row .lbl { color: var(--muted); min-width: 80px; flex-shrink: 0; }
+    .detail-notes { font-size: .875rem; line-height: 1.6; white-space: pre-wrap; }
+
+    /* Status bar */
+    .status-bar {
+      position: fixed;
+      bottom: 60px; left: 0; right: 0;
+      background: var(--bg);
+      border-top: 1px solid var(--hairline);
+      padding: .75rem 1rem;
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      z-index: 99;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .status-bar .current-status { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+
+    /* Status color on job card */
+    .s-not_started             { color: var(--muted); }
+    .s-in_progress             { color: var(--warn); }
+    .s-completed               { color: var(--ok); }
+    .s-completed_collected     { color: var(--ok); }
+    .s-completed_not_collected { color: var(--ok); }
+    .s-not_complete_multiday   { color: var(--warn); }
+    .s-not_complete            { color: var(--bad); }
+    .s-complete_need_service   { color: var(--bad); }
+    .s-needs_return            { color: var(--bad); }
+    .s-on_hold                 { color: var(--info); }
+
+    /* Status picker bottom sheet */
+    .status-option {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .75rem; border-radius: .5rem; cursor: pointer;
+        border: 2px solid var(--hairline); margin-bottom: .5rem;
+        background: var(--surface); transition: border-color .15s;
+    }
+    .status-option.active { border-color: var(--accent); background: var(--accent-soft); }
+    .status-option-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-picker-sheet {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 9999;
+        background: var(--bg); border-radius: 1rem 1rem 0 0;
+        padding: 1.25rem 1rem 2.5rem; max-width: 640px; margin: 0 auto;
+        max-height: 85vh; overflow-y: auto;
+    }
+
+    /* ── Modal overlay ──────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-sheet {
+      background: var(--surface);
+      border-radius: 1rem 1rem 0 0;
+      padding: 1.25rem 1rem 1.5rem;
+      width: 100%;
+      max-width: 640px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-fullscreen {
+      border-radius: 0;
+      max-height: 100dvh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+    }
+    .modal-fullscreen .modal-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 0 1rem 1rem;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      border-bottom: 1px solid var(--hairline);
+      flex-shrink: 0;
+    }
+    .modal-header h3 { margin: 0; font-size: 1rem; }
+
+    /* ── Segmented control ──────────────────────────────── */
+    .seg-group { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .seg-btn {
+      padding: .4rem .85rem;
+      border: 1px solid var(--hairline);
+      border-radius: 8px;
+      background: none;
+      color: var(--text);
+      font-size: .8rem;
+      cursor: pointer;
+      transition: all var(--dur);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .seg-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
+      font-weight: 600;
+    }
+
+    /* ── Opening cards ──────────────────────────────────── */
+    .opening-card {
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: .9rem;
+      margin-bottom: .65rem;
+    }
+    .opening-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .65rem;
+    }
+    .opening-label { font-weight: 600; font-size: .95rem; }
+    .opening-type-badge {
+      font-size: .63rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      border: 1px solid var(--hairline);
+      border-radius: 4px;
+      padding: .15rem .45rem;
+    }
+
+    /* ── Photo grid ─────────────────────────────────────── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .4rem;
+      margin-bottom: .65rem;
+    }
+    .photo-thumb {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      object-fit: cover;
+      width: 100%;
+      display: block;
+      cursor: pointer;
+    }
+    .photo-add-btn {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      border: 2px dashed var(--hairline);
+      background: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .2rem;
+      color: var(--muted);
+      font-size: .68rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color var(--dur), color var(--dur);
+    }
+    .photo-add-btn:active { border-color: var(--accent); color: var(--accent); }
+    .cam-icon { font-size: 1.4rem; line-height: 1; }
+
+    /* ── Signature canvas wrapper ───────────────────────── */
+    .sig-canvas-wrap {
+      flex: 1;
+      border: 2px dashed var(--hairline);
+      border-radius: var(--r-card);
+      overflow: hidden;
+      position: relative;
+      background: #fff;
+      min-height: 180px;
+    }
+    #sig-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* ── Generic canvas class ───────────────────────────── */
+    .sig-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* ── Checklist items (walkthrough flow) ──────────────── */
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .65rem .4rem;
+      border-bottom: 1px solid var(--hairline);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .checklist-circle {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--hairline);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem;
+      transition: all var(--dur);
+    }
+    .checklist-circle.done { background: var(--ok); border-color: var(--ok); color: #000; }
+    .checklist-label { font-size: .88rem; line-height: 1.4; }
+
+    /* Comment bubble */
+    .comment-bubble {
+      background: var(--surface-2);
+      border-radius: var(--r-card);
+      padding: .6rem .85rem;
+      margin-bottom: .5rem;
+      font-size: .8rem;
+    }
+    .comment-bubble .who  { font-weight: 600; color: var(--muted); font-size: .72rem; }
+    .comment-bubble .when { color: var(--disabled); font-size: .68rem; }
+
+    /* ── Start photo flow overlay ───────────────────────── */
+    .sp-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      gap: 1.25rem;
+    }
+    .sp-progress {
+      display: flex;
+      gap: .45rem;
+      justify-content: center;
+    }
+    .sp-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--hairline);
+      transition: background var(--dur);
+    }
+    .sp-dot.active { background: var(--accent); }
+    .sp-dot.done   { background: var(--ok); }
+    .sp-step-title { font-size: 1.2rem; font-weight: 700; }
+    .sp-step-desc  { font-size: .875rem; color: var(--muted); }
+    .sp-cam-btn {
+      width: 96px; height: 96px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      background: none;
+      font-size: 2.8rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background var(--dur);
+    }
+    .sp-cam-btn:active { background: var(--surface-2); }
+    .sp-thumb-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .6rem;
+    }
+    .sp-thumb {
+      width: 96px; height: 96px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 2px solid var(--ok);
+    }
+    .sp-thumb-count { font-size: .8rem; color: var(--ok); font-weight: 600; }
+    .sp-skip {
+      background: none; border: none;
+      color: var(--muted); font-size: .85rem;
+      cursor: pointer; text-decoration: underline;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* Pre-existing conditions screen */
+    .pec-screen-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      overflow-y: auto;
+      gap: 1rem;
+    }
+    .pec-item {
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: .75rem;
+      font-size: .875rem;
+    }
+    .pec-item-note { margin-bottom: .4rem; }
+    .pec-item-thumbs { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .pec-item-thumbs img { width: 56px; height: 56px; border-radius: 6px; object-fit: cover; }
+    .pec-add-form {
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: .75rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+    }
+    /* Start/pre-existing read-only sections in job detail */
+    .start-photos-strip {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .start-photos-strip img {
+      width: 72px; height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    /* ── Module launch buttons (job detail hub) ─────────── */
+    .module-btn {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .9rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      margin-bottom: .5rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color var(--dur);
+      width: 100%;
+      text-align: left;
+    }
+    .module-btn:active { border-color: var(--accent); }
+    .module-btn .m-icon  { font-size: 1.4rem; flex-shrink: 0; }
+    .module-btn .m-body  { flex: 1; min-width: 0; }
+    .module-btn .m-label { font-weight: 600; font-size: .95rem; line-height: 1.2; }
+    .module-btn .m-meta  { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
+    .module-btn .m-arrow { color: var(--muted); font-size: 1.1rem; flex-shrink: 0; }
+
+    /* ── Progress Photos module ──────────────────────────── */
+    .pp-content-wrap { flex: 1; overflow-y: auto; padding: 1rem; }
+    .pp-opening-row {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .85rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      margin-bottom: .5rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color var(--dur);
+    }
+    .pp-opening-row:active { border-color: var(--accent); }
+    .pp-opening-info { flex: 1; }
+    .pp-opening-name { font-weight: 600; font-size: .95rem; }
+    .pp-opening-type { font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+    .pp-opening-progress { font-size: .75rem; color: var(--muted); margin-top: .15rem; }
+    .pp-opening-arrow { color: var(--muted); font-size: 1.1rem; }
+
+    /* Photo slot grid — 2 cols */
+    .pp-slot-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: .5rem;
+      margin-bottom: 1rem;
+    }
+    .pp-slot {
+      background: var(--surface-2);
+      border: 2px dashed var(--hairline);
+      border-radius: 10px;
+      aspect-ratio: 4/3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .3rem;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--dur);
+    }
+    .pp-slot:active { border-color: var(--accent); }
+    .pp-slot.filled  { border-style: solid; border-color: var(--ok); }
+    .pp-slot-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      position: absolute; inset: 0;
+    }
+    .pp-slot-label {
+      font-size: .68rem; color: var(--muted);
+      text-align: center; padding: 0 .3rem;
+      font-weight: 500; z-index: 1;
+    }
+    .pp-slot-cam { font-size: 1.8rem; }
+    .pp-slot-label-filled {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(0,0,0,.45); color: #fff;
+      font-size: .65rem; font-weight: 600;
+      padding: .2rem .3rem; text-align: center;
+    }
+    .pp-slot-check {
+      position: absolute; top: .3rem; right: .3rem;
+      background: var(--ok); color: #fff;
+      border-radius: 50%; width: 18px; height: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .6rem; font-weight: 700;
+    }
+
+    /* Defect list inside opening capture */
+    .pp-defect-item {
+      background: var(--surface-2);
+      border-left: 3px solid var(--bad);
+      border-radius: 0 6px 6px 0;
+      padding: .55rem .75rem;
+      margin-bottom: .4rem;
+      font-size: .85rem;
+    }
+    .pp-defect-type {
+      font-size: .7rem; font-weight: 700;
+      color: var(--bad); text-transform: uppercase;
+      letter-spacing: .04em; margin-bottom: .15rem;
+    }
+
+    /* Extra Work Request module */
+    .ew-request-row { display:flex; align-items:center; gap:.75rem; padding:.65rem .5rem;
+      border-bottom:1px solid var(--hairline); cursor:pointer; }
+    .ew-status-badge { font-size:.65rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.05em; padding:.2rem .5rem; border-radius:var(--r-pill); flex-shrink:0; }
+    .ew-badge-pending  { background:rgba(245,158,11,.18); color:var(--warn); }
+    .ew-badge-approved { background:rgba(34,197,94,.18);  color:var(--ok);   }
+    .ew-badge-denied   { background:rgba(239,68,68,.18);  color:var(--bad);  }
+    .ew-badge-counter  { background:rgba(96,165,250,.18); color:var(--info); }
+    .ew-badge-accepted { background:rgba(34,197,94,.18);  color:var(--ok);   }
+    .ew-thread-entry { padding:.5rem .75rem; border-left:3px solid var(--hairline);
+      margin-bottom:.5rem; font-size:.85rem; }
+    .ew-thread-entry.installer { border-color:var(--accent); }
+    .ew-thread-entry.admin     { border-color:var(--ok); }
+    .ew-photo-row { display:flex; gap:.5rem; margin:.75rem 0; }
+    .ew-photo-slot { flex:1; aspect-ratio:1; border:2px dashed var(--hairline);
+      border-radius:8px; overflow:hidden; display:flex; align-items:center;
+      justify-content:center; cursor:pointer; background:var(--surface-2); }
+    .ew-photo-slot img { width:100%; height:100%; object-fit:cover; }
+  </style>
+</head>
+<body>
+
+<!-- Top nav -->
+<nav class="installer-nav" id="top-nav" style="display:none">
+  <div class="installer-nav-brand">Armor Vue</div>
+  <div class="flex items-center gap-2">
+    <span class="text-sm" style="font-weight:600;color:var(--text)" id="nav-installer-name"></span>
+    <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
+  </div>
+</nav>
+
+<!-- Pages -->
+<div id="page-loading" class="installer-page active" style="padding-top:30vh;text-align:center">
+  <div class="spinner spinner-lg" style="margin:0 auto 1rem"></div>
+  <p class="text-muted">Loading your portal…</p>
+</div>
+
+<div id="page-no-access" class="installer-page" style="padding-top:20vh;text-align:center">
+  <div class="login-logo" style="margin-bottom:1rem">
+    <div class="brand">Armor Vue</div>
+    <div class="sub">Installer Portal</div>
+  </div>
+  <p class="text-muted text-sm" id="no-access-msg">Access your portal using the link sent to your email.</p>
+</div>
+
+<div id="page-schedule" class="installer-page"></div>
+
+<div id="page-job-detail" class="installer-page"></div>
+
+<div id="page-blackout" class="installer-page"></div>
+
+<div id="page-defects" class="installer-page"></div>
+<div id="page-earnings" class="installer-page"></div>
+
+<!-- Hidden file input for camera capture -->
+<input type="file" id="photo-input" accept="image/*" capture="environment"
+       style="display:none" onchange="handlePhotoFile(this)">
+
+<!-- Modal Overlay -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="overlayBgClick(event)">
+
+  <!-- Job Action Sheet -->
+  <div id="modal-job-actions" class="modal-sheet" style="display:none">
+    <div style="text-align:center;padding:.25rem 0 .75rem">
+      <div id="jas-name" style="font-weight:700;font-size:1.05rem"></div>
+      <div id="jas-meta" style="font-size:.78rem;color:var(--muted);margin-top:.15rem"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      <button class="btn btn-secondary w-full" style="font-size:.95rem;padding:.85rem" onclick="jasViewDetails()">📋 View Details</button>
+      <button class="btn btn-primary w-full btn-start-job" style="font-size:.95rem;padding:.85rem" onclick="jasStartJob()">📷 Start Job</button>
+      <button class="btn btn-secondary w-full btn-inventory" style="font-size:.95rem;padding:.85rem" onclick="jasInventory()">📦 Receive Inventory</button>
+    </div>
+    <button class="btn btn-ghost w-full mt-3" style="color:var(--muted)" onclick="closeModal()">Cancel</button>
+  </div>
+
+  <!-- Inventory Receipt modal -->
+  <div id="modal-inventory" class="modal-sheet" style="display:none">
+    <div class="modal-header">
+      <h3>Receive Inventory</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div id="inv-content" style="padding-top:.75rem"></div>
+  </div>
+
+  <!-- Inventory Issue Report modal -->
+  <div id="modal-inv-issue" class="modal-sheet" style="display:none">
+    <div class="modal-header">
+      <h3>Report an Issue</h3>
+      <button class="btn btn-ghost btn-sm" onclick="showModal('modal-inventory')">✕</button>
+    </div>
+    <div style="padding-top:.5rem">
+      <p id="inv-issue-item-label" style="font-size:.82rem;color:var(--muted);margin-bottom:.9rem"></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem" id="inv-issue-types">
+        <button class="btn btn-secondary inv-issue-type-btn" onclick="selectIssueType(this,'Missing')">📦 Missing</button>
+        <button class="btn btn-secondary inv-issue-type-btn" onclick="selectIssueType(this,'Damaged')">💥 Damaged</button>
+        <button class="btn btn-secondary inv-issue-type-btn" onclick="selectIssueType(this,'Wrong Specs')">❌ Wrong Specs</button>
+        <button class="btn btn-secondary inv-issue-type-btn" onclick="selectIssueType(this,'Short Count')">🔢 Short Count</button>
+        <button class="btn btn-secondary inv-issue-type-btn" style="grid-column:1/-1" onclick="selectIssueType(this,'Other')">Other</button>
+      </div>
+      <textarea id="inv-issue-note" rows="3" placeholder="Additional details (optional)…"
+        style="width:100%;padding:.65rem .75rem;border:1px solid var(--hairline);border-radius:8px;
+               background:var(--surface-2);color:var(--text);font-size:.9rem;resize:none;
+               font-family:inherit;margin-bottom:1rem"></textarea>
+      <button class="btn btn-primary w-full" onclick="submitInventoryIssue()">Submit Issue</button>
+      <button class="btn btn-ghost w-full mt-2" style="color:var(--muted)" onclick="showModal('modal-inventory')">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Add Opening modal -->
+  <div id="modal-add-opening" class="modal-sheet" style="display:none">
+    <div class="modal-header">
+      <h3>Add Opening</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div style="padding-top:.75rem">
+      <div class="form-group">
+        <label class="form-label">Label</label>
+        <input class="form-input" type="text" id="opening-label"
+               placeholder="e.g. Front Door, Bedroom Window">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <div class="seg-group" id="opening-type-group">
+          <button class="seg-btn active" data-val="window"  onclick="selectSeg(this,'opening-type-group')">Window</button>
+          <button class="seg-btn"        data-val="door"    onclick="selectSeg(this,'opening-type-group')">Door</button>
+          <button class="seg-btn"        data-val="sgd"     onclick="selectSeg(this,'opening-type-group')">SGD</button>
+          <button class="seg-btn"        data-val="other"   onclick="selectSeg(this,'opening-type-group')">Other</button>
+        </div>
+      </div>
+      <button class="btn btn-primary w-full mt-2" onclick="submitNewOpening()">Add Opening</button>
+    </div>
+  </div>
+
+  <!-- Report Defect modal -->
+  <div id="modal-defect" class="modal-sheet" style="display:none">
+    <div class="modal-header">
+      <h3>Report Defect</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+    </div>
+    <div style="padding-top:.75rem">
+      <p class="text-sm text-muted mb-3" id="defect-opening-label"></p>
+      <div class="form-group">
+        <label class="form-label">Type of Defect</label>
+        <div class="seg-group" id="defect-type-group">
+          <!-- populated dynamically from defect_types collection -->
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" id="defect-description" rows="3"
+                  placeholder="Describe the defect…"></textarea>
+      </div>
+      <button class="btn btn-primary w-full mt-2" onclick="ppSubmitDefect()">Report Defect</button>
+    </div>
+  </div>
+
+  <!-- Progress Photos module (full-screen) -->
+  <div id="modal-progress-photos" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header" style="gap:.5rem">
+      <button class="btn btn-ghost btn-sm" id="pp-back-btn" onclick="ppGoBack()" style="display:none;padding:.4rem .6rem">←</button>
+      <h3 id="pp-title" style="flex:1;margin:0">Progress Photos</h3>
+      <div id="pp-header-right" class="flex gap-2"></div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()" style="padding:.4rem .6rem">✕</button>
+    </div>
+    <div id="pp-content" class="pp-content-wrap"></div>
+  </div>
+
+  <!-- Start photo flow (full-screen) -->
+  <div id="modal-start-photos" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header">
+      <h3 id="sp-header-title">Job Start Photos</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕ Skip All</button>
+    </div>
+    <div id="sp-content"></div>
+  </div>
+
+  <!-- Installer Signature Onboarding (first-login, full-screen) -->
+  <div id="modal-installer-sig" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header">
+      <h3>Your Signature</h3>
+    </div>
+    <div class="modal-body">
+      <div style="text-align:center;flex-shrink:0">
+        <div id="ob-greeting" style="font-size:1.1rem;font-weight:600;color:var(--accent);margin-bottom:.4rem"></div>
+        <p class="text-sm text-muted">Before you get started, please draw your signature below. It will be used on all job completion documents.</p>
+      </div>
+      <div class="sig-canvas-wrap" style="margin-top:.75rem">
+        <canvas id="ob-sig-canvas" class="sig-canvas"></canvas>
+      </div>
+      <div class="flex gap-2" style="flex-shrink:0;margin-top:.75rem">
+        <button class="btn btn-ghost" style="flex:1" onclick="clearCanvas('ob-sig-canvas')">Clear</button>
+        <button class="btn btn-primary" style="flex:1" id="ob-save-btn" onclick="saveInstallerSignature()">Save My Signature →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Walkthrough Checklist flow (full-screen, 3 screens) -->
+  <div id="modal-walkthrough" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header" style="gap:.5rem">
+      <button class="btn btn-ghost btn-sm" id="wf-back-btn" onclick="wfGoBack()" style="display:none;padding:.4rem .6rem">←</button>
+      <h3 id="wf-title" style="flex:1;margin:0">Field Inspection Checklist</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+    <div id="wf-content" class="modal-body"></div>
+  </div>
+
+  <!-- Certificate of Completion flow (full-screen, 2 screens) -->
+  <div id="modal-certificate" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header" style="gap:.5rem">
+      <button class="btn btn-ghost btn-sm" id="cf-back-btn" onclick="cfGoBack()" style="display:none;padding:.4rem .6rem">←</button>
+      <h3 id="cf-title" style="flex:1;margin:0">Certificate of Completion</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+    <div id="cf-content" class="modal-body"></div>
+  </div>
+
+  <!-- Signature modal (full-screen) -->
+  <div id="modal-signature" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header">
+      <h3 id="sig-title">Signature</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="flex-shrink:0">
+        <label class="form-label">Signer Name</label>
+        <input class="form-input" type="text" id="sig-name" placeholder="Customer or installer name">
+      </div>
+      <p class="text-xs text-muted mb-2" style="flex-shrink:0">Sign in the box below:</p>
+      <div class="sig-canvas-wrap">
+        <canvas id="sig-canvas"></canvas>
+      </div>
+      <div class="flex gap-2 mt-3" style="flex-shrink:0">
+        <button class="btn btn-ghost" style="flex:1" onclick="clearSignature()">Clear</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveSignatureAndClose()">Save Signature</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Extra Work Requests flow (full-screen) -->
+  <div id="modal-extra-work" class="modal-sheet modal-fullscreen" style="display:none">
+    <div class="modal-header" style="gap:.5rem">
+      <button class="btn btn-ghost btn-sm" id="ew-back-btn" onclick="ewGoBack()"
+              style="display:none;padding:.4rem .6rem">←</button>
+      <h3 id="ew-title" style="flex:1;margin:0">Extra Work Requests</h3>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>
+    </div>
+    <div id="ew-content" class="modal-body"></div>
+  </div>
+
+</div>
+
+<!-- Bottom nav (hidden until logged in) -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="bottom-nav-btn active" id="nav-schedule" onclick="showPage('schedule')">
+    <span class="icon">📅</span>Schedule
+  </button>
+  <button class="bottom-nav-btn" id="nav-blackout" onclick="showPage('blackout')">
+    <span class="icon">🗓</span>Days Off
+  </button>
+  <button class="bottom-nav-btn" id="nav-defects" onclick="showPage('defects')">
+    <span class="icon">⚠️</span>Defects
+  </button>
+  <button class="bottom-nav-btn" id="nav-earnings" onclick="showPage('earnings')">
+    <span class="icon">💰</span>Earnings
+  </button>
+</nav>
+
+<script src="js/firebase-config.js?v=1773015005"></script>
+<script>
+// ============================================================
+// ARMOR VUE INSTALLER PORTAL — Phase 3
+// ============================================================
+
+let currentInstaller  = null;
+let weekOffset        = 0;      // 0 = current week, -1 = last, +1 = next
+let selectedDayOffset = 0;      // 0 = Mon … 6 = Sun within current week view
+let jobCache          = {};     // weekKey → [jobs]
+let jobRecordCache    = {};     // jobId → record doc data
+let weekJobsData      = null;   // { jobs, jobRecords, monday } — loaded per week
+
+// Photo capture routing: 'opening' | 'start' | 'preexisting'
+let currentPhotoMode       = 'opening';
+let spJobId                = null;   // job being started (start photo flow)
+let spRequirements         = [];     // start photo requirements for current flow
+let spStepIndex            = 0;      // current step index
+let spCapturedPhotos       = {};     // requirementId → [{url, uploadedAt}]
+let spPecItems             = [];     // pre-existing conditions (local before save)
+let spPecNewPhotos         = [];     // photos for the condition being built
+let spCurrentPecPhotoIndex = null;   // index into spPecItems for photo routing
+
+// Progress Photos module
+let ppJobId          = null;
+let ppView           = 'list';   // 'list' | 'capture'
+let ppOpenings       = [];
+let ppCurrentOpening = null;
+let ppPhotoReqs      = [];       // opening-category requirements (cached)
+let ppDefectTypes    = [];       // configurable defect types (cached)
+let ppCurrentSlot    = null;     // slot name being captured
+
+const MULTI_PHOTO_SLOTS = ['Bucking', 'Fasteners'];  // allow up to 4 photos each
+const MAX_MULTI_PHOTOS  = 4;
+
+// Extra Work Request module
+let ewJobId          = null;
+let ewJobData        = null;
+let ewRequests       = [];       // all requests for current job
+let ewScreenStack    = [];       // navigation history e.g. ['list','desc','photos','amount']
+let ewPhotos         = [];       // photos being built for new request (up to 3)
+let ewDraft          = {};       // { description, amount } for in-progress new request
+let ewCurrentRequest = null;     // request object being viewed in detail/counter
+let ewCurrentPhotoSlot = 0;
+
+// ============================================================
+// AUTH
+// ============================================================
+if (auth.isSignInWithEmailLink(window.location.href)) {
+    completeMagicLink();
+} else {
+    auth.onAuthStateChanged(user => {
+        if (user && user.uid === window.ADMIN_UID) {
+            showAdminPreviewPicker();
+        } else if (user) {
+            loadPortal(user);
+        } else {
+            showNoAccess('Access your portal using the link sent to your email.');
+        }
+    });
+}
+
+async function completeMagicLink() {
+    let email = window.localStorage.getItem('installerEmail');
+    if (!email) { showEmailPrompt(); return; }
+
+    try {
+        await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        const result = await auth.signInWithEmailLink(email, window.location.href);
+        window.localStorage.removeItem('installerEmail');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        loadPortal(result.user);
+    } catch(err) {
+        window.localStorage.removeItem('installerEmail');
+        showLinkExpiredScreen(email);
+    }
+}
+
+function showEmailPrompt() {
+    document.getElementById('page-loading').classList.remove('active');
+    const pg = document.getElementById('page-no-access');
+    pg.classList.add('active');
+    pg.innerHTML = `
+        <div style="max-width:360px;margin:30vh auto 0;padding:1rem">
+            <div class="login-logo mb-4">
+                <div class="brand">Armor Vue</div>
+                <div class="sub">Installer Portal</div>
+            </div>
+            <p class="text-sm text-muted mb-4">Enter the email address this link was sent to.</p>
+            <div class="form-group">
+                <input class="form-input" type="email" id="confirm-email" placeholder="your@email.com" autocomplete="off">
+            </div>
+            <div id="email-err" class="hidden alert alert-error mb-4"></div>
+            <button class="btn btn-primary w-full" onclick="confirmEmail()">Continue</button>
+        </div>`;
+}
+
+function confirmEmail() {
+    const email = (document.getElementById('confirm-email').value || '').trim();
+    const err   = document.getElementById('email-err');
+    if (!email || !email.includes('@')) {
+        err.textContent = 'Please enter your full email address (e.g. name@gmail.com).';
+        err.classList.remove('hidden');
+        return;
+    }
+    window.localStorage.setItem('installerEmail', email);
+    completeMagicLink();
+}
+
+async function loadPortal(user) {
+    try {
+        // Find installer by uid first, then by email (first login)
+        let snap = await db.collection('installers')
+            .where('firebaseUid', '==', user.uid)
+            .where('status', '==', 'active')
+            .limit(1).get();
+
+        // Guard against stale UIDs: if the UID matches but the email doesn't,
+        // clear the stale binding and re-look up by email instead.
+        if (!snap.empty) {
+            const stored = snap.docs[0].data();
+            if (stored.email && user.email &&
+                stored.email.toLowerCase() !== user.email.toLowerCase()) {
+                await snap.docs[0].ref.update({ firebaseUid: null });
+                snap = { empty: true, docs: [] };
+            }
+        }
+
+        if (snap.empty) {
+            snap = await db.collection('installers')
+                .where('email', '==', user.email.toLowerCase())
+                .where('status', '==', 'active')
+                .limit(1).get();
+
+            if (snap.empty) {
+                showNoAccess('Your account is not active. Contact your administrator.');
+                return;
+            }
+            // Bind uid on first login
+            await snap.docs[0].ref.update({
+                firebaseUid: user.uid,
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            snap.docs[0].ref.update({ lastLogin: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+
+        currentInstaller = { id: snap.docs[0].id, ...snap.docs[0].data() };
+
+        // Load configurable statuses before showing portal
+        await loadStatusOptions();
+
+        // Show chrome
+        document.getElementById('nav-installer-name').textContent = currentInstaller.displayName || '';
+        document.getElementById('top-nav').style.display    = '';
+        document.getElementById('bottom-nav').style.display = '';
+
+        if (!currentInstaller.signatureUrl) {
+            showSignatureOnboarding();
+        } else {
+            showPage('schedule');
+        }
+    } catch(err) {
+        showNoAccess('Could not load your portal. Please try again.');
+        console.error(err);
+    }
+}
+
+function handleLogout() {
+    auth.signOut().then(() => {
+        currentInstaller = null;
+        jobCache = {};
+        document.getElementById('top-nav').style.display    = 'none';
+        document.getElementById('bottom-nav').style.display = 'none';
+        showNoAccess('You have been signed out.');
+    });
+}
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function showPage(name) {
+    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+
+    document.getElementById('page-' + name).classList.add('active');
+    const navBtn = document.getElementById('nav-' + name);
+    if (navBtn) navBtn.classList.add('active');
+
+    // Hide status bar if not on job detail
+    const bar = document.getElementById('status-bar');
+    if (bar && name !== 'job-detail') bar.style.display = 'none';
+
+    if (name === 'schedule') renderSchedule();
+    if (name === 'blackout') renderBlackout();
+    if (name === 'defects')  renderDefects();
+    if (name === 'earnings') renderEarnings();
+}
+
+async function showAdminPreviewPicker() {
+    document.getElementById('page-loading').classList.remove('active');
+    document.getElementById('top-nav').style.display    = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    const pg = document.getElementById('page-no-access');
+    pg.classList.add('active');
+    pg.innerHTML = `
+        <div style="max-width:360px;margin:20vh auto 0;padding:1rem">
+            <div class="login-logo mb-4" style="text-align:center">
+                <div class="brand">Armor Vue</div>
+                <div class="sub">Admin Preview Mode</div>
+            </div>
+            <p class="text-sm text-muted mb-4" style="text-align:center">Preview the installer portal as any active installer.</p>
+            <div id="preview-list" style="display:flex;flex-direction:column;gap:.5rem">
+                <div class="text-center"><span class="spinner"></span></div>
+            </div>
+        </div>`;
+
+    try {
+        const snap = await db.collection('installers')
+            .where('status', '==', 'active')
+            .orderBy('displayName')
+            .get();
+        const list = document.getElementById('preview-list');
+        if (snap.empty) {
+            list.innerHTML = '<p class="text-muted text-sm text-center">No active installers found.</p>';
+            return;
+        }
+        list.innerHTML = snap.docs.map(d => {
+            const ins = d.data();
+            return `<button class="btn btn-secondary" style="text-align:left"
+                onclick="loadPortalAsInstaller('${d.id}')">
+                <strong>${ins.displayName || 'Unnamed'}</strong>
+                <span style="font-size:.8rem;opacity:.7;margin-left:.5rem">${ins.company || ''}</span>
+            </button>`;
+        }).join('');
+    } catch(err) {
+        document.getElementById('preview-list').innerHTML =
+            '<p class="text-muted text-sm text-center">Could not load installers: ' + err.message + '</p>';
+    }
+}
+
+async function loadPortalAsInstaller(installerId) {
+    document.getElementById('page-no-access').classList.remove('active');
+    document.getElementById('page-loading').classList.add('active');
+    try {
+        const docSnap = await db.collection('installers').doc(installerId).get();
+        if (!docSnap.exists) throw new Error('Installer not found');
+        currentInstaller = { id: docSnap.id, ...docSnap.data() };
+
+        // Load configurable statuses before showing portal
+        await loadStatusOptions();
+
+        // Show admin preview banner
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;text-align:center;font-size:.75rem;font-weight:600;padding:.25rem;z-index:9999';
+        banner.textContent = '⚠ ADMIN PREVIEW — ' + (currentInstaller.displayName || installerId);
+        document.body.prepend(banner);
+
+        document.getElementById('nav-installer-name').textContent = currentInstaller.displayName || '';
+        document.getElementById('top-nav').style.display    = '';
+        document.getElementById('bottom-nav').style.display = '';
+        document.getElementById('page-loading').classList.remove('active');
+
+        if (!currentInstaller.signatureUrl) {
+            showSignatureOnboarding();
+        } else {
+            showPage('schedule');
+        }
+    } catch(err) {
+        showNoAccess('Could not load installer: ' + err.message);
+    }
+}
+
+function showNoAccess(msg) {
+    showAccessError(msg);
+}
+
+function showAccessError(msg) {
+    document.getElementById('page-loading').classList.remove('active');
+    const pg = document.getElementById('page-no-access');
+    pg.innerHTML = `
+        <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
+            <div class="login-logo mb-4">
+                <div class="brand">Armor Vue</div>
+                <div class="sub">Installer Portal</div>
+            </div>
+            <div class="alert alert-error">${msg}</div>
+        </div>`;
+    pg.style.display = 'block';
+    pg.style.paddingTop = '0';
+    pg.classList.add('active');
+}
+
+function showLinkExpiredScreen(knownEmail) {
+    document.getElementById('page-loading').classList.remove('active');
+    const pg = document.getElementById('page-no-access');
+    pg.innerHTML = `
+        <div style="max-width:360px;margin:20vh auto 0;padding:1rem">
+            <div class="login-logo mb-4" style="text-align:center">
+                <div class="brand">Armor Vue</div>
+                <div class="sub">Installer Portal</div>
+            </div>
+            <div class="alert alert-error mb-4">This link has already been used or has expired.</div>
+            <p class="text-sm text-muted mb-4">Enter your email and we'll send you a fresh one.</p>
+            <div class="form-group">
+                <input class="form-input" type="email" id="resend-email"
+                    value="${knownEmail || ''}" placeholder="your@email.com" autocomplete="off">
+            </div>
+            <div id="resend-err" class="hidden alert alert-error mb-3"></div>
+            <div id="resend-ok"  class="hidden alert alert-ok  mb-3"></div>
+            <button class="btn btn-primary w-full" id="resend-btn" onclick="resendMagicLink()">
+                Send Me a New Link
+            </button>
+        </div>`;
+    pg.style.display = 'block';
+    pg.style.paddingTop = '0';
+    pg.classList.add('active');
+}
+
+async function resendMagicLink() {
+    const email  = (document.getElementById('resend-email').value || '').trim();
+    const errEl  = document.getElementById('resend-err');
+    const okEl   = document.getElementById('resend-ok');
+    const btn    = document.getElementById('resend-btn');
+
+    errEl.classList.add('hidden');
+    okEl.classList.add('hidden');
+
+    if (!email || !email.includes('@')) {
+        errEl.textContent = 'Please enter your email address.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Sending…';
+
+    try {
+        const actionCodeSettings = {
+            url: 'https://installer-portal-6000.web.app/installer.html',
+            handleCodeInApp: true
+        };
+        window.localStorage.setItem('installerEmail', email);
+        await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        okEl.textContent = 'Link sent! Check your email and tap the new link.';
+        okEl.classList.remove('hidden');
+        btn.textContent = 'Sent ✓';
+    } catch(err) {
+        errEl.textContent = 'Could not send link: ' + err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Send Me a New Link';
+    }
+}
+
+// ============================================================
+// SCHEDULE PAGE
+// ============================================================
+function getWeekRange(offset) {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+    return { monday, sunday };
+}
+
+function weekKey(offset) {
+    const { monday } = getWeekRange(offset);
+    return monday.toISOString().slice(0, 10);
+}
+
+async function fetchWeekJobs(offset) {
+    const key = weekKey(offset);
+    if (jobCache[key]) return jobCache[key];
+
+    const { monday, sunday } = getWeekRange(offset);
+    const tidStr = String(currentInstaller.teamupId);
+
+    try {
+        const snap = await db.collection('jobs')
+            .where('startDt', '>=', monday)
+            .where('startDt', '<=', sunday)
+            .get();
+
+        const jobs = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(j => !j.isServiceCall && (j.assignedIds || []).map(String).includes(tidStr))
+            .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+
+        jobCache[key] = jobs;
+        return jobs;
+    } catch(err) {
+        // Fallback: fetch all and filter in memory (no composite index yet)
+        const snap = await db.collection('jobs').get();
+        const jobs = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(j => {
+                const start = toDate(j.startDt);
+                return !j.isServiceCall && start >= monday && start <= sunday &&
+                    (j.assignedIds || []).map(String).includes(tidStr);
+            })
+            .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+        jobCache[key] = jobs;
+        return jobs;
+    }
+}
+
+const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+async function renderSchedule() {
+    const el = document.getElementById('page-schedule');
+    const { monday, sunday } = getWeekRange(weekOffset);
+    const fmtWeek = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const todayStr = new Date().toDateString();
+
+    // Default selected day: today if in current week, else Monday
+    if (weekOffset === 0) {
+        const dow = new Date().getDay();
+        selectedDayOffset = dow === 0 ? 6 : dow - 1;
+    } else {
+        selectedDayOffset = 0;
+    }
+
+    // Build day chip skeletons
+    const chipsHtml = DAY_NAMES.map((name, i) => {
+        const day = new Date(monday);
+        day.setDate(monday.getDate() + i);
+        const isToday   = day.toDateString() === todayStr;
+        const isActive  = i === selectedDayOffset;
+        return `
+            <button class="day-chip${isToday ? ' today' : ''}${isActive ? ' active' : ''}"
+                    id="chip-${i}" onclick="selectDay(${i})">
+                <span class="day-chip-name">${name}</span>
+                <span class="day-chip-num">${day.getDate()}</span>
+                <span class="day-chip-count" id="chip-count-${i}">·</span>
+            </button>`;
+    }).join('');
+
+    el.innerHTML = `
+        <div style="padding:.6rem 1rem .25rem;border-bottom:1px solid var(--hairline);display:flex;align-items:center;justify-content:space-between">
+            <div>
+                <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Logged in as</div>
+                <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${esc(currentInstaller.displayName || '')}${currentInstaller.company ? `<span style="font-size:.8rem;font-weight:400;color:var(--muted);margin-left:.5rem">${esc(currentInstaller.company)}</span>` : ''}</div>
+            </div>
+            <div id="week-pay-total" style="text-align:right"></div>
+        </div>
+        <div class="week-nav">
+            <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Prev</button>
+            <h2>${fmtWeek(monday)} – ${fmtWeek(sunday)}${weekOffset === 0 ? ' <span style="color:var(--accent);font-size:.7rem">This Week</span>' : ''}</h2>
+            <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">Next →</button>
+        </div>
+        <div class="week-strip">${chipsHtml}</div>
+        <div id="day-selected-label" class="day-selected-label"></div>
+        <div id="day-jobs"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
+
+    try {
+        let jobs;
+        try { jobs = await fetchWeekJobs(weekOffset); }
+        catch(e) { throw new Error('jobs query: ' + e.message); }
+
+        let jobRecords;
+        try { jobRecords = await loadJobRecords(jobs.map(j => j.id)); }
+        catch(e) { throw new Error('job_records query: ' + e.message); }
+
+        weekJobsData = { jobs, jobRecords, monday };
+
+        // Weekly pay tally — deduplicate recurring series so multi-day jobs count once.
+        // Parse series from job ID directly (format: {seriesId}-rid-{ts}) — no sync needed.
+        const seenSeries = new Set();
+        const weekTotal = jobs.reduce((sum, j) => {
+            const m = j.id.match(/^(\d+)-rid-\d+$/);
+            const key = m ? m[1] : j.id;
+            if (seenSeries.has(key)) return sum;
+            seenSeries.add(key);
+            const pay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, ''));
+            return sum + (isNaN(pay) ? 0 : pay);
+        }, 0);
+        const payEl = document.getElementById('week-pay-total');
+        if (payEl) {
+            payEl.innerHTML = weekTotal > 0
+                ? `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Week Pay</div>
+                   <div style="font-size:1.1rem;font-weight:700;color:var(--ok)">$${weekTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
+                : '';
+        }
+
+        // Stamp job counts onto chips
+        DAY_NAMES.forEach((_, i) => {
+            const day = new Date(monday);
+            day.setDate(monday.getDate() + i);
+            const count = jobs.filter(j => {
+                const d = toDate(j.startDt);
+                return d && d.toDateString() === day.toDateString();
+            }).length;
+            const el = document.getElementById('chip-count-' + i);
+            if (el) el.textContent = count > 0 ? count + (count === 1 ? ' job' : ' jobs') : '·';
+        });
+
+        renderSelectedDay();
+    } catch(err) {
+        const dj = document.getElementById('day-jobs');
+        if (dj) dj.innerHTML = `<div class="alert alert-error">Could not load schedule: ${err.message}</div>`;
+    }
+}
+
+function selectDay(i) {
+    selectedDayOffset = i;
+    document.querySelectorAll('.day-chip').forEach((c, idx) => c.classList.toggle('active', idx === i));
+    renderSelectedDay();
+}
+
+function renderSelectedDay() {
+    if (!weekJobsData) return;
+    const { jobs, jobRecords, monday } = weekJobsData;
+
+    const day = new Date(monday);
+    day.setDate(monday.getDate() + selectedDayOffset);
+    const isToday  = day.toDateString() === new Date().toDateString();
+    const dateStr  = day.toISOString().slice(0, 10);
+    const dayLabel = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const labelEl = document.getElementById('day-selected-label');
+    if (labelEl) labelEl.textContent = dayLabel + (isToday ? ' — Today' : '');
+
+    const dayJobs = jobs.filter(j => {
+        const d = toDate(j.startDt);
+        return d && d.toDateString() === day.toDateString();
+    });
+
+    const jobsEl = document.getElementById('day-jobs');
+    if (!jobsEl) return;
+
+    if (dayJobs.length === 0) {
+        jobsEl.innerHTML = '<p class="no-jobs-day">No jobs scheduled</p>';
+        return;
+    }
+
+    jobsEl.innerHTML = dayJobs.map(job => {
+        const rec    = jobRecords[job.id];
+        const status = rec ? rec.status : 'not_started';
+        const timeStr = formatTime(toDate(job.startDt));
+        const pay = parseFloat((job.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
+        return `
+            <div class="schedule-job-card" onclick="showJobActions('${job.id}')">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                    <div class="job-num">Job #${esc(job.jobNumber || job.id)}</div>
+                    ${pay > 0 ? `<div style="font-weight:700;font-size:.8rem;color:var(--ok)">$${pay.toFixed(2)}</div>` : ''}
+                </div>
+                <div class="job-name">${esc(job.customerName || job.title || 'Unknown')}</div>
+                <div class="job-meta">${timeStr}${job.address ? ' · ' + esc(job.address.split('\n')[0]) : ''}</div>
+                <div style="margin-top:.35rem;font-weight:600;font-size:.75rem;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
+            </div>`;
+    }).join('');
+}
+
+function changeWeek(dir) {
+    weekOffset  += dir;
+    weekJobsData = null;
+    renderSchedule();
+}
+
+function quickRequestDayOff(dateStr) {
+    showPage('blackout');
+    setTimeout(() => {
+        const input = document.getElementById('blackout-date');
+        if (input) input.value = dateStr;
+    }, 80);
+}
+
+// ============================================================
+// JOB ACTION SHEET
+// ============================================================
+let jasCurrentJobId = null;
+
+function showJobActions(jobId) {
+    jasCurrentJobId = jobId;
+    const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+    const rec = weekJobsData?.jobRecords?.[jobId] || jobRecordCache[jobId];
+    const status = rec ? rec.status : 'not_started';
+    const inv = rec?.inventoryReceived || {};
+
+    document.getElementById('jas-name').textContent = job.customerName || job.title || 'Job';
+    document.getElementById('jas-meta').textContent =
+        `Job #${job.jobNumber || jobId} · ${statusDisplay(status)}`;
+
+    // Show Start Job only if not yet started; otherwise show View Details as primary
+    const startBtn = document.querySelector('#modal-job-actions .btn-start-job');
+    if (startBtn) startBtn.style.display = status === 'not_started' ? '' : 'none';
+
+    // Show inventory button only if there are items AND not all received yet
+    const needsWindows = (job.windowCount > 0) && !inv.windows;
+    const needsDoors   = (job.doorCount   > 0) && !inv.doors;
+    const needsSgds    = (job.sgdCount    > 0) && !inv.sgds;
+    const showInvBtn   = needsWindows || needsDoors || needsSgds;
+    const invBtn = document.querySelector('#modal-job-actions .btn-inventory');
+    if (invBtn) invBtn.style.display = showInvBtn ? '' : 'none';
+
+    showModal('modal-job-actions');
+}
+
+function jasViewDetails() {
+    closeModal();
+    openJobDetail(jasCurrentJobId);
+}
+
+function jasStartJob() {
+    closeModal();
+    startJobFlow(jasCurrentJobId);
+}
+
+function jasInventory() {
+    closeModal();
+    showInventoryModal(jasCurrentJobId);
+}
+
+async function showInventoryModal(jobId) {
+    showModal('modal-inventory');
+    const contentEl = document.getElementById('inv-content');
+    contentEl.innerHTML = `<div class="text-center" style="padding:1rem"><span class="spinner"></span></div>`;
+
+    const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+    const rec = weekJobsData?.jobRecords?.[jobId] || jobRecordCache[jobId] || {};
+    const inv = rec.inventoryReceived || {};
+
+    // Build list of items from job counts
+    const items = [];
+    if (job.windowCount > 0) items.push({ key: 'windows', label: `Windows`, count: job.windowCount });
+    if (job.doorCount   > 0) items.push({ key: 'doors',   label: `Doors`,   count: job.doorCount });
+    if (job.sgdCount    > 0) items.push({ key: 'sgds',    label: `SGDs`,    count: job.sgdCount });
+
+    if (!items.length) {
+        contentEl.innerHTML = `<p style="color:var(--muted);font-size:.875rem;text-align:center;padding:1rem 0">
+            No unit counts on this job. Check TeamUp or update the job.
+        </p>
+        <button class="btn btn-ghost w-full" onclick="closeModal()">Close</button>`;
+        return;
+    }
+
+    const issues = rec.inventoryIssues || [];
+
+    contentEl.innerHTML = `
+        <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+            Check off each item when picked up. Report any problems before accepting.
+        </p>
+        <div id="inv-items" style="display:flex;flex-direction:column;gap:.75rem">
+            ${items.map(item => {
+                const checked    = !!inv[item.key];
+                const itemIssues = issues.filter(i => i.item === item.key);
+                const hasIssue   = itemIssues.length > 0;
+                return `
+                <div style="background:var(--surface-2);border-radius:10px;overflow:hidden;
+                            border:2px solid ${hasIssue ? '#f97316' : checked ? 'var(--accent)' : 'var(--hairline)'}">
+                    <label style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;cursor:pointer">
+                        <input type="checkbox" id="inv-${item.key}" ${checked ? 'checked' : ''}
+                               style="width:20px;height:20px;accent-color:var(--accent);flex-shrink:0"
+                               onchange="invToggle('${jobId}', '${item.key}', this)">
+                        <div style="flex:1">
+                            <div style="font-weight:600">${item.label}</div>
+                            <div style="font-size:.78rem;color:var(--muted)">${item.count} unit${item.count !== 1 ? 's' : ''}</div>
+                        </div>
+                        <div style="font-size:1.3rem">${checked ? '✅' : '⬜'}</div>
+                    </label>
+                    ${hasIssue ? itemIssues.map(iss => `
+                        <div style="padding:.4rem 1rem .5rem;font-size:.78rem;
+                                    background:#fff7ed;border-top:1px solid #fed7aa;color:#9a3412">
+                            ⚠ ${esc(iss.type)}${iss.note ? ' — ' + esc(iss.note) : ''}
+                        </div>`).join('') : ''}
+                    <div style="border-top:1px solid var(--hairline);padding:.4rem .75rem">
+                        <button class="btn btn-ghost btn-sm" style="color:#f97316;font-size:.78rem;padding:.3rem .6rem"
+                                onclick="openInventoryIssue('${jobId}','${item.key}','${item.label}')">
+                            ⚠ Report Issue
+                        </button>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <button class="btn btn-ghost w-full mt-3" style="color:var(--muted)" onclick="closeModal()">Done</button>
+    `;
+}
+
+async function invToggle(jobId, key, checkbox) {
+    const label = checkbox.closest('label');
+    const checked = checkbox.checked;
+
+    // Update visual immediately
+    label.style.borderColor = checked ? 'var(--accent)' : 'var(--hairline)';
+    label.querySelector('div:last-child').textContent = checked ? '✅' : '⬜';
+
+    // Save to Firestore — record ID is jobId_installerId
+    if (!currentInstaller?.id) { showToast('No installer session.'); checkbox.checked = !checked; return; }
+    const recordId = `${jobId}_${currentInstaller.id}`;
+
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        // Create doc if it doesn't exist yet (inventory can be received before starting the job)
+        const snap = await recRef.get();
+        const update = { [`inventoryReceived.${key}`]: checked ? new Date() : firebase.firestore.FieldValue.delete(),
+                         updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        if (!snap.exists) {
+            await recRef.set({ jobId, installerId: currentInstaller.id, status: 'not_started',
+                               inventoryReceived: {}, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await recRef.update(update);
+        // Refresh local cache
+        if (!jobRecordCache[jobId]) jobRecordCache[jobId] = {};
+        if (!jobRecordCache[jobId].inventoryReceived) jobRecordCache[jobId].inventoryReceived = {};
+        if (checked) jobRecordCache[jobId].inventoryReceived[key] = new Date();
+        else delete jobRecordCache[jobId].inventoryReceived[key];
+
+        // If all items are now received, close and celebrate
+        if (checked) {
+            const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+            const updatedInv = jobRecordCache[jobId].inventoryReceived;
+            const allDone = (!(job.windowCount > 0) || updatedInv.windows)
+                         && (!(job.doorCount   > 0) || updatedInv.doors)
+                         && (!(job.sgdCount    > 0) || updatedInv.sgds);
+            if (allDone) {
+                closeModal();
+                showToast('All inventory received ✅');
+            }
+        }
+    } catch(e) {
+        showToast('Could not save: ' + e.message);
+        checkbox.checked = !checked;
+        label.style.borderColor = !checked ? 'var(--accent)' : 'var(--hairline)';
+        label.querySelector('div:last-child').textContent = !checked ? '✅' : '⬜';
+    }
+}
+
+// ── Inventory issue reporting ─────────────────────────────────
+let _invIssueJobId  = null;
+let _invIssueKey    = null;
+let _invIssueType   = null;
+
+function openInventoryIssue(jobId, itemKey, itemLabel) {
+    _invIssueJobId = jobId;
+    _invIssueKey   = itemKey;
+    _invIssueType  = null;
+    document.getElementById('inv-issue-item-label').textContent = `Item: ${itemLabel}`;
+    document.getElementById('inv-issue-note').value = '';
+    document.querySelectorAll('.inv-issue-type-btn').forEach(b => b.classList.remove('btn-primary'));
+    showModal('modal-inv-issue');
+}
+
+function selectIssueType(btn, type) {
+    document.querySelectorAll('.inv-issue-type-btn').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-secondary');
+    });
+    btn.classList.add('btn-primary');
+    btn.classList.remove('btn-secondary');
+    _invIssueType = type;
+}
+
+async function submitInventoryIssue() {
+    if (!_invIssueType) { showToast('Please select an issue type.'); return; }
+    if (!currentInstaller?.id) return;
+
+    const note     = document.getElementById('inv-issue-note').value.trim();
+    const recordId = `${_invIssueJobId}_${currentInstaller.id}`;
+    const issue    = { item: _invIssueKey, type: _invIssueType, note, reportedAt: new Date() };
+
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        const snap   = await recRef.get();
+        if (!snap.exists) {
+            await recRef.set({ jobId: _invIssueJobId, installerId: currentInstaller.id,
+                               status: 'not_started', inventoryIssues: [],
+                               createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+        await recRef.update({
+            inventoryIssues: firebase.firestore.FieldValue.arrayUnion(issue),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update local cache
+        if (!jobRecordCache[_invIssueJobId]) jobRecordCache[_invIssueJobId] = {};
+        if (!jobRecordCache[_invIssueJobId].inventoryIssues) jobRecordCache[_invIssueJobId].inventoryIssues = [];
+        jobRecordCache[_invIssueJobId].inventoryIssues.push(issue);
+
+        showToast('Issue reported ⚠');
+        // Re-open inventory modal so they see the issue flagged
+        showInventoryModal(_invIssueJobId);
+    } catch(e) {
+        showToast('Could not save: ' + e.message);
+    }
+}
+
+// ============================================================
+// JOB DETAIL PAGE
+// ============================================================
+async function openJobDetail(jobId) {
+    showPage('job-detail');
+    const el = document.getElementById('page-job-detail');
+    el.innerHTML = `<div class="text-center p-4" style="padding-top:3rem"><span class="spinner spinner-lg"></span></div>`;
+
+    try {
+        let jobDoc;
+        try {
+            jobDoc = await db.collection('jobs').doc(jobId).get();
+        } catch(e) { throw new Error('jobs/' + jobId + ': ' + e.message); }
+
+        let records;
+        try {
+            records = await loadJobRecords([jobId]);
+        } catch(e) { throw new Error('job_records: ' + e.message); }
+
+        if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
+
+        const job = { id: jobDoc.id, ...jobDoc.data() };
+        const rec = records[jobId] || null;
+
+        renderJobDetail(job, rec);
+    } catch(err) {
+        el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${err.message}</div>`;
+    }
+}
+
+function renderJobDetail(job, rec) {
+    currentJobIdForCapture = job.id;
+    const el      = document.getElementById('page-job-detail');
+    const status  = rec ? rec.status : 'not_started';
+    const startDt = toDate(job.startDt);
+    const endDt   = toDate(job.endDt);
+
+    const dateStr = startDt
+        ? startDt.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
+        : '—';
+    const timeStr = startDt && endDt
+        ? `${formatTime(startDt)} – ${formatTime(endDt)}`
+        : startDt ? formatTime(startDt) : '—';
+
+    const commentsHtml = (job.officeComments || []).length
+        ? job.officeComments.map(c => `
+            <div class="comment-bubble">
+                <div class="flex justify-between mb-1">
+                    <span class="who">${esc(c.name)}</span>
+                    <span class="when">${c.date ? new Date(c.date).toLocaleDateString() : ''}</span>
+                </div>
+                ${esc(c.message)}
+            </div>`).join('')
+        : '<p class="text-muted text-sm">No office comments.</p>';
+
+    el.innerHTML = `
+        <button class="detail-back" onclick="goBackToSchedule()">← Back to Schedule</button>
+
+        <div style="margin-bottom:.5rem">
+            <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Job #${esc(job.jobNumber || job.id)}</div>
+            <h2 style="font-size:1.25rem;margin:.2rem 0">${esc(job.customerName || job.title || 'Job')}</h2>
+            <div style="font-size:.8rem;font-weight:600;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
+        </div>
+
+        <div class="detail-section">
+            <h3>Details</h3>
+            ${job.address ? `<div class="detail-row"><span class="lbl">Address</span><span>${esc(job.address.replace(/\n/g,' '))}</span></div>` : ''}
+            ${job.customerPhone ? `<div class="detail-row"><span class="lbl">Phone</span><a href="tel:${esc(job.customerPhone)}" style="color:var(--accent)">${esc(job.customerPhone)}</a></div>` : ''}
+            <div class="detail-row"><span class="lbl">Date</span><span>${dateStr}</span></div>
+            <div class="detail-row"><span class="lbl">Time</span><span>${timeStr}</span></div>
+            ${job.windowCount != null ? `<div class="detail-row"><span class="lbl">Windows</span><span>${job.windowCount}</span></div>` : ''}
+            ${job.doorCount   != null ? `<div class="detail-row"><span class="lbl">Doors</span><span>${job.doorCount}</span></div>` : ''}
+            ${job.sgdCount    != null ? `<div class="detail-row"><span class="lbl">SGDs</span><span>${job.sgdCount}</span></div>` : ''}
+            ${(() => {
+                const inv = rec?.inventoryReceived || {};
+                const items = [];
+                if (job.windowCount > 0) items.push(`Windows${inv.windows ? ' ✅' : ' ⬜'}`);
+                if (job.doorCount   > 0) items.push(`Doors${inv.doors     ? ' ✅' : ' ⬜'}`);
+                if (job.sgdCount    > 0) items.push(`SGDs${inv.sgds       ? ' ✅' : ' ⬜'}`);
+                return items.length ? `<div class="detail-row"><span class="lbl">Inventory</span><span style="font-size:.82rem">${items.join(' · ')}</span></div>` : '';
+            })()}
+            ${job.financials?.balanceDue ? `<div class="detail-row"><span class="lbl">Balance Due</span><span>$${esc(job.financials.balanceDue)}</span></div>` : ''}
+            ${job.financials?.paymentMethod ? `<div class="detail-row"><span class="lbl">Payment</span><span>${esc(job.financials.paymentMethod)}</span></div>` : ''}
+            ${job.financials?.installerPay && parseFloat(job.financials.installerPay) > 0
+                ? `<div class="detail-row"><span class="lbl">Your Pay</span><span style="color:var(--ok);font-weight:700">$${esc(job.financials.installerPay)}</span></div>`
+                : ''}
+        </div>
+
+        ${job.notes ? `
+        <div class="detail-section">
+            <h3>Job Notes</h3>
+            <div class="detail-notes">${esc(job.notes)}</div>
+        </div>` : ''}
+
+        ${job.address ? `
+        <div class="detail-section">
+            <a href="https://maps.google.com/?q=${encodeURIComponent(job.address)}" target="_blank"
+               class="btn btn-secondary w-full">📍 Open in Maps</a>
+        </div>` : ''}
+
+        <div class="detail-section">
+            <h3>Office Comments</h3>
+            ${commentsHtml}
+        </div>
+
+        ${(rec?.startPhotos?.length) ? `
+        <div class="detail-section">
+            <h3>Start Photos</h3>
+            <div class="start-photos-strip">
+                ${rec.startPhotos.map(p => `<img src="${p.url}" alt="${esc(p.requirementName||'')}" title="${esc(p.requirementName||'')}">`).join('')}
+            </div>
+        </div>` : ''}
+
+        ${(rec?.preExistingConditions?.length) ? `
+        <div class="detail-section">
+            <h3>Pre-existing Conditions</h3>
+            ${rec.preExistingConditions.map(item => `
+                <div class="pec-item">
+                    <div class="pec-item-note">${esc(item.note)}</div>
+                    ${item.photos?.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}
+                </div>`).join('')}
+        </div>` : ''}
+
+        ${status !== 'not_started' ? `
+        <div class="detail-section">
+            <h3>Job Modules</h3>
+            <button class="module-btn" onclick="showProgressPhotos('${job.id}')">
+                <span class="m-icon">📷</span>
+                <div class="m-body">
+                    <div class="m-label">Progress Photos</div>
+                    <div class="m-meta">Openings, photo capture &amp; defects</div>
+                </div>
+                <span class="m-arrow">›</span>
+            </button>
+            <button class="module-btn" onclick="showCertificateFlow('${job.id}')">
+                <span class="m-icon">✅</span>
+                <div class="m-body">
+                    <div class="m-label">Certificate of Completion</div>
+                    <div class="m-meta">${rec?.signatures?.completion?.installerAt ? '✓ Signed' : 'Not yet signed'}</div>
+                </div>
+                <span class="m-arrow">›</span>
+            </button>
+            <button class="module-btn" onclick="showWalkthroughFlow('${job.id}')">
+                <span class="m-icon">🚶</span>
+                <div class="m-body">
+                    <div class="m-label">Walkthrough Checklist</div>
+                    <div class="m-meta">${rec?.signatures?.walkthrough?.installerAt ? '✓ Signed' : 'Not yet signed'}</div>
+                </div>
+                <span class="m-arrow">›</span>
+            </button>
+            <button class="module-btn" onclick="showExtraWorkFlow('${job.id}')">
+                <span class="m-icon">🔧</span>
+                <div class="m-body">
+                    <div class="m-label">Extra Work Requests</div>
+                    <div class="m-meta" id="ew-meta-${job.id}">Loading…</div>
+                </div>
+                <span class="m-arrow">›</span>
+            </button>
+        </div>` : ''}
+
+        <!-- Spacer for status bar -->
+        <div style="height:80px"></div>`;
+
+    // Inject status bar
+    let statusBarEl = document.getElementById('status-bar');
+    if (!statusBarEl) {
+        statusBarEl = document.createElement('div');
+        statusBarEl.id = 'status-bar';
+        statusBarEl.className = 'status-bar';
+        document.body.appendChild(statusBarEl);
+    }
+    // Position status bar above the bottom nav (handles safe-area-inset on iPhones)
+    const navEl = document.getElementById('bottom-nav');
+    statusBarEl.style.bottom = (navEl ? navEl.offsetHeight : 60) + 'px';
+    statusBarEl.style.display = 'flex';
+    renderStatusBar(job, rec);
+
+    // Async-load openings into their container
+    if (rec && rec.status !== 'not_started') {
+        renderOpenings(job.id, rec);
+        ewLoadMetaBadge(job.id);
+    }
+}
+
+function renderStatusBar(job, rec) {
+    const el     = document.getElementById('status-bar');
+    if (!el) return;
+    const status = rec ? rec.status : 'not_started';
+
+    if (status === 'not_started') {
+        el.innerHTML = `<button class="btn btn-primary" style="flex:1" onclick="startJobFlow('${job.id}')">▶ Start Job</button>`;
+    } else {
+        const note = rec && rec.statusNote ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${esc(rec.statusNote)}</div>` : '';
+        el.innerHTML = `
+            <div style="flex:1;min-width:0">
+                <div style="font-size:.7rem;color:var(--muted)">Status</div>
+                <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
+                ${note}
+            </div>
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" onclick="showStatusPicker('${job.id}','${status}')">Change</button>`;
+    }
+}
+
+let STATUS_OPTIONS = [
+    { val: 'in_progress',             label: 'In Progress',                                        color: '#94A3B8', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'completed_collected',     label: 'Completed — Collected — Ready For Inspection',       color: '#22C55E', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_not_collected', label: 'Completed — Not Collected — Ready For Inspection',   color: '#22C55E', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Reason not collected (required)',     notePlaceholder: 'e.g. Customer not home, will follow up…',  countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_partial',       label: 'Complete — Partial Payment Collected',               color: '#60A5FA', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Partial payment details (required)',  notePlaceholder: 'e.g. $500 cash, balance to be collected…', countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'not_complete_multiday',   label: 'Not Complete — Multiday',                           color: '#F59E0B', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'not_complete',            label: 'Not Complete',                                       color: '#EF4444', requiresSignatures: false, requiresNote: true,  noteLabel: 'Reason (required)',                   notePlaceholder: 'Describe why the job is not complete…',    countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'complete_need_service',   label: 'Complete — Need Service',                            color: '#EF4444', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: false, showInService: true,  isBuiltIn: true },
+];
+
+let POSITIVE_COMPLETION_STATUSES = [];
+
+async function loadStatusOptions() {
+    try {
+        const snap = await db.collection('settings').doc('portal').get();
+        if (snap.exists && Array.isArray(snap.data().statuses) && snap.data().statuses.length > 0) {
+            STATUS_OPTIONS = snap.data().statuses;
+        }
+        POSITIVE_COMPLETION_STATUSES = STATUS_OPTIONS.filter(s => s.requiresSignatures).map(s => s.val);
+    } catch(e) {
+        // Use hardcoded defaults
+        POSITIVE_COMPLETION_STATUSES = STATUS_OPTIONS.filter(s => s.requiresSignatures).map(s => s.val);
+    }
+}
+
+let _spJobId = null, _spSelected = null;
+
+function showStatusPicker(jobId, currentStatus) {
+    _spJobId    = jobId;
+    _spSelected = currentStatus;
+
+    const rec             = jobRecordCache[jobId];
+    const walkthroughDone = !!(rec?.signatures?.walkthrough?.installerAt);
+    const cocDone         = !!(rec?.signatures?.completion?.installerAt);
+    const canComplete     = walkthroughDone && cocDone;
+
+    const optionsHtml = STATUS_OPTIONS.map(s => {
+        const locked = s.requiresSignatures && !canComplete;
+        return `
+        <div class="status-option${s.val === currentStatus ? ' active' : ''}"
+             style="${locked ? 'opacity:.4;cursor:default;pointer-events:none' : ''}"
+             ${locked ? '' : `onclick="spPickStatus('${s.val}')"`}>
+            <div class="status-option-dot" style="background:${statusDotColor(s.val)}"></div>
+            <div>
+                <div style="font-size:.875rem;font-weight:600;color:${statusDotColor(s.val)}">${s.label}</div>
+                ${locked ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.1rem">Requires walkthrough &amp; COC to be signed</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'status-picker-overlay';
+    overlay.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998" onclick="closeStatusPicker()"></div>
+        <div class="status-picker-sheet">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <h3 style="margin:0;font-size:1rem">Update Job Status</h3>
+                <button class="btn btn-ghost btn-sm" onclick="closeStatusPicker()">✕</button>
+            </div>
+            <div id="sp-options">${optionsHtml}</div>
+            <div id="sp-note-wrap" class="hidden" style="margin-top:.75rem">
+                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">Reason (required)</label>
+                <textarea class="form-input" id="sp-note" rows="3" placeholder="Describe why the job is not complete…"></textarea>
+            </div>
+            <button class="btn btn-primary w-full" style="margin-top:1rem" onclick="saveNewStatus()">Save Status</button>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function spPickStatus(val) {
+    _spSelected = val;
+    document.querySelectorAll('.status-option').forEach(el => el.classList.remove('active'));
+    const opts = document.querySelectorAll('.status-option');
+    STATUS_OPTIONS.forEach((s, i) => { if (s.val === val) opts[i]?.classList.add('active'); });
+    const noteWrap = document.getElementById('sp-note-wrap');
+    const opt = STATUS_OPTIONS.find(s => s.val === val);
+    if (noteWrap) {
+        noteWrap.classList.toggle('hidden', !opt?.requiresNote);
+        if (opt?.requiresNote) {
+            const lbl = noteWrap.querySelector('label');
+            const ta  = document.getElementById('sp-note');
+            if (lbl) lbl.textContent = opt.noteLabel;
+            if (ta)  ta.placeholder  = opt.notePlaceholder;
+        }
+    }
+}
+
+function closeStatusPicker() {
+    const el = document.getElementById('status-picker-overlay');
+    if (el) el.remove();
+}
+
+async function saveNewStatus() {
+    if (!_spSelected || !_spJobId) return;
+    if (STATUS_OPTIONS.find(s => s.val === _spSelected)?.requiresSignatures) {
+        const rec             = jobRecordCache[_spJobId];
+        const walkthroughDone = !!(rec?.signatures?.walkthrough?.installerAt);
+        const cocDone         = !!(rec?.signatures?.completion?.installerAt);
+        if (!walkthroughDone || !cocDone) {
+            alert('Please complete the Walkthrough Checklist and Certificate of Completion before marking this job as complete.');
+            return;
+        }
+    }
+    const opt = STATUS_OPTIONS.find(s => s.val === _spSelected);
+    let note = '';
+    if (opt?.requiresNote) {
+        note = (document.getElementById('sp-note')?.value || '').trim();
+        if (!note) { alert('Please enter a reason before saving.'); return; }
+    }
+    closeStatusPicker();
+    await updateJobStatus(_spJobId, _spSelected, note);
+}
+
+async function updateJobStatus(jobId, newStatus, statusNote) {
+    try {
+        const now = firebase.firestore.FieldValue.serverTimestamp();
+        const recRef = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
+        const recDoc = await recRef.get();
+
+        const isComplete = !!(STATUS_OPTIONS.find(s => s.val === newStatus)?.countsAsComplete);
+        const historyEntry = {
+            status:      newStatus,
+            note:        statusNote || '',
+            timestamp:   new Date().toISOString(),
+            installerId: currentInstaller.id
+        };
+
+        if (recDoc.exists) {
+            await recRef.update({
+                status:     newStatus,
+                statusNote: statusNote || '',
+                updatedAt:  now,
+                ...(newStatus === 'in_progress' && !recDoc.data().startedAt ? { startedAt: now } : {}),
+                ...(isComplete ? { completedAt: now } : {}),
+                statusHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry)
+            });
+        } else {
+            await recRef.set({
+                jobId:       jobId,
+                jobNumber:   null,
+                installerId: currentInstaller.id,
+                status:      newStatus,
+                statusNote:  statusNote || '',
+                statusHistory: [historyEntry],
+                startedAt:   newStatus === 'in_progress' ? now : null,
+                completedAt: isComplete ? now : null,
+                openings:    [],
+                signatures:  {},
+                createdAt:   now,
+                updatedAt:   now
+            });
+        }
+
+        // Update cache
+        jobRecordCache[jobId] = { ...(jobRecordCache[jobId] || {}), status: newStatus };
+
+        // Invalidate job cache so schedule refreshes
+        jobCache = {};
+
+        // Re-render status bar with updated state
+        const jobDoc = await db.collection('jobs').doc(jobId).get();
+        const job    = { id: jobDoc.id, ...jobDoc.data() };
+        const newRec = jobRecordCache[jobId] || { status: newStatus };
+        renderJobDetail(job, newRec);
+
+    } catch(err) {
+        alert('Could not update status: ' + err.message);
+    }
+}
+
+function goBackToSchedule() {
+    const bar = document.getElementById('status-bar');
+    if (bar) bar.style.display = 'none';
+    showPage('schedule');
+}
+
+// ============================================================
+// JOB RECORDS
+// ============================================================
+async function loadJobRecords(jobIds) {
+    if (jobIds.length === 0) return {};
+    const result = {};
+    const toFetch = jobIds.filter(id => !jobRecordCache[id]);
+
+    if (toFetch.length > 0) {
+        // Job records use composite ID: jobId_installerId
+        const promises = toFetch.map(id =>
+            db.collection('job_records').doc(`${id}_${currentInstaller.id}`).get()
+        );
+        const docs = await Promise.all(promises);
+        docs.forEach(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                jobRecordCache[data.jobId] = data;
+            }
+        });
+    }
+
+    jobIds.forEach(id => {
+        if (jobRecordCache[id]) result[id] = jobRecordCache[id];
+    });
+    return result;
+}
+
+// ============================================================
+// BLACKOUT REQUESTS PAGE
+// ============================================================
+async function renderBlackout() {
+    const el = document.getElementById('page-blackout');
+    el.innerHTML = `
+        <h2 class="mb-4">Days Off Requests</h2>
+        <div class="detail-section">
+            <p class="text-sm text-muted mb-4">Request dates you are unavailable. Your administrator will be notified.</p>
+            <div class="form-group">
+                <label class="form-label">Select Date</label>
+                <input class="form-input" type="date" id="blackout-date" min="${new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason (optional)</label>
+                <input class="form-input" type="text" id="blackout-reason" placeholder="e.g. Family commitment">
+            </div>
+            <button class="btn btn-primary w-full" onclick="submitBlackout()">Request Day Off</button>
+        </div>
+
+        <h3 class="mb-3 mt-4">My Requests</h3>
+        <div id="blackout-list"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
+
+    await loadBlackoutList();
+}
+
+async function loadBlackoutList() {
+    const el = document.getElementById('blackout-list');
+    if (!el) return;
+    try {
+        const snap = await db.collection('blackout_requests')
+            .where('installerId', '==', currentInstaller.id)
+            .get();
+
+        if (snap.empty) {
+            el.innerHTML = '<p class="text-muted text-sm">No requests yet.</p>';
+            return;
+        }
+
+        const sorted = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (a.dates[0] > b.dates[0] ? -1 : 1));
+
+        el.innerHTML = sorted.map(r => `
+            <div class="detail-section" style="margin-bottom:.5rem">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <div class="font-medium text-sm">${r.dates.join(', ')}</div>
+                        ${r.reason ? `<div class="text-xs text-muted">${esc(r.reason)}</div>` : ''}
+                    </div>
+                    <span class="badge badge-${r.status === 'pending' ? 'pending' : 'active'}">${r.status}</span>
+                </div>
+            </div>`).join('');
+    } catch(err) {
+        el.innerHTML = '<p class="text-muted text-sm">Could not load requests.</p>';
+    }
+}
+
+async function submitBlackout() {
+    const dateVal  = document.getElementById('blackout-date').value;
+    const reason   = document.getElementById('blackout-reason').value.trim();
+    if (!dateVal) { alert('Please select a date.'); return; }
+
+    try {
+        await db.collection('blackout_requests').add({
+            installerId:  currentInstaller.id,
+            installerName: currentInstaller.displayName || '',
+            dates:        [dateVal],
+            reason:       reason,
+            status:       'pending',
+            requestedAt:  firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('blackout-date').value   = '';
+        document.getElementById('blackout-reason').value = '';
+        await loadBlackoutList();
+    } catch(err) { alert('Could not submit request: ' + err.message); }
+}
+
+// ============================================================
+// DEFECTS HISTORY PAGE
+// ============================================================
+async function renderDefects() {
+    const el = document.getElementById('page-defects');
+    el.innerHTML = `
+        <h2 class="mb-4">My Defect History</h2>
+        <div id="defects-list"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
+
+    try {
+        // Load all job_records for this installer that have defects
+        const snap = await db.collection('job_records')
+            .where('installerId', '==', currentInstaller.id)
+            .get();
+
+        const withDefects = snap.docs
+            .map(d => d.data())
+            .filter(r => r.openings && r.openings.some(o => o.defects && o.defects.length > 0));
+
+        const listEl = document.getElementById('defects-list');
+        if (!listEl) return;
+
+        if (withDefects.length === 0) {
+            listEl.innerHTML = '<p class="text-muted text-sm">No defects reported yet.</p>';
+            return;
+        }
+
+        listEl.innerHTML = withDefects.map(r => {
+            const defects = r.openings.flatMap(o =>
+                (o.defects || []).map(d => ({ ...d, openingLabel: o.label }))
+            );
+            return defects.map(d => `
+                <div class="detail-section" style="margin-bottom:.5rem">
+                    <div class="flex justify-between mb-1">
+                        <span class="font-medium text-sm">${esc(d.openingLabel || 'Opening')}</span>
+                        <span class="badge badge-inactive">${esc(d.type || 'defect')}</span>
+                    </div>
+                    <div class="text-sm text-muted">Job #${esc(r.jobNumber || r.jobId)}</div>
+                    ${d.description ? `<div class="text-sm mt-1">${esc(d.description)}</div>` : ''}
+                </div>`).join('');
+        }).join('');
+    } catch(err) {
+        document.getElementById('defects-list').innerHTML =
+            '<p class="text-muted text-sm">Could not load defects.</p>';
+    }
+}
+
+// ============================================================
+// EARNINGS REPORT PAGE
+// ============================================================
+async function renderEarnings() {
+    const el = document.getElementById('page-earnings');
+    const today      = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + '-01';
+    el.innerHTML = `
+        <h2 style="margin-bottom:1rem">Earnings Report</h2>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
+            <div>
+                <label class="form-label" style="font-size:.75rem">From</label>
+                <input type="date" class="form-input" id="earn-from" value="${monthStart}" style="font-size:.85rem;padding:.35rem .6rem">
+            </div>
+            <div>
+                <label class="form-label" style="font-size:.75rem">To</label>
+                <input type="date" class="form-input" id="earn-to" value="${today}" style="font-size:.85rem;padding:.35rem .6rem">
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="loadEarningsReport()">Run Report</button>
+        </div>
+        <div id="earnings-results"></div>`;
+    await loadEarningsReport();
+}
+
+async function loadEarningsReport() {
+    const fromStr = document.getElementById('earn-from')?.value;
+    const toStr   = document.getElementById('earn-to')?.value;
+    const resultsEl = document.getElementById('earnings-results');
+    if (!resultsEl || !fromStr || !toStr) return;
+
+    resultsEl.innerHTML = '<div class="text-center p-4"><span class="spinner"></span></div>';
+
+    try {
+        const from   = new Date(fromStr + 'T00:00:00');
+        const to     = new Date(toStr   + 'T23:59:59');
+        const tidStr = String(currentInstaller.teamupId);
+
+        let jobs;
+        try {
+            const snap = await db.collection('jobs')
+                .where('startDt', '>=', from)
+                .where('startDt', '<=', to)
+                .get();
+            jobs = snap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(j => (j.assignedIds || []).map(String).includes(tidStr))
+                .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+        } catch(e) {
+            const snap = await db.collection('jobs').get();
+            jobs = snap.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .filter(j => {
+                    const start = toDate(j.startDt);
+                    return start >= from && start <= to &&
+                        (j.assignedIds || []).map(String).includes(tidStr);
+                })
+                .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+        }
+
+        if (jobs.length === 0) {
+            resultsEl.innerHTML = '<p class="text-muted text-sm" style="text-align:center;padding:1.5rem 0">No jobs in this date range.</p>';
+            return;
+        }
+
+        // Deduplicate multi-day recurring jobs — parse series from ID format {seriesId}-rid-{ts}
+        const seen = new Map();
+        for (const j of jobs) {
+            const m = j.id.match(/^(\d+)-rid-\d+$/);
+            const key = m ? m[1] : j.id;
+            if (!seen.has(key)) {
+                seen.set(key, { ...j, _days: 1, _lastDt: j.startDt });
+            } else {
+                const existing = seen.get(key);
+                existing._days++;
+                existing._lastDt = j.startDt;
+                // Use whichever event has a non-zero pay
+                const existPay = parseFloat((existing.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
+                const thisPay  = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
+                if (existPay === 0 && thisPay > 0) existing.financials = j.financials;
+            }
+        }
+        const dedupedJobs = [...seen.values()];
+
+        let total = 0;
+        const rows = dedupedJobs.map(j => {
+            const pay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
+            total += pay;
+            const d1 = toDate(j.startDt);
+            const d2 = toDate(j._lastDt);
+            const fmt = d => d?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const dateStr = (j._days > 1 && d1 && d2 && d1.toDateString() !== d2.toDateString())
+                ? fmt(d1) + ' – ' + fmt(d2)
+                : fmt(d1) || '—';
+            const daysNote = j._days > 1 ? ` · ${j._days} days` : '';
+            return `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--hairline)">
+                <div>
+                    <div style="font-weight:600;font-size:.875rem">${esc(j.customerName || j.title || 'Unknown')}</div>
+                    <div style="font-size:.75rem;color:var(--muted)">Job #${esc(j.jobNumber || j.id)} · ${dateStr}${daysNote}</div>
+                </div>
+                <div style="font-weight:700;min-width:60px;text-align:right;color:${pay > 0 ? 'var(--ok)' : 'var(--muted)'}">
+                    ${pay > 0 ? '$' + pay.toFixed(2) : '—'}
+                </div>
+            </div>`;
+        }).join('');
+
+        resultsEl.innerHTML = rows + `
+        <div style="display:flex;justify-content:space-between;padding:.75rem 0;font-weight:700;font-size:1rem;border-top:2px solid var(--hairline);margin-top:.25rem">
+            <span>${jobs.length} job${jobs.length !== 1 ? 's' : ''}</span>
+            <span style="color:var(--ok)">$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        </div>`;
+
+    } catch(err) {
+        resultsEl.innerHTML = `<div class="alert alert-error">Could not load earnings: ${err.message}</div>`;
+    }
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function toDate(val) {
+    if (!val) return null;
+    if (val instanceof Date) return val;
+    if (val && typeof val.toDate === 'function') return val.toDate();
+    return new Date(val);
+}
+
+function formatTime(date) {
+    if (!date) return '';
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+const LEGACY_STATUS_DISPLAY = {
+    not_started:  'Not Started',
+    completed:    'Completed',
+    needs_return: 'Needs Return Trip',
+    on_hold:      'On Hold'
+};
+
+function statusDisplay(status) {
+    const opt = STATUS_OPTIONS.find(s => s.val === status);
+    if (opt) return opt.label;
+    return LEGACY_STATUS_DISPLAY[status] || status;
+}
+
+function statusDotColor(status) {
+    const opt = STATUS_OPTIONS.find(s => s.val === status);
+    if (opt) return opt.color;
+    const legacy = { not_started: '#94A3B8', completed: '#22C55E', needs_return: '#EF4444', on_hold: '#60A5FA' };
+    return legacy[status] || '#94A3B8';
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// IMAGE COMPRESSION
+// Resizes to max 1920px and re-encodes as JPEG ~82% quality
+// before upload — reduces 8MB phone photos to ~400KB
+// ============================================================
+function compressImage(file, maxPx = 1920, quality = 0.82) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const blobUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(blobUrl);
+            let { width, height } = img;
+            if (width > maxPx || height > maxPx) {
+                if (width > height) { height = Math.round(height * maxPx / width); width = maxPx; }
+                else                { width  = Math.round(width  * maxPx / height); height = maxPx; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width  = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', quality);
+        };
+        img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file); };
+        img.src = blobUrl;
+    });
+}
+
+// ============================================================
+// PHASE 4 — JOB CAPTURE
+// ============================================================
+
+let currentJobIdForCapture    = null;
+let currentOpeningIdForCapture = null;
+let currentDefectOpeningId    = null;
+let sigJobId  = null;
+let sigType   = null;
+let sigDrawing = false;
+
+// ============================================================
+// OPENINGS
+// ============================================================
+
+async function renderOpenings(jobId, rec) {
+    const el = document.getElementById('openings-container');
+    if (!el) return;
+
+    const openings = (rec && rec.openings) ? rec.openings : [];
+
+    if (openings.length === 0) {
+        el.innerHTML = '<p class="text-muted text-sm">No openings yet. Tap "+ Add Opening" to start.</p>';
+        return;
+    }
+
+    el.innerHTML = openings.map(op => buildOpeningCardHtml(jobId, op)).join('');
+}
+
+function buildOpeningCardHtml(jobId, op) {
+    const defectCount = (op.defects || []).length;
+    const photos      = op.photos || [];
+
+    const photosHtml = photos.slice(0, 5).map(p =>
+        `<img class="photo-thumb" src="${esc(p.url)}" alt="${esc(p.category || 'photo')}" onclick="viewPhoto('${esc(p.url)}')">`
+    ).join('');
+
+    const addBtn = `
+        <button class="photo-add-btn" onclick="openPhotoCapture('${jobId}','${op.id}')">
+            <span class="cam-icon">📷</span>
+            <span>Photo</span>
+        </button>`;
+
+    return `
+        <div class="opening-card" id="opening-${op.id}">
+            <div class="opening-card-header">
+                <span class="opening-label">${esc(op.label)}</span>
+                <span class="opening-type-badge">${esc(op.type || 'opening')}</span>
+            </div>
+            <div class="photo-grid">
+                ${photosHtml}
+                ${addBtn}
+            </div>
+            ${defectCount > 0 ? `<div class="text-xs mb-2" style="color:var(--bad)">⚠️ ${defectCount} defect${defectCount > 1 ? 's' : ''} reported</div>` : ''}
+            <button class="btn btn-ghost btn-sm w-full" style="border-color:var(--bad);color:var(--bad)"
+                    onclick="showDefectModal('${jobId}','${op.id}','${esc(op.label).replace(/'/g, "\\'")}')">
+                ⚠️ Report Defect
+            </button>
+        </div>`;
+}
+
+function showAddOpeningModal(jobId) {
+    currentJobIdForCapture = jobId;
+    document.getElementById('opening-label').value = '';
+    document.querySelectorAll('#opening-type-group .seg-btn')
+        .forEach((b, i) => b.classList.toggle('active', i === 0));
+    showModal('modal-add-opening');
+    setTimeout(() => document.getElementById('opening-label').focus(), 150);
+}
+
+async function submitNewOpening() {
+    const label = (document.getElementById('opening-label').value || '').trim();
+    if (!label) { alert('Please enter a label for this opening.'); return; }
+
+    const typeBtn = document.querySelector('#opening-type-group .seg-btn.active');
+    const type    = typeBtn ? typeBtn.dataset.val : 'window';
+    const jobId   = currentJobIdForCapture;
+    const recRef  = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
+
+    const newOpening = {
+        id:      'op_' + Date.now(),
+        label,
+        type,
+        photos:  [],
+        defects: []
+    };
+
+    try {
+        const recDoc = await recRef.get();
+        if (recDoc.exists) {
+            await recRef.update({
+                openings:  firebase.firestore.FieldValue.arrayUnion(newOpening),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+            const now = firebase.firestore.FieldValue.serverTimestamp();
+            await recRef.set({
+                jobId, jobNumber: null, installerId: currentInstaller.id,
+                status: 'in_progress', statusHistory: [],
+                startedAt: now, completedAt: null,
+                openings: [newOpening], signatures: {},
+                createdAt: now, updatedAt: now
+            });
+        }
+
+        delete jobRecordCache[jobId];
+        jobCache = {};
+
+        const updated = await recRef.get();
+        if (ppJobId === jobId) {
+            // Inside Progress Photos module — close just the add-opening sheet, stay in PP
+            document.getElementById('modal-add-opening').style.display = 'none';
+            document.getElementById('modal-progress-photos').style.display = '';
+            ppOpenings = updated.data()?.openings || [];
+            ppRenderList();
+        } else {
+            closeModal();
+            await renderOpenings(jobId, updated.data());
+        }
+    } catch(err) {
+        alert('Could not add opening: ' + err.message);
+    }
+}
+
+// ============================================================
+// PHOTO CAPTURE
+// ============================================================
+
+function openPhotoCapture(jobId, openingId) {
+    currentJobIdForCapture     = jobId;
+    currentOpeningIdForCapture = openingId;
+    document.getElementById('photo-input').click();
+}
+
+async function handlePhotoFile(input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    input.value = ''; // allow same file re-selection
+
+    // Route to specialised handlers before falling through to opening photos
+    if (currentPhotoMode === 'start' || currentPhotoMode === 'preexisting' || currentPhotoMode === 'progress' || currentPhotoMode === 'extra_work') {
+        const mode = currentPhotoMode;
+        currentPhotoMode = 'opening'; // reset before async work
+
+        // Show uploading state immediately so user knows something is happening
+        if (mode === 'start') {
+            const camBtn = document.querySelector('.sp-cam-btn');
+            if (camBtn) { camBtn.disabled = true; camBtn.innerHTML = '<span class="spinner"></span><br><span style="font-size:.75rem">Uploading…</span>'; }
+        }
+
+        try {
+            let path;
+            if (mode === 'start') {
+                path = `jobs/${spJobId}/installers/${currentInstaller.id}/start/${Date.now()}.jpg`;
+            } else if (mode === 'preexisting') {
+                path = `jobs/${spJobId}/installers/${currentInstaller.id}/preexisting/${Date.now()}.jpg`;
+            } else if (mode === 'extra_work') {
+                path = `jobs/${ewJobId}/installers/${currentInstaller.id}/extra_work/${Date.now()}.jpg`;
+            } else {
+                path = `jobs/${ppJobId}/installers/${currentInstaller.id}/openings/${ppCurrentOpening?.id || 'unknown'}/${Date.now()}.jpg`;
+            }
+            const compressed = await compressImage(file);
+            const ref  = storage.ref(path);
+            const snap = await ref.put(compressed, { contentType: 'image/jpeg' });
+            const url  = await snap.ref.getDownloadURL();
+
+            if (mode === 'start')            await spHandlePhoto(url);
+            else if (mode === 'preexisting') spPecHandlePhoto(url);
+            else if (mode === 'extra_work')  ewHandlePhoto(url);
+            else                             await ppHandlePhoto(url);
+        } catch(err) {
+            alert('Photo upload failed: ' + err.message);
+        }
+        return;
+    }
+
+    const jobId     = currentJobIdForCapture;
+    const openingId = currentOpeningIdForCapture;
+
+    const cardEl = document.getElementById('opening-' + openingId);
+    if (cardEl) cardEl.style.opacity = '0.55';
+
+    try {
+        const photoId    = 'ph_' + Date.now();
+        const path       = `jobs/${jobId}/installers/${currentInstaller.id}/openings/${openingId}/${photoId}.jpg`;
+        const compressed = await compressImage(file);
+        const ref        = storage.ref(path);
+
+        const uploadSnap = await ref.put(compressed, { contentType: 'image/jpeg' });
+        const url        = await uploadSnap.ref.getDownloadURL();
+
+        // Update the specific opening's photos array
+        const recRef = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
+        const recDoc = await recRef.get();
+
+        if (!recDoc.exists) {
+            alert('No job record found. Please start the job first.');
+            return;
+        }
+
+        const openings = recDoc.data().openings || [];
+        const opIdx    = openings.findIndex(o => o.id === openingId);
+        if (opIdx === -1) { alert('Opening not found. Refresh the page.'); return; }
+
+        openings[opIdx].photos = openings[opIdx].photos || [];
+        openings[opIdx].photos.push({
+            id: photoId, category: 'general', url,
+            uploadedAt: new Date().toISOString()
+        });
+
+        await recRef.update({ openings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+        delete jobRecordCache[jobId];
+        jobCache = {};
+
+        // Re-render openings container
+        const freshDoc = await recRef.get();
+        await renderOpenings(jobId, freshDoc.data());
+    } catch(err) {
+        alert('Photo upload failed: ' + err.message);
+        console.error(err);
+        if (cardEl) cardEl.style.opacity = '1';
+    }
+}
+
+// ============================================================
+// DEFECT REPORTING
+// ============================================================
+
+function showDefectModal(jobId, openingId, openingLabel) {
+    currentJobIdForCapture  = jobId;
+    currentDefectOpeningId  = openingId;
+    document.getElementById('defect-opening-label').textContent = 'Opening: ' + (openingLabel || '');
+    document.getElementById('defect-description').value = '';
+    document.querySelectorAll('#defect-type-group .seg-btn')
+        .forEach((b, i) => b.classList.toggle('active', i === 0));
+    showModal('modal-defect');
+}
+
+async function submitDefect() {
+    const typeBtn = document.querySelector('#defect-type-group .seg-btn.active');
+    const type    = typeBtn ? typeBtn.dataset.val : 'other';
+    const desc    = (document.getElementById('defect-description').value || '').trim();
+    const jobId     = currentJobIdForCapture;
+    const openingId = currentDefectOpeningId;
+
+    try {
+        const recRef = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
+        const recDoc = await recRef.get();
+
+        if (!recDoc.exists) {
+            alert('No job record found. Start the job first.');
+            return;
+        }
+
+        const openings = recDoc.data().openings || [];
+        const opIdx    = openings.findIndex(o => o.id === openingId);
+        if (opIdx === -1) { alert('Opening not found.'); return; }
+
+        openings[opIdx].defects = openings[opIdx].defects || [];
+        openings[opIdx].defects.push({
+            id:          'def_' + Date.now(),
+            type,
+            description: desc,
+            photos:      [],
+            reportedAt:  new Date().toISOString()
+        });
+
+        await recRef.update({ openings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+        delete jobRecordCache[jobId];
+        jobCache = {};
+        closeModal();
+
+        const freshDoc = await recRef.get();
+        await renderOpenings(jobId, freshDoc.data());
+    } catch(err) {
+        alert('Could not report defect: ' + err.message);
+    }
+}
+
+// ============================================================
+// START JOB FLOW — Start photos + pre-existing conditions
+// ============================================================
+
+const SP_DEFAULTS = [
+    { id: '__default_sign',   name: 'Job Site Sign',      description: 'Photograph the job site sign in place before starting',  category: 'start', allowMultiple: false, order: 0 },
+    { id: '__default_front',  name: 'Front of House',     description: 'Include the address number if visible',                   category: 'start', allowMultiple: false, order: 1 },
+    { id: '__default_side1',  name: 'Side 1',             description: 'Left side of the structure',                              category: 'start', allowMultiple: false, order: 2 },
+    { id: '__default_side2',  name: 'Side 2',             description: 'Right side of the structure',                             category: 'start', allowMultiple: false, order: 3 },
+    { id: '__default_rear',   name: 'Rear',               description: 'Back of the structure',                                   category: 'start', allowMultiple: false, order: 4 },
+    { id: '__default_extra',  name: 'Additional Sides',   description: 'Any extra sides, angles, or areas (optional)',            category: 'start', allowMultiple: true,  order: 5 }
+];
+
+async function startJobFlow(jobId) {
+    let reqs = [];
+    try {
+        const snap = await db.collection('photo_requirements')
+            .where('category', '==', 'start')
+            .orderBy('order')
+            .get();
+        reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {
+        try {
+            const snap = await db.collection('photo_requirements')
+                .where('category', '==', 'start').get();
+            reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                         .sort((a,b) => (a.order||0) - (b.order||0));
+        } catch(e2) { /* use defaults */ }
+    }
+    if (!reqs.length) reqs = SP_DEFAULTS;
+
+    showStartPhotoFlow(jobId, reqs);
+}
+
+function showStartPhotoFlow(jobId, requirements) {
+    spJobId          = jobId;
+    spRequirements   = requirements;
+    spStepIndex      = 0;
+    spCapturedPhotos = {};
+    spPecItems       = [];
+    spPecNewPhotos   = [];
+
+    showModal('modal-start-photos');
+    document.getElementById('sp-header-title').textContent = 'Job Start Photos';
+    spRenderStep();
+}
+
+function spRenderStep() {
+    const content  = document.getElementById('sp-content');
+    const req      = spRequirements[spStepIndex];
+    const captured = spCapturedPhotos[req.id] || [];
+
+    const dotsHtml = spRequirements.map((_, i) => {
+        const cls = i < spStepIndex ? 'done' : (i === spStepIndex ? 'active' : '');
+        return `<div class="sp-dot ${cls}"></div>`;
+    }).join('');
+
+    let centerHtml;
+    if (captured.length === 0) {
+        centerHtml = `<button class="sp-cam-btn" onclick="spTriggerCapture()">📷</button>`;
+    } else if (!req.allowMultiple) {
+        centerHtml = `
+            <div class="sp-thumb-wrap">
+                <img class="sp-thumb" src="${captured[0].url}" alt="captured">
+                <div class="sp-thumb-count">✓ Photo taken</div>
+            </div>`;
+    } else {
+        centerHtml = `
+            <div class="sp-thumb-wrap">
+                <img class="sp-thumb" src="${captured[captured.length-1].url}" alt="captured">
+                <div class="sp-thumb-count">📷 ${captured.length} photo${captured.length !== 1 ? 's' : ''} taken</div>
+            </div>
+            <div class="flex gap-2" style="width:100%;max-width:280px">
+                <button class="btn btn-secondary" style="flex:1" onclick="spTriggerCapture()">📷 Take Another</button>
+                <button class="btn btn-primary"   style="flex:1" onclick="spAdvance()">✓ Done</button>
+            </div>`;
+    }
+
+    content.innerHTML = `
+        <div class="sp-body">
+            <div class="sp-progress">${dotsHtml}</div>
+            <div>
+                <div class="sp-step-title">${esc(req.name)}</div>
+                <div class="sp-step-desc">${esc(req.description || '')}</div>
+            </div>
+            ${centerHtml}
+            <button class="sp-skip" onclick="spAdvance()">Skip →</button>
+        </div>`;
+}
+
+function spTriggerCapture() {
+    currentPhotoMode = 'start';
+    document.getElementById('photo-input').click();
+}
+
+async function spHandlePhoto(url) {
+    const req    = spRequirements[spStepIndex];
+    const photos = spCapturedPhotos[req.id] || [];
+    photos.push({ url, uploadedAt: new Date().toISOString() });
+    spCapturedPhotos[req.id] = photos;
+    spRenderStep();
+    if (!req.allowMultiple) {
+        setTimeout(() => spAdvance(), 1500);
+    }
+}
+
+function spAdvance() {
+    spStepIndex++;
+    if (spStepIndex < spRequirements.length) {
+        spRenderStep();
+    } else {
+        spShowPecScreen();
+    }
+}
+
+function spShowPecScreen() {
+    document.getElementById('sp-header-title').textContent = 'Pre-existing Conditions';
+    spPecNewPhotos = [];
+    spRenderPecScreen();
+}
+
+function spRenderPecScreen() {
+    const content  = document.getElementById('sp-content');
+    const itemsHtml = spPecItems.map(item => `
+        <div class="pec-item">
+            <div class="pec-item-note">${esc(item.note)}</div>
+            ${item.photos.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}
+        </div>`).join('');
+
+    content.innerHTML = `
+        <div class="pec-screen-body">
+            <p class="text-sm text-muted" style="margin:0">Optional — document any damage before you start work.</p>
+            ${itemsHtml}
+            <div class="pec-add-form">
+                <textarea class="form-input" id="pec-note" rows="2" placeholder="Describe the condition…"></textarea>
+                <div class="flex gap-2">
+                    <button class="btn btn-secondary btn-sm" onclick="spPecAddPhoto()">📷 Photo</button>
+                    <button class="btn btn-primary btn-sm" style="flex:1" onclick="spPecAddItem()">+ Add Item</button>
+                </div>
+                <div id="pec-photo-preview" class="flex gap-2" style="flex-wrap:wrap"></div>
+            </div>
+        </div>
+        <div style="padding:0 1rem 1rem">
+            <button class="btn btn-primary w-full" onclick="spBeginJob()">Begin Job →</button>
+        </div>`;
+}
+
+function spPecAddPhoto() {
+    currentPhotoMode = 'preexisting';
+    document.getElementById('photo-input').click();
+}
+
+function spPecHandlePhoto(url) {
+    spPecNewPhotos.push({ url, uploadedAt: new Date().toISOString() });
+    const prev = document.getElementById('pec-photo-preview');
+    if (prev) {
+        prev.insertAdjacentHTML('beforeend',
+            `<img src="${url}" style="width:56px;height:56px;border-radius:6px;object-fit:cover" alt="">`);
+    }
+}
+
+function spPecAddItem() {
+    const note = (document.getElementById('pec-note')?.value || '').trim();
+    if (!note && spPecNewPhotos.length === 0) return;
+    spPecItems.push({
+        id:         'pec_' + Date.now(),
+        note:       note || '(no description)',
+        photos:     [...spPecNewPhotos],
+        reportedAt: new Date().toISOString()
+    });
+    spPecNewPhotos = [];
+    spRenderPecScreen();
+}
+
+async function spBeginJob() {
+    const jobId      = spJobId;
+    const installerId = currentInstaller.id;
+    const now        = firebase.firestore.FieldValue.serverTimestamp();
+    const recRef     = db.collection('job_records').doc(`${jobId}_${installerId}`);
+    const recDoc     = await recRef.get();
+
+    // Flatten captured photos into startPhotos array
+    const startPhotos = [];
+    for (const req of spRequirements) {
+        for (const p of (spCapturedPhotos[req.id] || [])) {
+            startPhotos.push({
+                id:              'sp_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+                requirementId:   req.id,
+                requirementName: req.name,
+                url:             p.url,
+                uploadedAt:      p.uploadedAt
+            });
+        }
+    }
+
+    try {
+        if (recDoc.exists) {
+            await recRef.update({ startPhotos, preExistingConditions: spPecItems, updatedAt: now });
+        } else {
+            await recRef.set({
+                jobId, jobNumber: null, installerId,
+                status: 'not_started', statusHistory: [],
+                startedAt: null, completedAt: null,
+                openings: [], signatures: {},
+                startPhotos, preExistingConditions: spPecItems,
+                createdAt: now, updatedAt: now
+            });
+        }
+    } catch(e) {
+        console.warn('Could not save start photos:', e.message);
+    }
+
+    closeModal();
+    showPage('job-detail');
+    await updateJobStatus(jobId, 'in_progress');
+}
+
+// ============================================================
+// PROGRESS PHOTOS MODULE
+// ============================================================
+
+async function showProgressPhotos(jobId) {
+    ppJobId          = jobId;
+    ppView           = 'list';
+    ppCurrentOpening = null;
+    ppCurrentSlot    = null;
+    // Clear caches so fresh data is loaded each time module opens
+    ppPhotoReqs  = [];
+    ppDefectTypes = [];
+
+    showModal('modal-progress-photos');
+    document.getElementById('pp-back-btn').style.display = 'none';
+    document.getElementById('pp-title').textContent = 'Progress Photos';
+    document.getElementById('pp-content').innerHTML =
+        '<div class="text-center" style="padding:3rem"><span class="spinner"></span></div>';
+
+    // Load job record + requirements + defect types in parallel
+    const [recDoc, reqs, dTypes] = await Promise.all([
+        db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`).get(),
+        ppFetchPhotoReqs(),
+        ppFetchDefectTypes()
+    ]);
+
+    ppOpenings    = recDoc.exists ? (recDoc.data().openings || []) : [];
+    ppPhotoReqs   = reqs;
+    ppDefectTypes = dTypes;
+
+    ppRenderList();
+}
+
+async function ppFetchPhotoReqs() {
+    try {
+        let snap;
+        try { snap = await db.collection('photo_requirements').where('category','==','opening').orderBy('order').get(); }
+        catch(e) { snap = await db.collection('photo_requirements').where('category','==','opening').get(); }
+        const reqs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                              .sort((a,b) => (a.order||0) - (b.order||0));
+        if (reqs.length) return reqs;
+    } catch(e) { /* fall through to defaults */ }
+    return ['Before Install','Bucking','Sealant','Fasteners','Final Inside','Final Outside']
+        .map((name, i) => ({ id: name, name, category: 'opening', appliesTo: ['all'], required: true, order: i }));
+}
+
+async function ppFetchDefectTypes() {
+    try {
+        let snap;
+        try { snap = await db.collection('defect_types').orderBy('order').get(); }
+        catch(e) { snap = await db.collection('defect_types').get(); }
+        const types = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                               .sort((a,b) => (a.order||0) - (b.order||0));
+        if (types.length) return types;
+    } catch(e) { /* fall through to defaults */ }
+    return ['Measure Issue','Manufacturer Defect','Shipping Issue','Damage','Missing Material','Other']
+        .map((name, i) => ({ id: name, name, order: i }));
+}
+
+function ppGetSlots(opening) {
+    return ppPhotoReqs.filter(r =>
+        !r.appliesTo || r.appliesTo.includes('all') || r.appliesTo.includes(opening.type)
+    );
+}
+
+function ppRenderList() {
+    ppView = 'list';
+    document.getElementById('pp-back-btn').style.display = 'none';
+    document.getElementById('pp-title').textContent = 'Progress Photos';
+    document.getElementById('pp-header-right').innerHTML =
+        `<button class="btn btn-primary btn-sm" onclick="ppAddOpening()">+ Add Opening</button>`;
+
+    const content = document.getElementById('pp-content');
+
+    if (!ppOpenings.length) {
+        content.innerHTML = `
+            <div style="text-align:center;padding:3rem 1rem;color:var(--muted)">
+                <div style="font-size:2.5rem;margin-bottom:.75rem">📋</div>
+                <div class="font-medium mb-1">No openings yet</div>
+                <div class="text-sm">Tap + Add Opening to begin</div>
+            </div>`;
+        return;
+    }
+
+    content.innerHTML = ppOpenings.map(op => {
+        const slots    = ppGetSlots(op);
+        const taken    = slots.filter(s => (op.photos||[]).some(p => p.category === s.name)).length;
+        const defCount = (op.defects||[]).length;
+        const meta     = `${taken}/${slots.length} photos${defCount ? ` · ${defCount} defect${defCount>1?'s':''}` : ''}`;
+        return `
+        <div class="pp-opening-row" onclick="ppOpenCapture('${op.id}')">
+            <div class="pp-opening-info">
+                <div class="pp-opening-name">${esc(op.label)}</div>
+                <div class="pp-opening-type">${op.type||'window'}</div>
+                <div class="pp-opening-progress">${meta}</div>
+            </div>
+            <div class="pp-opening-arrow">›</div>
+        </div>`;
+    }).join('');
+}
+
+function ppAddOpening() {
+    currentJobIdForCapture = ppJobId;
+    document.getElementById('opening-label').value = '';
+    document.querySelectorAll('#opening-type-group .seg-btn')
+        .forEach((b, i) => b.classList.toggle('active', i === 0));
+    showModal('modal-add-opening');
+    setTimeout(() => document.getElementById('opening-label').focus(), 150);
+}
+
+function ppOpenCapture(openingId) {
+    ppCurrentOpening = ppOpenings.find(o => o.id === openingId) || null;
+    if (!ppCurrentOpening) return;
+    ppView = 'capture';
+    ppRenderCapture();
+}
+
+function ppRenderCapture() {
+    const op = ppCurrentOpening;
+    if (!op) return;
+
+    document.getElementById('pp-back-btn').style.display = '';
+    document.getElementById('pp-title').textContent = op.label;
+    document.getElementById('pp-header-right').innerHTML =
+        `<span class="opening-type-badge">${op.type||'window'}</span>`;
+
+    const slots = ppGetSlots(op);
+    const slotsHtml = slots.map(slot => {
+        const taken   = (op.photos||[]).filter(p => p.category === slot.name);
+        const isMulti = MULTI_PHOTO_SLOTS.includes(slot.name);
+
+        if (isMulti) {
+            // Show each taken photo as a thumbnail, then an Add slot if under the max
+            const thumbs = taken.map((p, i) => `
+            <div class="pp-slot filled">
+                <img class="pp-slot-img" src="${p.url}" alt="${esc(slot.name)} ${i+1}">
+                <div class="pp-slot-label-filled">${esc(slot.name)} ${i+1}</div>
+                <div class="pp-slot-check">✓</div>
+            </div>`).join('');
+
+            const addSlot = taken.length < MAX_MULTI_PHOTOS ? `
+            <div class="pp-slot" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+                <span class="pp-slot-cam">${taken.length === 0 ? '📷' : '➕'}</span>
+                <span class="pp-slot-label">${taken.length === 0 ? esc(slot.name) : 'Add ' + esc(slot.name)}</span>
+            </div>` : '';
+
+            return thumbs + addSlot;
+        }
+
+        // Single-photo slot — existing behaviour
+        if (taken.length) {
+            return `
+            <div class="pp-slot filled" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+                <img class="pp-slot-img" src="${taken[taken.length-1].url}" alt="${esc(slot.name)}">
+                <div class="pp-slot-label-filled">${esc(slot.name)}</div>
+                <div class="pp-slot-check">✓</div>
+            </div>`;
+        }
+        return `
+        <div class="pp-slot" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+            <span class="pp-slot-cam">📷</span>
+            <span class="pp-slot-label">${esc(slot.name)}</span>
+        </div>`;
+    }).join('');
+
+    const defects = op.defects || [];
+    const defectsHtml = defects.length
+        ? defects.map(d => `
+            <div class="pp-defect-item">
+                <div class="pp-defect-type">${esc(d.typeName||d.type||'Defect')}</div>
+                ${d.description ? `<div>${esc(d.description)}</div>` : ''}
+            </div>`).join('')
+        : '<p class="text-muted text-sm">No defects reported on this opening.</p>';
+
+    document.getElementById('pp-content').innerHTML = `
+        <div class="pp-slot-grid">${slotsHtml}</div>
+        <button class="btn btn-secondary w-full mb-4" onclick="ppShowDefectModal('${op.id}','${esc(op.label).replace(/'/g,"\\'")}')">⚠ Report Defect</button>
+        <div>
+            <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Defects</div>
+            ${defectsHtml}
+        </div>`;
+}
+
+function ppGoBack() {
+    showModal('modal-progress-photos'); // keep overlay open
+    ppRenderList();
+}
+
+function ppTakeSlot(slotName, openingId) {
+    currentPhotoMode = 'progress';
+    ppCurrentSlot    = slotName;
+    ppCurrentOpening = ppOpenings.find(o => o.id === openingId) || ppCurrentOpening;
+    document.getElementById('photo-input').click();
+}
+
+async function ppHandlePhoto(url) {
+    const op       = ppCurrentOpening;
+    const slotName = ppCurrentSlot;
+    if (!op || !slotName) return;
+
+    try {
+        const recRef   = db.collection('job_records').doc(`${ppJobId}_${currentInstaller.id}`);
+        const recDoc   = await recRef.get();
+        if (!recDoc.exists) { alert('Job record not found.'); return; }
+
+        const openings = recDoc.data().openings || [];
+        const opIdx    = openings.findIndex(o => o.id === op.id);
+        if (opIdx === -1) { alert('Opening not found.'); return; }
+
+        openings[opIdx].photos = openings[opIdx].photos || [];
+        openings[opIdx].photos.push({
+            id: 'ph_' + Date.now(), category: slotName, url,
+            uploadedAt: new Date().toISOString()
+        });
+
+        await recRef.update({ openings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        delete jobRecordCache[ppJobId];
+
+        ppOpenings[opIdx] = openings[opIdx];
+        ppCurrentOpening  = openings[opIdx];
+        ppRenderCapture();
+    } catch(err) {
+        alert('Photo upload failed: ' + err.message);
+    }
+}
+
+function ppShowDefectModal(openingId, openingLabel) {
+    currentDefectOpeningId = openingId;
+    document.getElementById('defect-opening-label').textContent = openingLabel || '';
+    document.getElementById('defect-description').value = '';
+
+    const group = document.getElementById('defect-type-group');
+    const renderTypes = types => {
+        group.innerHTML = types.map((t, i) =>
+            `<button class="seg-btn ${i===0?'active':''}" data-id="${esc(t.id)}" data-name="${esc(t.name)}"
+                     onclick="selectSeg(this,'defect-type-group')">${esc(t.name)}</button>`
+        ).join('');
+    };
+
+    if (ppDefectTypes.length) {
+        renderTypes(ppDefectTypes);
+    } else {
+        group.innerHTML = '<span class="text-sm text-muted">Loading…</span>';
+        ppFetchDefectTypes().then(types => { ppDefectTypes = types; renderTypes(types); });
+    }
+
+    showModal('modal-defect');
+}
+
+async function ppSubmitDefect() {
+    const typeBtn  = document.querySelector('#defect-type-group .seg-btn.active');
+    const typeId   = typeBtn?.dataset.id   || '';
+    const typeName = typeBtn?.dataset.name || 'Other';
+    const desc     = (document.getElementById('defect-description').value || '').trim();
+    const openingId = currentDefectOpeningId;
+
+    try {
+        const recRef = db.collection('job_records').doc(`${ppJobId}_${currentInstaller.id}`);
+        const recDoc = await recRef.get();
+        if (!recDoc.exists) { alert('Job record not found.'); return; }
+
+        const openings = recDoc.data().openings || [];
+        const opIdx    = openings.findIndex(o => o.id === openingId);
+        if (opIdx === -1) { alert('Opening not found.'); return; }
+
+        openings[opIdx].defects = openings[opIdx].defects || [];
+        openings[opIdx].defects.push({
+            id: 'def_' + Date.now(), typeId, typeName,
+            description: desc, photos: [], reportedAt: new Date().toISOString()
+        });
+
+        await recRef.update({ openings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        delete jobRecordCache[ppJobId];
+
+        ppOpenings[opIdx] = openings[opIdx];
+        ppCurrentOpening  = openings[opIdx];
+        closeModal();
+        ppRenderCapture();
+    } catch(err) {
+        alert('Could not save defect: ' + err.message);
+    }
+}
+
+// ============================================================
+// SIGNATURES
+// ============================================================
+
+function showSignatureModal(jobId, type) {
+    sigJobId = jobId;
+    sigType  = type;
+    document.getElementById('sig-title').textContent =
+        type === 'completion' ? 'Completion Certificate' : 'Walkthrough Sign-off';
+    document.getElementById('sig-name').value = '';
+    showModal('modal-signature');
+    setTimeout(setupSignatureCanvas, 120);
+}
+
+function setupSignatureCanvas() {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas) return;
+
+    const wrap    = canvas.parentElement;
+    canvas.width  = wrap.clientWidth  || 300;
+    canvas.height = wrap.clientHeight || 220;
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+
+    function pos(e) {
+        const rect   = canvas.getBoundingClientRect();
+        const src    = e.touches ? e.touches[0] : e;
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return [(src.clientX - rect.left) * scaleX, (src.clientY - rect.top) * scaleY];
+    }
+
+    canvas.ontouchstart = e => { e.preventDefault(); sigDrawing = true; ctx.beginPath(); const [x,y] = pos(e); ctx.moveTo(x,y); };
+    canvas.ontouchmove  = e => { e.preventDefault(); if (!sigDrawing) return; const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); };
+    canvas.ontouchend   = e => { e.preventDefault(); sigDrawing = false; };
+
+    canvas.onmousedown  = e => { sigDrawing = true; ctx.beginPath(); const [x,y] = pos(e); ctx.moveTo(x,y); };
+    canvas.onmousemove  = e => { if (!sigDrawing) return; const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); };
+    canvas.onmouseup    = () => { sigDrawing = false; };
+    canvas.onmouseleave = () => { sigDrawing = false; };
+}
+
+function clearSignature() {
+    const canvas = document.getElementById('sig-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+async function saveSignatureAndClose() {
+    const canvas  = document.getElementById('sig-canvas');
+    const sigName = (document.getElementById('sig-name').value || '').trim();
+    if (!canvas || !sigJobId) return;
+
+    // Verify something was drawn
+    const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    let hasInk = false;
+    for (let i = 0; i < imageData.length; i += 4) {
+        if (imageData[i] < 200 || imageData[i+1] < 200 || imageData[i+2] < 200) { hasInk = true; break; }
+    }
+    if (!hasInk) { alert('Please sign before saving.'); return; }
+
+    try {
+        // Convert canvas to blob and upload
+        const dataUrl = canvas.toDataURL('image/png');
+        const fetchRes = await fetch(dataUrl);
+        const blob     = await fetchRes.blob();
+
+        const path = `jobs/${sigJobId}/installers/${currentInstaller.id}/signatures/${sigType}.png`;
+        const ref  = storage.ref(path);
+        const snap = await ref.put(blob, { contentType: 'image/png' });
+        const url  = await snap.ref.getDownloadURL();
+
+        // Save to Firestore
+        const recRef = db.collection('job_records').doc(`${sigJobId}_${currentInstaller.id}`);
+        const update  = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        update[`signatures.${sigType}`] = { url, signerName: sigName, timestamp: new Date().toISOString() };
+        await recRef.update(update);
+
+        delete jobRecordCache[sigJobId];
+        jobCache = {};
+
+        closeModal();
+
+        // Completing the job after signature
+        if (sigType === 'completion') {
+            await updateJobStatus(sigJobId, 'completed');
+        } else {
+            await openJobDetail(sigJobId);
+        }
+    } catch(err) {
+        alert('Could not save signature: ' + err.message);
+        console.error(err);
+    }
+}
+
+// ============================================================
+// MODAL HELPERS
+// ============================================================
+
+function showModal(id) {
+    const overlay = document.getElementById('modal-overlay');
+    overlay.style.display = 'flex';
+    document.querySelectorAll('.modal-sheet').forEach(m => m.style.display = 'none');
+    document.getElementById(id).style.display = '';
+}
+
+function closeModal() {
+    document.getElementById('modal-overlay').style.display = 'none';
+    document.querySelectorAll('.modal-sheet').forEach(m => m.style.display = 'none');
+}
+
+function overlayBgClick(e) {
+    // Close if clicking backdrop (not the sheet itself)
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function showToast(msg) {
+    let t = document.getElementById('app-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'app-toast';
+        t.style.cssText = 'position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);' +
+            'background:#1e293b;color:#fff;padding:.6rem 1.2rem;border-radius:99px;' +
+            'font-size:.875rem;font-weight:600;z-index:9999;pointer-events:none;' +
+            'opacity:0;transition:opacity .2s;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.style.opacity = '1';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2500);
+}
+
+function selectSeg(btn, groupId) {
+    document.querySelectorAll('#' + groupId + ' .seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function viewPhoto(url) {
+    window.open(url, '_blank');
+}
+
+// ============================================================
+// GENERIC CANVAS HELPERS
+// ============================================================
+
+function initCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const wrap = canvas.parentElement;
+    canvas.width  = wrap.clientWidth  || 300;
+    canvas.height = wrap.clientHeight || 220;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = 'round';
+    ctx.lineJoin    = 'round';
+    function pos(e) {
+        const rect   = canvas.getBoundingClientRect();
+        const src    = e.touches ? e.touches[0] : e;
+        const scaleX = canvas.width  / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return [(src.clientX - rect.left) * scaleX, (src.clientY - rect.top) * scaleY];
+    }
+    canvas.ontouchstart = e => { e.preventDefault(); sigDrawing = true; ctx.beginPath(); const [x,y] = pos(e); ctx.moveTo(x,y); };
+    canvas.ontouchmove  = e => { e.preventDefault(); if (!sigDrawing) return; const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); };
+    canvas.ontouchend   = e => { e.preventDefault(); sigDrawing = false; };
+    canvas.onmousedown  = e => { sigDrawing = true; ctx.beginPath(); const [x,y] = pos(e); ctx.moveTo(x,y); };
+    canvas.onmousemove  = e => { if (!sigDrawing) return; const [x,y] = pos(e); ctx.lineTo(x,y); ctx.stroke(); };
+    canvas.onmouseup    = () => { sigDrawing = false; };
+    canvas.onmouseleave = () => { sigDrawing = false; };
+}
+
+function clearCanvas(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function canvasHasInk(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return false;
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i] < 200 || data[i+1] < 200 || data[i+2] < 200) return true;
+    }
+    return false;
+}
+
+async function canvasToBlob(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const dataUrl = canvas.toDataURL('image/png');
+    const res = await fetch(dataUrl);
+    return res.blob();
+}
+
+// ============================================================
+// PART 1 — INSTALLER SIGNATURE ONBOARDING
+// ============================================================
+
+function showSignatureOnboarding() {
+    // Hide all pages (including loading spinner)
+    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('ob-greeting').textContent =
+        'Welcome, ' + (currentInstaller.displayName || 'there') + '!';
+    showModal('modal-installer-sig');
+    setTimeout(() => initCanvas('ob-sig-canvas'), 120);
+}
+
+async function saveInstallerSignature() {
+    if (!canvasHasInk('ob-sig-canvas')) {
+        alert('Please draw your signature before saving.');
+        return;
+    }
+    const btn = document.getElementById('ob-save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+        const blob = await canvasToBlob('ob-sig-canvas');
+        const path = `installers/${currentInstaller.id}/signature.png`;
+        const ref  = storage.ref(path);
+        const snap = await ref.put(blob, { contentType: 'image/png' });
+        const url  = await snap.ref.getDownloadURL();
+        await db.collection('installers').doc(currentInstaller.id).update({ signatureUrl: url });
+        currentInstaller.signatureUrl = url;
+        closeModal();
+        showPage('schedule');
+    } catch(err) {
+        alert('Could not save signature: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Save My Signature →';
+    }
+}
+
+// ============================================================
+// PART 2 — WALKTHROUGH CHECKLIST FLOW
+// ============================================================
+
+const WALKTHROUGH_ITEMS = [
+    { id: 'item_01', label: 'Installer walked the job with customer' },
+    { id: 'item_02', label: 'Checked all windows & doors for correct screw pattern' },
+    { id: 'item_03', label: 'Inspected interior/exterior caulking & stucco' },
+    { id: 'item_04', label: 'All job debris cleaned and removed' },
+    { id: 'item_05', label: 'No gaps in any windows or doors' },
+    { id: 'item_06', label: 'All screens are in good condition' },
+    { id: 'item_07', label: 'Permit is on site' },
+    { id: 'item_08', label: 'Stickers are left on all windows and doors' },
+    { id: 'item_09', label: 'Windows are clean' },
+    { id: 'item_10', label: 'Final payment has been made' },
+    { id: 'item_11', label: 'All caps and covers to remain next to windows' },
+    { id: 'item_12', label: 'Customer notified re: inspection packet' }
+];
+
+let wfJobId        = null;
+let wfJobData      = null;
+let wfScreen       = 1;
+let wfCustBlob     = null;
+let wfAcknowledged = {}; // itemId → ISO timestamp
+let wfNote         = '';
+
+function showWalkthroughFlow(jobId) {
+    wfJobId        = jobId;
+    wfScreen       = 1;
+    wfAcknowledged = {};
+    wfNote         = '';
+    // Find job from cache
+    const allJobs = Object.values(jobCache).flat();
+    wfJobData = allJobs.find(j => j.id === jobId) || { id: jobId };
+    showModal('modal-walkthrough');
+    wfRenderScreen(1);
+}
+
+function wfRenderScreen(n) {
+    wfScreen = n;
+    const titles = ['Field Inspection Checklist', 'Customer Signature', 'Installer Sign-off'];
+    document.getElementById('wf-title').textContent = titles[n - 1];
+    document.getElementById('wf-back-btn').style.display = n > 1 ? '' : 'none';
+    const el = document.getElementById('wf-content');
+    if (n === 1) wfRenderChecklist(el);
+    if (n === 2) wfRenderCustomerSig(el);
+    if (n === 3) wfRenderInstallerSig(el);
+}
+
+function wfRenderChecklist(el) {
+    const job = wfJobData || {};
+    const itemsHtml = WALKTHROUGH_ITEMS.map(item => {
+        const done = !!wfAcknowledged[item.id];
+        return `<div class="checklist-item" onclick="wfAcknowledgeItem('${item.id}')">
+            <div class="checklist-circle${done ? ' done' : ''}" id="cc-${item.id}">${done ? '✓' : ''}</div>
+            <div class="checklist-label">${esc(item.label)}</div>
+        </div>`;
+    }).join('');
+    el.innerHTML = `
+        <div style="flex-shrink:0;margin-bottom:.5rem">
+            ${job.customerName ? `<div style="font-size:.82rem;font-weight:600">${esc(job.customerName)}</div>` : ''}
+            ${job.address      ? `<div style="font-size:.75rem;color:var(--muted)">${esc(job.address.replace(/\n/g,' '))}</div>` : ''}
+        </div>
+        <div style="flex:1;overflow-y:auto">${itemsHtml}</div>
+        <div style="flex-shrink:0;margin-top:.75rem">
+            <textarea class="form-input" id="wf-note-input" rows="2"
+                placeholder="Any comments? (optional)"
+                style="font-size:.85rem;resize:none"
+                oninput="wfNote=this.value"></textarea>
+        </div>
+        <div style="flex-shrink:0;margin-top:.5rem">
+            <button class="btn btn-primary w-full" id="wf-continue-btn"
+                    onclick="wfRenderScreen(2)">Continue to Signatures →</button>
+        </div>`;
+}
+
+function wfAcknowledgeItem(itemId) {
+    if (wfAcknowledged[itemId]) return;
+    wfAcknowledged[itemId] = new Date().toISOString();
+    const circle = document.getElementById('cc-' + itemId);
+    if (circle) { circle.classList.add('done'); circle.textContent = '✓'; }
+}
+
+function wfRenderCustomerSig(el) {
+    el.innerHTML = `
+        <p class="text-sm text-muted" style="flex-shrink:0;margin-bottom:.5rem">Please hand the phone to the customer to sign below.</p>
+        <div class="sig-canvas-wrap" style="flex:1">
+            <canvas id="wf-cust-canvas" class="sig-canvas"></canvas>
+        </div>
+        <div class="flex gap-2" style="flex-shrink:0;margin-top:.75rem">
+            <button class="btn btn-ghost" style="flex:1" onclick="clearCanvas('wf-cust-canvas')">Clear</button>
+            <button class="btn btn-primary" style="flex:1" onclick="wfNextFromCustomer()">Next →</button>
+        </div>`;
+    setTimeout(() => initCanvas('wf-cust-canvas'), 120);
+}
+
+async function wfNextFromCustomer() {
+    if (!canvasHasInk('wf-cust-canvas')) {
+        alert('Please have the customer sign before continuing.');
+        return;
+    }
+    wfCustBlob = await canvasToBlob('wf-cust-canvas');
+    wfRenderScreen(3);
+}
+
+function wfRenderInstallerSig(el) {
+    const hasSig = !!currentInstaller.signatureUrl;
+    el.innerHTML = `
+        <p class="text-sm text-muted" style="flex-shrink:0;margin-bottom:.75rem">Tap below to apply your signature.</p>
+        <div style="border:2px solid var(--hairline);border-radius:var(--r-card);background:#fff;
+                    display:flex;align-items:center;justify-content:center;min-height:160px;overflow:hidden;margin-bottom:1rem">
+            ${hasSig
+                ? `<img src="${currentInstaller.signatureUrl}" style="max-width:100%;max-height:200px;object-fit:contain">`
+                : `<span style="color:#aaa;font-size:.85rem">No signature on file</span>`}
+        </div>
+        <button class="btn btn-primary w-full" id="wf-apply-btn" onclick="wfSaveAll()">
+            Apply My Signature &amp; Save
+        </button>`;
+}
+
+function wfGoBack() {
+    if (wfScreen > 1) wfRenderScreen(wfScreen - 1);
+}
+
+async function wfSaveAll() {
+    const btn = document.getElementById('wf-apply-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
+    try {
+        const now = new Date().toISOString();
+        const job = wfJobData || {};
+
+        // Upload customer signature (captured on screen 2 before canvas was replaced)
+        const custBlob = wfCustBlob;
+        if (!custBlob) throw new Error('Customer signature not captured — please go back and have the customer sign again.');
+        const custPath = `jobs/${wfJobId}/installers/${currentInstaller.id}/walkthrough_customer.png`;
+        const custSnap = await storage.ref(custPath).put(custBlob, { contentType: 'image/png' });
+        const custUrl  = await custSnap.ref.getDownloadURL();
+
+        // Build checklist array
+        const checklist = WALKTHROUGH_ITEMS.map(item => ({
+            itemId:         item.id,
+            label:          item.label,
+            acknowledgedAt: wfAcknowledged[item.id] || null
+        }));
+
+        const hasUnchecked = checklist.some(i => !i.acknowledgedAt);
+        const recRef = db.collection('job_records').doc(`${wfJobId}_${currentInstaller.id}`);
+        await recRef.update({
+            walkthroughChecklist:    checklist,
+            walkthroughIncomplete:   hasUnchecked,
+            walkthroughCustomerNote: wfNote.trim(),
+            'signatures.walkthrough': {
+                customerUrl:   custUrl,
+                customerName:  job.customerName || '',
+                customerAt:    now,
+                installerUrl:  currentInstaller.signatureUrl || '',
+                installerName: currentInstaller.displayName  || '',
+                installerAt:   now
+            },
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        delete jobRecordCache[wfJobId];
+        closeModal();
+        await openJobDetail(wfJobId);
+    } catch(err) {
+        alert('Could not save walkthrough: ' + err.message);
+        console.error(err);
+        const btn = document.getElementById('wf-apply-btn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Apply My Signature & Save'; }
+    }
+}
+
+// ============================================================
+// PART 3 — CERTIFICATE OF COMPLETION FLOW
+// ============================================================
+
+let cfJobId          = null;
+let cfJobData        = null;
+let cfJobRecord      = null;
+let cfScreen         = 0;
+let cfCustBlob       = null;
+let cfAgreementText  = '';
+
+const DEFAULT_COC_AGREEMENT =
+    'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.';
+
+async function showCertificateFlow(jobId) {
+    cfJobId  = jobId;
+    cfScreen = 0;
+    cfCustBlob = null;
+    try {
+        const [jobDoc, recDoc, portalDoc] = await Promise.all([
+            db.collection('jobs').doc(jobId).get(),
+            db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`).get(),
+            db.collection('settings').doc('portal').get()
+        ]);
+        cfJobData        = jobDoc.exists ? { id: jobDoc.id, ...jobDoc.data() } : { id: jobId };
+        cfJobRecord      = recDoc.exists ? recDoc.data() : {};
+        cfAgreementText  = portalDoc.exists ? (portalDoc.data().cocAgreementText || '') : '';
+    } catch(e) {
+        cfJobData        = { id: jobId };
+        cfJobRecord      = {};
+        cfAgreementText  = '';
+    }
+    showModal('modal-certificate');
+    cfRenderScreen(0);
+}
+
+function cfRenderScreen(n) {
+    cfScreen = n;
+    document.getElementById('cf-back-btn').style.display = n > 0 ? '' : 'none';
+    const el = document.getElementById('cf-content');
+    if (n === 0) cfRenderAgreement(el);
+    if (n === 1) cfRenderSummary(el);
+    if (n === 2) cfRenderInstallerSig(el);
+}
+
+function cfRenderAgreement(el) {
+    const job    = cfJobData || {};
+    const fin    = job.financials || {};
+    const amount = fin.balanceDue ? '$' + fin.balanceDue : 'the remaining balance';
+    const raw    = (cfAgreementText || DEFAULT_COC_AGREEMENT).replace('{AMOUNT}', amount);
+    const html   = esc(raw).replace(/\n/g, '<br>');
+    el.innerHTML = `
+        <div style="flex:1;overflow-y:auto">
+            <p style="line-height:1.7;font-size:.9rem;color:var(--text)">${html}</p>
+        </div>
+        <div style="flex-shrink:0;margin-top:1.25rem">
+            <p class="text-sm text-muted mb-3" style="text-align:center">
+                Please hand the phone to the customer to review and agree.
+            </p>
+            <button class="btn btn-primary w-full" onclick="cfRenderScreen(1)">
+                I Agree — Continue to Sign
+            </button>
+        </div>`;
+}
+
+function cfRenderSummary(el) {
+    const job = cfJobData || {};
+    const fin = (job.financials) || {};
+    const openings    = (cfJobRecord && cfJobRecord.openings) || [];
+    // Prefer scheduled counts from TeamUp; fall back to what the installer logged
+    const windowCount = job.windowCount != null ? job.windowCount : openings.filter(o => o.type === 'window').length;
+    const doorCount   = job.doorCount   != null ? job.doorCount   : openings.filter(o => o.type === 'door').length;
+    const sgdCount    = job.sgdCount    != null ? job.sgdCount    : openings.filter(o => o.type === 'sgd').length;
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    el.innerHTML = `
+        <div style="flex-shrink:0;margin-bottom:.5rem">
+            ${job.customerName ? `<div class="detail-row"><span class="lbl">Customer</span><span>${esc(job.customerName)}</span></div>` : ''}
+            ${job.address      ? `<div class="detail-row"><span class="lbl">Address</span><span>${esc(job.address.replace(/\n/g,' '))}</span></div>` : ''}
+            <div class="detail-row"><span class="lbl">Date</span><span>${today}</span></div>
+            <div style="height:.4rem"></div>
+            <div class="detail-row"><span class="lbl">Balance Due</span><span>${fin.balanceDue ? '$' + esc(String(fin.balanceDue)) : '—'}</span></div>
+            <div class="detail-row"><span class="lbl">Payment</span><span>${fin.paymentMethod ? esc(fin.paymentMethod) : '—'}</span></div>
+            <div style="height:.4rem"></div>
+            <div class="detail-row"><span class="lbl"># Windows</span><span>${windowCount}</span></div>
+            <div class="detail-row"><span class="lbl"># Doors</span><span>${doorCount}</span></div>
+            <div class="detail-row"><span class="lbl"># SGDs</span><span>${sgdCount}</span></div>
+        </div>
+        <p class="text-sm text-muted" style="flex-shrink:0;margin-bottom:.4rem">Please have the customer sign below:</p>
+        <div class="sig-canvas-wrap" style="flex:1">
+            <canvas id="cf-cust-canvas" class="sig-canvas"></canvas>
+        </div>
+        <div class="flex gap-2" style="flex-shrink:0;margin-top:.75rem">
+            <button class="btn btn-ghost" style="flex:1" onclick="clearCanvas('cf-cust-canvas')">Clear</button>
+            <button class="btn btn-primary" style="flex:1" onclick="cfNextFromCustomer()">Next →</button>
+        </div>`;
+    setTimeout(() => initCanvas('cf-cust-canvas'), 120);
+}
+
+async function cfNextFromCustomer() {
+    if (!canvasHasInk('cf-cust-canvas')) {
+        alert('Please have the customer sign before continuing.');
+        return;
+    }
+    cfCustBlob = await canvasToBlob('cf-cust-canvas');
+    cfRenderScreen(2);
+}
+
+function cfRenderInstallerSig(el) {
+    const hasSig = !!currentInstaller.signatureUrl;
+    el.innerHTML = `
+        <p class="text-sm text-muted" style="flex-shrink:0;margin-bottom:.75rem">Tap below to apply your signature and complete this job.</p>
+        <div style="border:2px solid var(--hairline);border-radius:var(--r-card);background:#fff;
+                    display:flex;align-items:center;justify-content:center;min-height:160px;overflow:hidden;margin-bottom:1rem">
+            ${hasSig
+                ? `<img src="${currentInstaller.signatureUrl}" style="max-width:100%;max-height:200px;object-fit:contain">`
+                : `<span style="color:#aaa;font-size:.85rem">No signature on file</span>`}
+        </div>
+        <button class="btn btn-primary w-full" id="cf-apply-btn" onclick="cfSaveAll()">
+            Apply My Signature &amp; Save
+        </button>`;
+}
+
+function cfGoBack() {
+    if (cfScreen > 1) cfRenderScreen(cfScreen - 1);
+}
+
+// ============================================================
+// EXTRA WORK REQUEST MODULE
+// ============================================================
+
+const EMAILJS_SERVICE_ID          = 'YOUR_SERVICE_ID';
+const EMAILJS_EXTRA_WORK_TEMPLATE = 'YOUR_TEMPLATE_ID';
+
+async function showExtraWorkFlow(jobId) {
+    ewJobId          = jobId;
+    ewPhotos         = [];
+    ewDraft          = {};
+    ewCurrentRequest = null;
+    // Find job data from weekJobsData cache
+    ewJobData = (weekJobsData?.jobs || []).find(j => j.id === jobId) || null;
+    try {
+        const snap = await db.collection('extra_work_requests')
+            .where('jobId','==',jobId)
+            .orderBy('createdAt','asc')
+            .get();
+        ewRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) {
+        ewRequests = [];
+        console.warn('Could not load extra work requests:', e);
+    }
+    ewScreenStack = ['list'];
+    const backBtn = document.getElementById('ew-back-btn');
+    if (backBtn) backBtn.style.display = 'none';
+    const titleEl = document.getElementById('ew-title');
+    if (titleEl) titleEl.textContent = 'Extra Work Requests';
+    showModal('modal-extra-work');
+    ewRenderCurrent();
+}
+
+function ewRenderCurrent() {
+    const el = document.getElementById('ew-content');
+    if (!el) return;
+    const screen  = ewScreenStack[ewScreenStack.length - 1];
+    const backBtn = document.getElementById('ew-back-btn');
+    if (backBtn) backBtn.style.display = ewScreenStack.length > 1 ? '' : 'none';
+    if      (screen === 'list')    ewRenderList(el);
+    else if (screen === 'desc')    ewRenderDescription(el);
+    else if (screen === 'photos')  ewRenderPhotos(el);
+    else if (screen === 'amount')  ewRenderAmount(el);
+    else if (screen === 'detail')  ewRenderDetail(el, ewCurrentRequest);
+    else if (screen === 'counter') ewRenderCounter(el, ewCurrentRequest);
+}
+
+const _ewTitleMap = {
+    list:'Extra Work Requests', desc:'New Request', photos:'Add Photos',
+    amount:'Set Amount', detail:'Request Detail', counter:'Counter Offer'
+};
+
+function ewGoBack() {
+    if (ewScreenStack.length <= 1) return;
+    ewScreenStack.pop();
+    const screen  = ewScreenStack[ewScreenStack.length - 1];
+    const titleEl = document.getElementById('ew-title');
+    if (titleEl) titleEl.textContent = _ewTitleMap[screen] || 'Extra Work Requests';
+    ewRenderCurrent();
+}
+
+function ewPushScreen(screen) {
+    ewScreenStack.push(screen);
+    const titleEl = document.getElementById('ew-title');
+    if (titleEl) titleEl.textContent = _ewTitleMap[screen] || '';
+    const backBtn = document.getElementById('ew-back-btn');
+    if (backBtn) backBtn.style.display = '';
+    ewRenderCurrent();
+}
+
+function ewRenderList(el) {
+    const newBtn = `<button class="btn btn-primary btn-sm" onclick="ewPushScreen('desc')">+ New Request</button>`;
+    if (ewRequests.length === 0) {
+        el.innerHTML = `
+            <div style="padding:1rem">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 style="margin:0">Requests</h4>
+                    ${newBtn}
+                </div>
+                <p class="text-muted text-sm" style="margin-top:2rem;text-align:center">No extra work requests for this job.</p>
+            </div>`;
+        return;
+    }
+    const rows = ewRequests.map(r => {
+        const badge   = ewStatusBadge(r.status);
+        const amtStr  = r.amountApproved != null
+            ? ` — Approved $${r.amountApproved}`
+            : (r.amountRequested ? ` — $${r.amountRequested} requested` : '');
+        const needsAction = r.status === 'approved'
+            ? '<span style="font-size:.75rem;color:var(--warn)"> — Needs your response</span>'
+            : '';
+        return `<div class="ew-request-row" onclick="ewOpenDetail('${r.id}')">
+            <div style="flex:1;min-width:0">
+                <div style="font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.description)}</div>
+                <div style="font-size:.78rem;color:var(--muted)">${amtStr}${needsAction}</div>
+            </div>
+            ${badge}
+        </div>`;
+    }).join('');
+    el.innerHTML = `
+        <div style="padding:1rem 1rem .5rem">
+            <div class="flex justify-between items-center mb-3">
+                <h4 style="margin:0">Requests (${ewRequests.length})</h4>
+                ${newBtn}
+            </div>
+        </div>
+        <div>${rows}</div>`;
+}
+
+function ewStatusBadge(status) {
+    const map = {
+        pending:         ['ew-badge-pending',  '⏳ Pending'],
+        approved:        ['ew-badge-approved', '✅ Approved'],
+        counter_pending: ['ew-badge-counter',  '↔ Counter'],
+        denied:          ['ew-badge-denied',   '✗ Denied'],
+        accepted:        ['ew-badge-accepted', '✓ Accepted'],
+    };
+    const [cls, label] = map[status] || ['ew-badge-pending', status];
+    return `<span class="ew-status-badge ${cls}">${label}</span>`;
+}
+
+function ewOpenDetail(requestId) {
+    ewCurrentRequest = ewRequests.find(r => r.id === requestId) || null;
+    ewPushScreen('detail');
+}
+
+function ewRenderDescription(el) {
+    el.innerHTML = `
+        <div style="padding:1rem">
+            <p class="text-sm text-muted mb-3">Describe what extra work is needed and why.</p>
+            <div class="form-group">
+                <textarea class="form-input" id="ew-desc-input" rows="5"
+                    placeholder="Describe the extra work needed…"
+                    style="resize:none">${esc(ewDraft.description || '')}</textarea>
+            </div>
+            <button class="btn btn-primary w-full mt-3" onclick="ewDescNext()">Next →</button>
+        </div>`;
+    const ta = document.getElementById('ew-desc-input');
+    if (ta) ta.focus();
+}
+
+function ewDescNext() {
+    const val = (document.getElementById('ew-desc-input')?.value || '').trim();
+    if (!val) { alert('Please describe the extra work needed.'); return; }
+    ewDraft.description = val;
+    ewPushScreen('photos');
+}
+
+function ewRenderPhotos(el) {
+    const slots = [0, 1, 2].map(i => {
+        const photo = ewPhotos[i];
+        if (photo) {
+            return `<div class="ew-photo-slot" onclick="ewTriggerPhoto(${i})">
+                <img src="${photo.url}" alt="Photo ${i+1}">
+            </div>`;
+        }
+        return `<div class="ew-photo-slot" onclick="ewTriggerPhoto(${i})">
+            <span style="font-size:1.5rem">📷</span>
+        </div>`;
+    }).join('');
+    el.innerHTML = `
+        <div style="padding:1rem">
+            <p class="text-sm text-muted mb-3">Add up to 3 photos (optional).</p>
+            <div class="ew-photo-row">${slots}</div>
+            <button class="btn btn-primary w-full mt-3" onclick="ewPushScreen('amount')">Next →</button>
+            <div class="text-center mt-2">
+                <button class="btn btn-ghost btn-sm" onclick="ewPushScreen('amount')">Skip photos →</button>
+            </div>
+        </div>`;
+}
+
+function ewTriggerPhoto(slotIndex) {
+    ewCurrentPhotoSlot = slotIndex;
+    currentPhotoMode   = 'extra_work';
+    document.getElementById('photo-input').click();
+}
+
+function ewHandlePhoto(url) {
+    ewPhotos[ewCurrentPhotoSlot] = { url, uploadedAt: new Date().toISOString() };
+    ewRenderCurrent();
+}
+
+function ewRenderAmount(el) {
+    el.innerHTML = `
+        <div style="padding:1rem">
+            <p class="text-sm text-muted mb-3">How much are you requesting for this extra work?</p>
+            <div class="form-group">
+                <label class="form-label">Amount ($)</label>
+                <input class="form-input" type="number" id="ew-amount-input" min="1" step="1"
+                    placeholder="0" style="font-size:1.2rem;text-align:center"
+                    value="${ewDraft.amount || ''}">
+            </div>
+            <button class="btn btn-primary w-full mt-3" onclick="ewSubmitRequest()">Submit Request</button>
+        </div>`;
+    const inp = document.getElementById('ew-amount-input');
+    if (inp) inp.focus();
+}
+
+async function ewSubmitRequest() {
+    const amtEl = document.getElementById('ew-amount-input');
+    const amt   = amtEl ? parseFloat(amtEl.value) : NaN;
+    if (!ewDraft.description) { alert('Missing description. Please go back and add one.'); return; }
+    if (!amt || amt <= 0)     { alert('Please enter a valid amount greater than $0.'); return; }
+
+    const btn = document.querySelector('#ew-content .btn-primary');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…'; }
+
+    const job    = ewJobData || {};
+    const now    = new Date().toISOString();
+    const photos = ewPhotos.filter(Boolean).map(p => ({ url: p.url, uploadedAt: p.uploadedAt }));
+    const requestData = {
+        jobId:                  ewJobId,
+        jobNumber:              job.jobNumber || '',
+        customerName:           job.customerName || '',
+        installerId:            currentInstaller.id,
+        installerName:          currentInstaller.displayName || '',
+        description:            ewDraft.description,
+        photos,
+        amountRequested:        amt,
+        status:                 'pending',
+        amountApproved:         null,
+        adminNote:              '',
+        installerCounterAmount: null,
+        installerCounterNote:   '',
+        thread: [{ by:'installer', action:'submitted', amount:amt, note:ewDraft.description, at:now }],
+        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        const docRef = await db.collection('extra_work_requests').add(requestData);
+        // Add to local cache with plain timestamps for immediate display
+        ewRequests.push({ id: docRef.id, ...requestData,
+            createdAt: { toDate: () => new Date() },
+            updatedAt: { toDate: () => new Date() }
+        });
+        ewDraft  = {};
+        ewPhotos = [];
+        sendExtraWorkEmail({ ...requestData, id: docRef.id });
+        ewLoadMetaBadge(ewJobId);
+        // Return to list
+        ewScreenStack = ['list'];
+        const titleEl = document.getElementById('ew-title');
+        if (titleEl) titleEl.textContent = 'Extra Work Requests';
+        const backBtn = document.getElementById('ew-back-btn');
+        if (backBtn) backBtn.style.display = 'none';
+        ewRenderCurrent();
+    } catch(err) {
+        alert('Could not submit request: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
+    }
+}
+
+function ewRenderDetail(el, request) {
+    if (!request) { el.innerHTML = '<p class="text-muted p-4">Request not found.</p>'; return; }
+
+    const thread = (request.thread || []).map(t => `
+        <div class="ew-thread-entry ${t.by}">
+            <div style="font-weight:600;text-transform:capitalize">${t.by === 'admin' ? 'Manager' : 'You'} — ${esc(t.action)}</div>
+            ${t.amount != null ? `<div>Amount: $${t.amount}</div>` : ''}
+            ${t.note   ? `<div style="color:var(--muted)">${esc(t.note)}</div>` : ''}
+            <div style="font-size:.75rem;color:var(--disabled)">${new Date(t.at).toLocaleString()}</div>
+        </div>`).join('');
+
+    const photos = (request.photos || []).length > 0 ? `
+        <div class="ew-photo-row">
+            ${request.photos.map(p => `<div class="ew-photo-slot" onclick="window.open('${p.url}','_blank')"><img src="${p.url}" alt=""></div>`).join('')}
+        </div>` : '';
+
+    let actionHtml = '';
+    if (request.status === 'approved') {
+        const diff = request.amountApproved !== request.amountRequested;
+        actionHtml = `
+            <div class="alert alert-ok mb-3" style="background:rgba(34,197,94,.1);border:1px solid var(--ok);border-radius:8px;padding:.75rem">
+                Manager approved <strong>$${request.amountApproved}</strong>${request.adminNote ? ` — "${esc(request.adminNote)}"` : ''}
+            </div>
+            <button class="btn btn-primary w-full mb-2" onclick="ewAcceptOffer('${request.id}')">Accept $${request.amountApproved}</button>
+            ${diff ? `<button class="btn btn-secondary w-full" onclick="ewGoToCounter('${request.id}')">Counter Offer</button>` : ''}`;
+    } else if (request.status === 'denied') {
+        actionHtml = `
+            <div class="alert alert-error mb-3" style="background:rgba(239,68,68,.1);border:1px solid var(--bad);border-radius:8px;padding:.75rem">
+                Request denied${request.adminNote ? `: "${esc(request.adminNote)}"` : '.'}
+            </div>
+            <button class="btn btn-secondary w-full" onclick="ewStartNewRequest()">Submit New Request</button>`;
+    } else if (request.status === 'accepted') {
+        actionHtml = `
+            <div style="background:rgba(34,197,94,.1);border:1px solid var(--ok);border-radius:8px;padding:.75rem;text-align:center;font-weight:600">
+                ✅ Accepted — work approved for <strong>$${request.amountApproved}</strong>
+            </div>`;
+    } else {
+        // pending or counter_pending
+        actionHtml = `
+            <div class="text-muted text-sm" style="padding:.75rem;text-align:center">
+                <span class="spinner" style="display:inline-block;margin-right:.5rem"></span>Awaiting manager response…
+            </div>`;
+    }
+
+    el.innerHTML = `
+        <div style="padding:1rem">
+            <div class="mb-3">
+                <div style="font-size:.75rem;color:var(--muted)">Description</div>
+                <div style="font-weight:500">${esc(request.description)}</div>
+            </div>
+            <div class="mb-3">
+                <div style="font-size:.75rem;color:var(--muted)">Amount Requested</div>
+                <div style="font-weight:500">$${request.amountRequested}</div>
+            </div>
+            ${photos}
+            <div class="mb-3">${thread}</div>
+            ${actionHtml}
+        </div>`;
+}
+
+function ewGoToCounter(requestId) {
+    ewCurrentRequest = ewRequests.find(r => r.id === requestId) || ewCurrentRequest;
+    ewPushScreen('counter');
+}
+
+function ewStartNewRequest() {
+    ewDraft  = {};
+    ewPhotos = [];
+    ewPushScreen('desc');
+}
+
+async function ewAcceptOffer(requestId) {
+    const req = ewRequests.find(r => r.id === requestId);
+    if (!req) return;
+    const now         = new Date().toISOString();
+    const threadEntry = { by:'installer', action:'accepted', amount:req.amountApproved, note:'', at:now };
+    try {
+        await db.collection('extra_work_requests').doc(requestId).update({
+            status:    'accepted',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            thread:    firebase.firestore.FieldValue.arrayUnion(threadEntry)
+        });
+        const idx = ewRequests.findIndex(r => r.id === requestId);
+        if (idx !== -1) {
+            ewRequests[idx] = { ...ewRequests[idx], status:'accepted',
+                thread: [...(ewRequests[idx].thread || []), threadEntry] };
+        }
+        ewScreenStack = ['list'];
+        const titleEl = document.getElementById('ew-title');
+        if (titleEl) titleEl.textContent = 'Extra Work Requests';
+        const backBtn = document.getElementById('ew-back-btn');
+        if (backBtn) backBtn.style.display = 'none';
+        ewRenderCurrent();
+        ewLoadMetaBadge(ewJobId);
+    } catch(err) {
+        alert('Could not accept offer: ' + err.message);
+    }
+}
+
+function ewRenderCounter(el, request) {
+    if (!request) { el.innerHTML = '<p class="text-muted p-4">Request not found.</p>'; return; }
+    el.innerHTML = `
+        <div style="padding:1rem">
+            <p class="text-sm text-muted mb-3">
+                Manager offered <strong>$${request.amountApproved}</strong>. Enter your counter offer below.
+            </p>
+            <div class="form-group">
+                <label class="form-label">Your Counter Amount ($)</label>
+                <input class="form-input" type="number" id="ew-counter-amount" min="1" step="1"
+                    placeholder="0" style="font-size:1.1rem;text-align:center">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Note (optional)</label>
+                <textarea class="form-input" id="ew-counter-note" rows="3"
+                    placeholder="Anything to add?"></textarea>
+            </div>
+            <button class="btn btn-primary w-full mt-2" onclick="ewSubmitCounter('${request.id}')">Submit Counter</button>
+        </div>`;
+}
+
+async function ewSubmitCounter(requestId) {
+    const amtEl  = document.getElementById('ew-counter-amount');
+    const noteEl = document.getElementById('ew-counter-note');
+    const amt    = amtEl  ? parseFloat(amtEl.value) : NaN;
+    const note   = noteEl ? noteEl.value.trim() : '';
+    if (!amt || amt <= 0) { alert('Please enter a valid counter amount.'); return; }
+
+    const btn = document.querySelector('#ew-content .btn-primary');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Submitting…'; }
+
+    const now         = new Date().toISOString();
+    const threadEntry = { by:'installer', action:'counter', amount:amt, note, at:now };
+    try {
+        await db.collection('extra_work_requests').doc(requestId).update({
+            status:                 'counter_pending',
+            installerCounterAmount: amt,
+            installerCounterNote:   note,
+            updatedAt:              firebase.firestore.FieldValue.serverTimestamp(),
+            thread:                 firebase.firestore.FieldValue.arrayUnion(threadEntry)
+        });
+        const idx = ewRequests.findIndex(r => r.id === requestId);
+        if (idx !== -1) {
+            ewRequests[idx] = { ...ewRequests[idx],
+                status: 'counter_pending',
+                installerCounterAmount: amt,
+                installerCounterNote:   note,
+                thread: [...(ewRequests[idx].thread || []), threadEntry]
+            };
+            ewCurrentRequest = ewRequests[idx];
+        }
+        // Return to detail
+        while (ewScreenStack[ewScreenStack.length - 1] !== 'detail') {
+            if (ewScreenStack.length === 0) { ewScreenStack = ['list']; break; }
+            ewScreenStack.pop();
+        }
+        if (ewScreenStack.length === 0) ewScreenStack = ['detail'];
+        const titleEl = document.getElementById('ew-title');
+        if (titleEl) titleEl.textContent = 'Request Detail';
+        ewRenderCurrent();
+    } catch(err) {
+        alert('Could not submit counter: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Submit Counter'; }
+    }
+}
+
+async function ewLoadMetaBadge(jobId) {
+    try {
+        const snap = await db.collection('extra_work_requests')
+            .where('jobId','==',jobId).get();
+        const el = document.getElementById('ew-meta-' + jobId);
+        if (!el) return;
+        const total   = snap.size;
+        const pending = snap.docs.filter(d =>
+            ['pending','counter_pending','approved'].includes(d.data().status)).length;
+        if (total === 0) { el.textContent = 'No requests'; return; }
+        el.textContent = `${total} request${total !== 1 ? 's' : ''}${pending > 0 ? ` — ${pending} need attention` : ''}`;
+    } catch(e) { /* silently fail */ }
+}
+
+function sendExtraWorkEmail(requestData) {
+    if (typeof emailjs === 'undefined') return;
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_EXTRA_WORK_TEMPLATE, {
+        job_number:  requestData.jobNumber,
+        customer:    requestData.customerName,
+        installer:   requestData.installerName,
+        description: requestData.description,
+        amount:      requestData.amountRequested,
+        portal_link: 'https://installer-portal-6000.web.app'
+    }).catch(e => console.warn('Extra work email failed:', e));
+}
+
+async function cfSaveAll() {
+    const btn = document.getElementById('cf-apply-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Saving…'; }
+    try {
+        const now = new Date().toISOString();
+        const job = cfJobData || {};
+
+        // Upload customer signature (captured on screen 1 before canvas was replaced)
+        const custBlob = cfCustBlob;
+        if (!custBlob) throw new Error('Customer signature not captured — please go back and have the customer sign again.');
+        const custPath = `jobs/${cfJobId}/installers/${currentInstaller.id}/completion_customer.png`;
+        const custSnap = await storage.ref(custPath).put(custBlob, { contentType: 'image/png' });
+        const custUrl  = await custSnap.ref.getDownloadURL();
+
+        const recRef = db.collection('job_records').doc(`${cfJobId}_${currentInstaller.id}`);
+        await recRef.update({
+            'signatures.completion': {
+                customerUrl:   custUrl,
+                customerName:  job.customerName || '',
+                customerAt:    now,
+                installerUrl:  currentInstaller.signatureUrl || '',
+                installerName: currentInstaller.displayName  || '',
+                installerAt:   now
+            },
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        delete jobRecordCache[cfJobId];
+        jobCache = {};
+        closeModal();
+        await openJobDetail(cfJobId);
+    } catch(err) {
+        alert('Could not save certificate: ' + err.message);
+        console.error(err);
+        const btn = document.getElementById('cf-apply-btn');
+        if (btn) { btn.disabled = false; btn.textContent = 'Apply My Signature & Complete Job'; }
+    }
+}
+</script>
+</body>
+</html>

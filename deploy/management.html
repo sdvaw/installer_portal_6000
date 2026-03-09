@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Armor Vue — Management Portal</title>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="css/styles.css">
+
+  <style>
+    .mgmt-queue-card {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: 1rem;
+      margin-bottom: .6rem;
+    }
+    .mgmt-queue-card .cust-name { font-weight: 600; font-size: .95rem; }
+    .mgmt-queue-card .meta-row  { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+    .mgmt-queue-card .status-chip {
+      display: inline-block;
+      padding: .15rem .5rem;
+      border-radius: 4px;
+      font-size: .7rem;
+      font-weight: 600;
+      background: rgba(255,255,255,.08);
+      border: 1px solid currentColor;
+      margin-top: .35rem;
+    }
+    .mgmt-done-card {
+      opacity: .55;
+      background: var(--surface-2);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: .75rem;
+      margin-bottom: .4rem;
+      font-size: .85rem;
+    }
+    .queue-section-label {
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      padding: .75rem 0 .4rem;
+    }
+    .tab-bar {
+      display: flex;
+      gap: .4rem;
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .tab-btn {
+      padding: .55rem 1rem;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--muted);
+      font-size: .875rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: -1px;
+      transition: all .15s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .installer-board-card {
+      background: var(--surface);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-card);
+      padding: .75rem 1rem;
+      margin-bottom: .5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .board-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .board-name { font-weight: 600; font-size: .9rem; flex: 1; }
+    .board-status { font-size: .78rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="flash" class="hidden" style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:280px;max-width:420px;"></div>
+
+<script src="js/firebase-config.js"></script>
+
+<script>
+// ============================================================
+// ARMOR VUE — MANAGEMENT PORTAL
+// ============================================================
+
+function flash(type, msg, ms = 4500) {
+    const el = document.getElementById('flash');
+    el.className = 'alert alert-' + type;
+    el.textContent = msg;
+    clearTimeout(window._flashTimer);
+    window._flashTimer = setTimeout(() => el.classList.add('hidden'), ms);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+let currentUser = null;
+let currentRole = null;
+let _statusOptions = [];
+let _financeStatuses = [];
+let _serviceStatuses = [];
+
+auth.onAuthStateChanged(async user => {
+    if (!user) { showLogin(); return; }
+    try {
+        const snap = await db.collection('management_users').doc(user.uid).get();
+        if (!snap.exists || snap.data().status !== 'active') {
+            showLogin('Your account does not have management portal access.');
+            return;
+        }
+        currentUser = { uid: user.uid, email: user.email, ...snap.data() };
+        currentRole = currentUser.role;
+        await loadPortalStatuses();
+        showPortal();
+    } catch(err) {
+        showLogin('Could not verify your account. Please try again.');
+    }
+});
+
+async function loadPortalStatuses() {
+    try {
+        const snap = await db.collection('settings').doc('portal').get();
+        if (snap.exists && Array.isArray(snap.data().statuses)) {
+            _statusOptions = snap.data().statuses;
+        }
+        _financeStatuses = _statusOptions.filter(s => s.showInFinance).map(s => s.val);
+        _serviceStatuses = _statusOptions.filter(s => s.showInService).map(s => s.val);
+    } catch(e) {
+        // Fallback defaults
+        _financeStatuses = ['completed_collected','completed_not_collected','completed_partial'];
+        _serviceStatuses = ['complete_need_service'];
+    }
+}
+
+function statusLabel(val) {
+    const s = _statusOptions.find(s => s.val === val);
+    return s ? s.label : val;
+}
+
+function statusColor(val) {
+    const s = _statusOptions.find(s => s.val === val);
+    return s ? s.color : '#94A3B8';
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function showLogin(errorMsg) {
+    document.getElementById('app').innerHTML = `
+        <div class="login-page">
+            <div class="login-card">
+                <div class="login-logo">
+                    <div class="brand">Armor Vue</div>
+                    <div class="sub">Management Portal</div>
+                </div>
+                ${errorMsg ? `<div class="alert alert-error mb-4">${errorMsg}</div>` : ''}
+                <div id="login-error" class="hidden alert alert-error mb-4"></div>
+                <form id="login-form" autocomplete="off">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input class="form-input" type="email" id="email" required autocomplete="off" placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <div style="position:relative">
+                            <input class="form-input" type="password" id="password" required autocomplete="off" placeholder="••••••••" style="padding-right:3rem">
+                            <button type="button" onclick="const f=document.getElementById('password');f.type=f.type==='password'?'text':'password'" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;padding:0">👁</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary w-full btn-lg mt-2" type="submit" id="login-btn">Sign In</button>
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="sendReset()">Forgot password?</button>
+                    </div>
+                </form>
+            </div>
+        </div>`;
+    document.getElementById('login-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const pw    = document.getElementById('password').value;
+        const btn   = document.getElementById('login-btn');
+        const err   = document.getElementById('login-error');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Signing in…';
+        err.classList.add('hidden');
+        auth.signInWithEmailAndPassword(email, pw).catch(e2 => {
+            err.textContent = 'Login failed: ' + (e2.code === 'auth/wrong-password' || e2.code === 'auth/user-not-found'
+                ? 'Invalid email or password.' : e2.message);
+            err.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        });
+    });
+}
+
+async function sendReset() {
+    const email = (document.getElementById('email')?.value || '').trim();
+    const err   = document.getElementById('login-error');
+    if (!email) { err.textContent = 'Enter your email above first.'; err.classList.remove('hidden'); return; }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        err.className = 'alert alert-info mb-4';
+        err.textContent = `Password reset email sent to ${email}.`;
+        err.classList.remove('hidden');
+    } catch(e) { err.textContent = 'Could not send reset: ' + e.message; err.className = 'alert alert-error mb-4'; err.classList.remove('hidden'); }
+}
+
+// ============================================================
+// PORTAL SHELL
+// ============================================================
+let activeTab = null;
+
+function showPortal() {
+    const roleLabel = { manager: 'Manager', finance: 'Finance', service: 'Service' }[currentRole] || currentRole;
+    const tabs = [];
+    if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'finance', label: '💰 Finance Queue' });
+    if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'service', label: '🔧 Service Queue' });
+    if (currentRole === 'manager') tabs.push({ id: 'board', label: '📋 Installer Board' });
+
+    document.getElementById('app').innerHTML = `
+        <nav class="admin-nav">
+            <div class="admin-nav-brand"><span>AV</span> Management Portal</div>
+            <div style="font-size:.8rem;color:var(--muted)">${esc(currentUser.displayName || currentUser.email)} · ${roleLabel}</div>
+            <div class="admin-nav-actions">
+                <button class="btn btn-ghost btn-sm" onclick="auth.signOut()">Logout</button>
+            </div>
+        </nav>
+        <main class="admin-content">
+            <div class="tab-bar">
+                ${tabs.map(t => `<button class="tab-btn" id="tab-${t.id}" onclick="switchTab('${t.id}')">${t.label}</button>`).join('')}
+            </div>
+            <div id="tab-content"></div>
+        </main>`;
+
+    switchTab(tabs[0]?.id);
+}
+
+// Unsubscribe handles for live listeners
+let _financeUnsub = null;
+let _serviceUnsub = null;
+
+function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + tab));
+    if (_financeUnsub) { _financeUnsub(); _financeUnsub = null; }
+    if (_serviceUnsub) { _serviceUnsub(); _serviceUnsub = null; }
+    if (tab === 'finance') renderFinanceQueue();
+    if (tab === 'service') renderServiceQueue();
+    if (tab === 'board')   renderInstallerBoard();
+}
+
+// ============================================================
+// FINANCE QUEUE
+// ============================================================
+async function renderFinanceQueue() {
+    const content = document.getElementById('tab-content');
+    if (!content) return;
+    content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    if (_financeStatuses.length === 0) {
+        content.innerHTML = '<div class="card"><p class="text-muted text-sm">No finance statuses configured. Ask your admin to set showInFinance flags.</p></div>';
+        return;
+    }
+
+    // Load today's actions once
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const actionsSnap = await db.collection('management_actions')
+        .where('type','==','finance')
+        .where('acknowledgedAt','>=', firebase.firestore.Timestamp.fromDate(todayStart))
+        .get().catch(() => ({ docs: [] }));
+    const handledIds = new Set(actionsSnap.docs.map(d => d.data().recordId));
+
+    // Live listener on job_records
+    _financeUnsub = db.collection('job_records')
+        .where('status', 'in', _financeStatuses.slice(0, 10)) // Firestore 'in' limit = 10
+        .onSnapshot(snap => {
+            renderFinanceCards(snap.docs.map(d => ({ id: d.id, ...d.data() })), handledIds, content);
+        }, err => {
+            content.innerHTML = `<div class="card"><p class="text-sm text-muted">Could not load finance queue: ${esc(err.message)}</p></div>`;
+        });
+}
+
+function renderFinanceCards(records, handledIds, content) {
+    const needs = records.filter(r => !handledIds.has(r.id));
+    const done  = records.filter(r =>  handledIds.has(r.id));
+
+    let html = '';
+    if (needs.length === 0 && done.length === 0) {
+        html = '<div class="card"><p class="text-muted text-sm">No records in finance queue.</p></div>';
+    } else {
+        if (needs.length > 0) {
+            html += `<div class="queue-section-label">Needs Attention (${needs.length})</div>`;
+            html += needs.map(r => financeCard(r, false)).join('');
+        }
+        if (done.length > 0) {
+            html += `<div class="queue-section-label">Done Today (${done.length})</div>`;
+            html += done.map(r => doneCard(r, 'finance')).join('');
+        }
+    }
+    content.innerHTML = html;
+}
+
+function financeCard(r, isDone) {
+    const fin     = r.financials || {};
+    const balance = fin.balanceDue ? `$${esc(String(fin.balanceDue))}` : '<span style="color:var(--warn)">Balance not set</span>';
+    const payment = fin.paymentMethod ? esc(fin.paymentMethod) : '<span style="color:var(--muted)">—</span>';
+    const color   = statusColor(r.status);
+    return `<div class="mgmt-queue-card">
+        <div class="cust-name">${esc(r.customerName || r.jobId || '—')}</div>
+        <div class="meta-row">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName || r.installerId)}</div>
+        <div class="meta-row">Balance: ${balance} · Payment: ${payment}</div>
+        ${r.statusNote ? `<div class="meta-row" style="color:var(--text)">Note: ${esc(r.statusNote)}</div>` : ''}
+        <div><span class="status-chip" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="markHandled('${r.id}','finance')">✓ Mark Handled</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.open('print-job.html?recordId=${encodeURIComponent(r.id)}','_blank')">🖨 Print</button>
+            <input class="form-input" id="fn-note-${r.id}" placeholder="Optional note…" style="flex:1;font-size:.8rem;height:34px">
+        </div>
+    </div>`;
+}
+
+function doneCard(r, type) {
+    return `<div class="mgmt-done-card">
+        <strong>${esc(r.customerName || r.jobId || '—')}</strong>
+        <span style="margin-left:.5rem;color:var(--muted)">Job #${esc(r.jobNumber || r.jobId)}</span>
+        <span style="margin-left:.5rem;font-size:.75rem;color:var(--ok)">✓ Handled today</span>
+    </div>`;
+}
+
+async function markHandled(recordId, type) {
+    const note = (document.getElementById(`${type === 'finance' ? 'fn' : 'svc'}-note-${recordId}`)?.value || '').trim();
+    try {
+        await db.collection('management_actions').add({
+            recordId,
+            type,
+            acknowledgedBy:   currentUser.uid,
+            acknowledgedByName: currentUser.displayName || currentUser.email,
+            acknowledgedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+            note
+        });
+        flash('ok', 'Marked as handled.');
+        // Re-render with updated handled set
+        if (type === 'finance') renderFinanceQueue();
+        if (type === 'service') renderServiceQueue();
+    } catch(err) { flash('error', 'Could not save: ' + err.message); }
+}
+
+// ============================================================
+// SERVICE QUEUE
+// ============================================================
+async function renderServiceQueue() {
+    const content = document.getElementById('tab-content');
+    if (!content) return;
+    content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+    const actionsSnap = await db.collection('management_actions')
+        .where('type','==','service')
+        .where('acknowledgedAt','>=', firebase.firestore.Timestamp.fromDate(todayStart))
+        .get().catch(() => ({ docs: [] }));
+    const handledIds = new Set(actionsSnap.docs.map(d => d.data().recordId));
+
+    const queries = [];
+    if (_serviceStatuses.length > 0) {
+        queries.push(
+            db.collection('job_records').where('status','in',_serviceStatuses.slice(0,10)).get()
+        );
+    }
+    // Also fetch all to look for defects (client-side filter)
+    queries.push(db.collection('job_records').get());
+
+    const results = await Promise.all(queries).catch(err => {
+        content.innerHTML = `<div class="card"><p class="text-sm text-muted">Could not load service queue: ${esc(err.message)}</p></div>`;
+        return null;
+    });
+    if (!results) return;
+
+    const byId = {};
+    results.forEach(snap => snap.docs.forEach(d => { byId[d.id] = { id: d.id, ...d.data() }; }));
+    const records = Object.values(byId).filter(r =>
+        (_serviceStatuses.includes(r.status)) ||
+        (r.openings || []).some(o => (o.defects || []).length > 0)
+    );
+
+    renderServiceCards(records, handledIds, content);
+}
+
+function renderServiceCards(records, handledIds, content) {
+    const needs = records.filter(r => !handledIds.has(r.id));
+    const done  = records.filter(r =>  handledIds.has(r.id));
+
+    let html = '';
+    if (needs.length === 0 && done.length === 0) {
+        html = '<div class="card"><p class="text-muted text-sm">No records in service queue.</p></div>';
+    } else {
+        if (needs.length > 0) {
+            html += `<div class="queue-section-label">Needs Attention (${needs.length})</div>`;
+            html += needs.map(r => serviceCard(r)).join('');
+        }
+        if (done.length > 0) {
+            html += `<div class="queue-section-label">Done Today (${done.length})</div>`;
+            html += done.map(r => doneCard(r, 'service')).join('');
+        }
+    }
+    content.innerHTML = html;
+}
+
+function serviceCard(r) {
+    const defects = (r.openings || []).flatMap(o =>
+        (o.defects || []).map(d => `<li style="font-size:.78rem;color:var(--muted)">${esc(d.type || '—')}: ${esc(d.description || '')}</li>`)
+    );
+    const color = statusColor(r.status);
+    return `<div class="mgmt-queue-card">
+        <div class="cust-name">${esc(r.customerName || r.jobId || '—')}</div>
+        <div class="meta-row">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName || r.installerId)}</div>
+        ${defects.length > 0 ? `<ul style="margin:.4rem 0 0 1rem;padding:0">${defects.join('')}</ul>` : ''}
+        <div><span class="status-chip" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="markHandled('${r.id}','service')">✓ Mark Scheduled</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.open('print-job.html?recordId=${encodeURIComponent(r.id)}','_blank')">🖨 Print</button>
+            <input class="form-input" id="svc-note-${r.id}" placeholder="Optional note…" style="flex:1;font-size:.8rem;height:34px">
+        </div>
+    </div>`;
+}
+
+// ============================================================
+// INSTALLER BOARD (manager only)
+// ============================================================
+async function renderInstallerBoard() {
+    const content = document.getElementById('tab-content');
+    if (!content) return;
+    content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    try {
+        const now     = new Date();
+        const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+        const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6); weekEnd.setHours(23,59,59,999);
+
+        const [instSnap, recSnap] = await Promise.all([
+            db.collection('installers').where('status','==','active').get(),
+            db.collection('job_records').get()
+        ]);
+
+        const installers = instSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const records    = recSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Group latest record per installer
+        const latestByInstaller = {};
+        records.forEach(r => {
+            const prev = latestByInstaller[r.installerId];
+            if (!prev || (r.updatedAt?.seconds || 0) > (prev.updatedAt?.seconds || 0)) {
+                latestByInstaller[r.installerId] = r;
+            }
+        });
+
+        let html = `<div class="mb-4"><h3>Active Installers — Current Status</h3><p class="text-muted text-sm">Snapshot based on most recent job record.</p></div>`;
+        if (installers.length === 0) {
+            html += '<div class="card"><p class="text-sm text-muted">No active installers.</p></div>';
+        } else {
+            html += installers.map(inst => {
+                const rec    = latestByInstaller[inst.id];
+                const status = rec ? rec.status : 'not_started';
+                const color  = statusColor(status);
+                return `<div class="installer-board-card">
+                    <div class="board-dot" style="background:${color}"></div>
+                    <div class="board-name">${esc(inst.displayName || inst.id)}</div>
+                    <div class="board-status" style="color:${color}">${esc(statusLabel(status))}</div>
+                    ${rec ? `<div style="font-size:.72rem;color:var(--muted)">Job #${esc(rec.jobNumber || rec.jobId)}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+        content.innerHTML = html;
+    } catch(err) {
+        content.innerHTML = `<div class="card"><p class="text-sm text-muted">Could not load board: ${esc(err.message)}</p></div>`;
+    }
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function esc(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
