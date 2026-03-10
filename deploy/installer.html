@@ -899,18 +899,20 @@ let ewCurrentPhotoSlot = 0;
 if (auth.isSignInWithEmailLink(window.location.href)) {
     completeMagicLink();
 } else {
-    auth.onAuthStateChanged(user => {
-        if (user && user.uid === window.ADMIN_UID) {
-            const previewId = new URLSearchParams(window.location.search).get('preview');
-            if (previewId) {
-                loadPortalAsInstaller(previewId);
+    auth.onAuthStateChanged(async user => {
+        if (!user) { showNoAccess('Access your portal using the link sent to your email.'); return; }
+        try {
+            // Management/admin users get installer preview mode instead of the installer portal
+            const mgmtSnap = await db.collection('management_users').doc(user.uid).get();
+            if (mgmtSnap.exists && mgmtSnap.data().status === 'active') {
+                const previewId = new URLSearchParams(window.location.search).get('preview');
+                if (previewId) loadPortalAsInstaller(previewId);
+                else           showAdminPreviewPicker();
             } else {
-                showAdminPreviewPicker();
+                loadPortal(user);
             }
-        } else if (user) {
+        } catch(e) {
             loadPortal(user);
-        } else {
-            showNoAccess('Access your portal using the link sent to your email.');
         }
     });
 }
@@ -1353,7 +1355,7 @@ async function renderSchedule() {
         renderSelectedDay();
     } catch(err) {
         const dj = document.getElementById('day-jobs');
-        if (dj) dj.innerHTML = `<div class="alert alert-error">Could not load schedule: ${err.message}</div>`;
+        if (dj) dj.innerHTML = `<div class="alert alert-error">Could not load schedule: ${esc(err.message)}</div>`;
     }
 }
 
@@ -1666,7 +1668,7 @@ async function openJobDetail(jobId) {
 
         renderJobDetail(job, rec);
     } catch(err) {
-        el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${err.message}</div>`;
+        el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${esc(err.message)}</div>`;
     }
 }
 
@@ -2320,7 +2322,7 @@ async function loadEarningsReport() {
         </div>`;
 
     } catch(err) {
-        resultsEl.innerHTML = `<div class="alert alert-error">Could not load earnings: ${err.message}</div>`;
+        resultsEl.innerHTML = `<div class="alert alert-error">Could not load earnings: ${esc(err.message)}</div>`;
     }
 }
 

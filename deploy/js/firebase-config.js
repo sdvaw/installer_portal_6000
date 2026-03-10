@@ -25,7 +25,4 @@
 
     // Expose config for secondary app instances (e.g. staff creation)
     window.FIREBASE_CONFIG = config;
-
-    // Admin UID — used for role checks in the admin portal
-    window.ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
 })();

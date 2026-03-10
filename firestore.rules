@@ -18,6 +18,14 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/management_users/$(request.auth.uid));
     }
 
+    // Cross-reference: check if the installer document's firebaseUid matches
+    // the currently authenticated user. Used to scope installer writes to their
+    // own records without relying on document IDs matching auth UIDs.
+    function installerOwns(installerId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/installers/$(installerId)).data.firebaseUid == request.auth.uid;
+    }
+
     // --------------------------------------------------------
     // SETTINGS — admin full access
     //            management users can read portal doc (statuses, COC text)
@@ -61,11 +69,15 @@ service cloud.firestore {
 
     // --------------------------------------------------------
     // JOB RECORDS — written by installers during jobs
-    //               any authenticated user can read + write
-    //               (installers only see their own via the app)
+    //   admin + management: full read/write (reports, defect updates, archiving)
+    //   installer: read + write own records only (verified via installer doc lookup)
     // --------------------------------------------------------
     match /job_records/{recordId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isAdmin() || isManagementUser();
+      allow read:   if installerOwns(resource.data.installerId);
+      allow create: if installerOwns(request.resource.data.installerId);
+      allow update: if installerOwns(resource.data.installerId)
+                    && installerOwns(request.resource.data.installerId);
     }
 
     // --------------------------------------------------------
@@ -88,11 +100,16 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------
-    // EXTRA WORK REQUESTS — installers submit, admin reviews
-    //                        mirrors job_records pattern
+    // EXTRA WORK REQUESTS — installers submit, management reviews
+    //   admin + management: full read/write
+    //   installer: own records only
     // --------------------------------------------------------
     match /extra_work_requests/{reqId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isAdmin() || isManagementUser();
+      allow read:   if installerOwns(resource.data.installerId);
+      allow create: if installerOwns(request.resource.data.installerId);
+      allow update: if installerOwns(resource.data.installerId)
+                    && installerOwns(request.resource.data.installerId);
     }
 
     // --------------------------------------------------------
@@ -123,7 +140,7 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /management_actions/{id} {
       allow read, write: if isAdmin();
-      allow read: if isManagementUser();
+      allow read:   if isManagementUser();
       allow create: if isManagementUser()
         && request.resource.data.acknowledgedBy == request.auth.uid;
     }
@@ -133,7 +150,7 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /reminders/{remId} {
       allow read, write: if isAdmin();
-      allow read: if isManagementUser();
+      allow read:   if isManagementUser();
       allow create: if isManagementUser()
         && request.resource.data.createdBy == request.auth.uid;
       allow update: if isManagementUser()
@@ -144,10 +161,11 @@ service cloud.firestore {
     // MATERIAL ORDERS — re-order hopper for defect parts
     // --------------------------------------------------------
     match /material_orders/{id} {
-      allow read: if isAdmin() || isManagementUser();
+      allow read:   if isAdmin() || isManagementUser();
       allow create: if isManagementUser()
         && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isManagementUser();
+      allow update: if isManagementUser()
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy','createdAt']);
     }
 
   }
