@@ -168,5 +168,17 @@ service cloud.firestore {
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdBy','createdAt']);
     }
 
+    // --------------------------------------------------------
+    // FAILED INSPECTIONS — written by Cloud Function (admin SDK)
+    //   admin + management: read/update (resolve, add notes)
+    //   installers: read only (filtered client-side to their jobs)
+    //   create: blocked — only admin SDK can create via webhook
+    // --------------------------------------------------------
+    match /failed_inspections/{id} {
+      allow read:   if isAdmin() || isManagementUser() || isSignedIn();
+      allow create: if false;
+      allow update: if isAdmin() || isManagementUser();
+    }
+
   }
 }

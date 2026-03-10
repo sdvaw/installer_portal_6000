@@ -501,12 +501,14 @@ async function loadDailyReview() {
         const start = new Date(_reviewDate + 'T00:00:00');
         const end   = new Date(_reviewDate + 'T23:59:59');
 
-        const [jobSnap, matSnap] = await Promise.all([
+        const [jobSnap, matSnap, fiSnap] = await Promise.all([
             db.collection('jobs').where('startDt', '>=', start).where('startDt', '<=', end).get(),
-            db.collection('material_orders').where('status', '==', 'pending').get()
+            db.collection('material_orders').where('status', '==', 'pending').get(),
+            db.collection('failed_inspections').where('status', '==', 'open').get()
         ]);
 
-        const pendingMaterials = matSnap.size;
+        const pendingMaterials  = matSnap.size;
+        const openInspections   = fiSnap.size;
         const jobs = jobSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => !j.isServiceCall);
         jobs.sort((a, b) => {
             const at = a.startDt?.seconds || (a.startDt?.toDate?.().getTime() / 1000) || 0;
@@ -594,6 +596,7 @@ async function loadDailyReview() {
             ${currentRole === 'manager' && totalCollected > 0 ? `<div class="stat-mini ok"><div class="stat-mini-val">${fmtDollar(totalCollected)}</div><div class="stat-mini-lbl">TODAY $</div></div>` : ''}
             ${currentRole === 'manager' && totalDefects > 0 ? `<div class="stat-mini bad"><div class="stat-mini-val">${totalDefects}</div><div class="stat-mini-lbl">DEFECTS</div></div>` : ''}
             ${currentRole === 'manager' && pendingMaterials > 0 ? `<div class="stat-mini warn"><div class="stat-mini-val">${pendingMaterials}</div><div class="stat-mini-lbl">MATERIALS</div></div>` : ''}
+            ${currentRole === 'manager' && openInspections > 0 ? `<div class="stat-mini bad"><div class="stat-mini-val">${openInspections}</div><div class="stat-mini-lbl">INSPECTIONS</div></div>` : ''}
         </div>`;
 
         const inactiveHtml = inactive.length === 0 ? '' : `

@@ -1706,6 +1706,8 @@ function renderJobDetail(job, rec) {
             <div style="font-size:.8rem;font-weight:600;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
         </div>
 
+        <div id="job-inspection-alert"></div>
+
         <div class="detail-section">
             <h3>Details</h3>
             ${job.address ? `<div class="detail-row"><span class="lbl">Address</span><span>${esc(job.address.replace(/\n/g,' '))}</span></div>` : ''}
@@ -1823,6 +1825,35 @@ function renderJobDetail(job, rec) {
     if (rec && rec.status !== 'not_started') {
         renderOpenings(job.id, rec);
         ewLoadMetaBadge(job.id);
+    }
+
+    // Async-load failed inspection alerts (read-only for installer)
+    loadJobInspectionAlert(job.id);
+}
+
+async function loadJobInspectionAlert(jobId) {
+    const el = document.getElementById('job-inspection-alert');
+    if (!el) return;
+    try {
+        const snap = await db.collection('failed_inspections')
+            .where('jobId', '==', jobId)
+            .where('status', '==', 'open')
+            .get();
+        if (snap.empty) return;
+        el.innerHTML = snap.docs.map(d => {
+            const data  = d.data();
+            const dt    = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+            const dtStr = dt ? dt.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '';
+            return `
+            <div style="background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:var(--r-card);padding:.85rem 1rem;margin-bottom:.75rem">
+                <div style="font-weight:700;color:#92400E;margin-bottom:.35rem">⚠ Failed Inspection${dtStr ? ' — ' + dtStr : ''}</div>
+                <div style="font-size:.85rem;color:#78350F"><strong>Reason:</strong> ${esc(data.reason)}</div>
+                ${data.inspector ? `<div style="font-size:.85rem;color:#78350F;margin-top:.2rem"><strong>Inspector:</strong> ${esc(data.inspector)}${data.fee != null ? ' &nbsp;|&nbsp; <strong>Fee:</strong> $' + data.fee : ''}</div>` : ''}
+                ${data.notes ? `<div style="font-size:.8rem;color:#78350F;margin-top:.25rem;font-style:italic">${esc(data.notes)}</div>` : ''}
+            </div>`;
+        }).join('');
+    } catch(e) {
+        // Non-critical — silently ignore
     }
 }
 
@@ -3608,6 +3639,7 @@ let cfJobRecord      = null;
 let cfScreen         = 0;
 let cfCustBlob       = null;
 let cfAgreementText  = '';
+let cfRating         = null;
 
 const DEFAULT_COC_AGREEMENT =
     'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.';
@@ -3616,6 +3648,7 @@ async function showCertificateFlow(jobId) {
     cfJobId  = jobId;
     cfScreen = 0;
     cfCustBlob = null;
+    cfRating   = null;
     try {
         const [jobDoc, recDoc, portalDoc] = await Promise.all([
             db.collection('jobs').doc(jobId).get(),
@@ -3638,9 +3671,56 @@ function cfRenderScreen(n) {
     cfScreen = n;
     document.getElementById('cf-back-btn').style.display = n > 0 ? '' : 'none';
     const el = document.getElementById('cf-content');
-    if (n === 0) cfRenderAgreement(el);
-    if (n === 1) cfRenderSummary(el);
-    if (n === 2) cfRenderInstallerSig(el);
+    if (n === 0) cfRenderRating(el);
+    if (n === 1) cfRenderAgreement(el);
+    if (n === 2) cfRenderSummary(el);
+    if (n === 3) cfRenderInstallerSig(el);
+}
+
+function cfRenderRating(el) {
+    el.innerHTML = `
+        <div style="flex:1;overflow-y:auto">
+            <h3 style="text-align:center;margin-bottom:.25rem;margin-top:.25rem">How did we do?</h3>
+            <p class="text-sm text-muted mb-5" style="text-align:center">Rate your experience before signing.</p>
+            ${[['product','Product Quality'],['sales','Sales Experience'],['install','Installation']].map(([cat,label]) => `
+            <div style="margin-bottom:1.5rem">
+                <div style="font-size:.85rem;font-weight:600;margin-bottom:.4rem;color:var(--text)">${label}</div>
+                <div style="display:flex;gap:.3rem" id="cf-stars-${cat}">
+                    ${[1,2,3,4,5].map(n => `<span style="font-size:2.4rem;cursor:pointer;color:#D1D5DB;line-height:1;user-select:none" onclick="cfSetStar('${cat}',${n})">★</span>`).join('')}
+                </div>
+            </div>`).join('')}
+        </div>
+        <div style="flex-shrink:0;margin-top:1.25rem">
+            <button class="btn btn-primary w-full" id="cf-rating-continue" onclick="cfRatingContinue()" disabled style="opacity:.5">Continue →</button>
+        </div>`;
+    // Re-apply saved ratings if user went back
+    if (cfRating) {
+        ['product','sales','install'].forEach(cat => {
+            if (cfRating[cat]) cfSetStar(cat, cfRating[cat]);
+        });
+    }
+}
+
+function cfSetStar(cat, val) {
+    if (!cfRating) cfRating = {};
+    cfRating[cat] = val;
+    const container = document.getElementById('cf-stars-' + cat);
+    if (container) {
+        [...container.querySelectorAll('span')].forEach((s, i) => {
+            s.style.color = i < val ? '#F59E0B' : '#D1D5DB';
+        });
+    }
+    const btn = document.getElementById('cf-rating-continue');
+    if (btn) {
+        const allRated = cfRating.product && cfRating.sales && cfRating.install;
+        btn.disabled    = !allRated;
+        btn.style.opacity = allRated ? '1' : '.5';
+    }
+}
+
+function cfRatingContinue() {
+    if (!cfRating || !cfRating.product || !cfRating.sales || !cfRating.install) return;
+    cfRenderScreen(1);
 }
 
 function cfRenderAgreement(el) {
@@ -3657,7 +3737,7 @@ function cfRenderAgreement(el) {
             <p class="text-sm text-muted mb-3" style="text-align:center">
                 Please hand the phone to the customer to review and agree.
             </p>
-            <button class="btn btn-primary w-full" onclick="cfRenderScreen(1)">
+            <button class="btn btn-primary w-full" onclick="cfRenderScreen(2)">
                 I Agree — Continue to Sign
             </button>
         </div>`;
@@ -3703,7 +3783,7 @@ async function cfNextFromCustomer() {
         return;
     }
     cfCustBlob = await canvasToBlob('cf-cust-canvas');
-    cfRenderScreen(2);
+    cfRenderScreen(3);
 }
 
 function cfRenderInstallerSig(el) {
@@ -3722,7 +3802,7 @@ function cfRenderInstallerSig(el) {
 }
 
 function cfGoBack() {
-    if (cfScreen > 1) cfRenderScreen(cfScreen - 1);
+    if (cfScreen > 0) cfRenderScreen(cfScreen - 1);
 }
 
 // ============================================================
@@ -4184,7 +4264,7 @@ async function cfSaveAll() {
         const custUrl  = await custSnap.ref.getDownloadURL();
 
         const recRef = db.collection('job_records').doc(`${cfJobId}_${currentInstaller.id}`);
-        await recRef.update({
+        const updatePayload = {
             'signatures.completion': {
                 customerUrl:   custUrl,
                 customerName:  job.customerName || '',
@@ -4194,7 +4274,16 @@ async function cfSaveAll() {
                 installerAt:   now
             },
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        if (cfRating && cfRating.product && cfRating.sales && cfRating.install) {
+            updatePayload.cocRating = {
+                product: cfRating.product,
+                sales:   cfRating.sales,
+                install: cfRating.install,
+                ratedAt: now
+            };
+        }
+        await recRef.update(updatePayload);
 
         delete jobRecordCache[cfJobId];
         jobCache = {};

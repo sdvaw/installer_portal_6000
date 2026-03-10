@@ -1,9 +1,10 @@
 // ============================================================
 // ARMOR VUE — Firebase Cloud Functions
 // ============================================================
-const { onSchedule }   = require('firebase-functions/v2/scheduler');
-const { onCall }       = require('firebase-functions/v2/https');
-const { logger }       = require('firebase-functions');
+const { onSchedule }        = require('firebase-functions/v2/scheduler');
+const { onCall, onRequest } = require('firebase-functions/v2/https');
+const { defineSecret }      = require('firebase-functions/params');
+const { logger }            = require('firebase-functions');
 const admin            = require('firebase-admin');
 const archiver         = require('archiver');
 const os               = require('os');
@@ -12,6 +13,58 @@ const path             = require('path');
 
 admin.initializeApp();
 const db = admin.firestore();
+
+const webhookSecret = defineSecret('WEBHOOK_SECRET');
+
+// ============================================================
+// INSPECTION WEBHOOK — receives failed inspection notices from
+// Power Automate and stores them in failed_inspections.
+// Secured via X-Webhook-Secret header.
+// ============================================================
+exports.inspectionWebhook = onRequest({ secrets: [webhookSecret] }, async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
+
+    const secret = webhookSecret.value();
+    if (!secret || req.headers['x-webhook-secret'] !== secret) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const { jobNumber, clientName, reason, inspector, fee, date } = req.body || {};
+    if (!jobNumber || !reason) {
+        res.status(400).json({ error: 'Missing required fields: jobNumber, reason' });
+        return;
+    }
+
+    // Look up jobId by jobNumber
+    let jobId = null;
+    try {
+        const jobSnap = await db.collection('jobs')
+            .where('jobNumber', '==', String(jobNumber)).limit(1).get();
+        if (!jobSnap.empty) jobId = jobSnap.docs[0].id;
+    } catch (e) {
+        logger.warn('Could not look up jobId for jobNumber:', jobNumber, e.message);
+    }
+
+    const docRef = await db.collection('failed_inspections').add({
+        jobId:          jobId,
+        jobNumber:      String(jobNumber),
+        clientName:     String(clientName || ''),
+        reason:         String(reason),
+        inspector:      String(inspector || ''),
+        fee:            (fee != null && fee !== '') ? (parseFloat(fee) || null) : null,
+        inspectionDate: String(date || ''),
+        status:         'open',
+        notes:          '',
+        createdAt:      admin.firestore.FieldValue.serverTimestamp(),
+        resolvedAt:     null,
+        resolvedBy:     null,
+        resolvedByName: null
+    });
+
+    logger.info(`Failed inspection created: ${docRef.id} for job #${jobNumber}`);
+    res.status(200).json({ success: true, id: docRef.id });
+});
 
 // ============================================================
 // ARCHIVE OLD JOBS — callable from admin dashboard

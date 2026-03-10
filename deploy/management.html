@@ -479,6 +479,7 @@ async function renderInstallerBoard() {
                     <div class="board-name">${esc(inst.displayName || inst.id)}</div>
                     <div class="board-status" style="color:${color}">${esc(statusLabel(status))}</div>
                     ${rec ? `<div style="font-size:.72rem;color:var(--muted)">Job #${esc(rec.jobNumber || rec.jobId)}</div>` : ''}
+                    <a href="installer.html?preview=${encodeURIComponent(inst.id)}" target="_blank" class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:.75rem">Open Portal ↗</a>
                 </div>`;
             }).join('');
         }
