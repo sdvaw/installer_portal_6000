@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-functions-compat.js"></script>
 
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
@@ -225,7 +226,7 @@ async function runSync() {
 // ============================================================
 // DASHBOARD SECTION
 // ============================================================
-async function renderDashboard() {
+async function renderDashboard(retries = 1) {
     const el = document.getElementById('section-dashboard');
     if (!el) return;
     el.innerHTML = `
@@ -408,7 +409,13 @@ async function renderDashboard() {
                 }).join('');
             }
         }
-    } catch(err) { flash('error', 'Dashboard error: ' + err.message); }
+    } catch(err) {
+        if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
+            await auth.currentUser.getIdToken(true);
+            return renderDashboard(0);
+        }
+        flash('error', 'Dashboard error: ' + err.message);
+    }
 }
 
 // ============================================================
@@ -951,11 +958,24 @@ async function renderSettings() {
                     <div class="form-group">
                         <label class="form-label">Sync Interval (minutes)</label>
                         <select class="form-input" id="set-interval">
+                            <option value="off">Off</option>
                             <option value="5">5 minutes</option>
                             <option value="15">15 minutes</option>
                             <option value="30">30 minutes</option>
                             <option value="60">1 hour</option>
                             <option value="240">4 hours</option>
+                            <option value="360">6 hours</option>
+                            <option value="480">8 hours</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Archive Threshold (days)</label>
+                        <select class="form-input" id="set-archive-threshold">
+                            <option value="60">60 days</option>
+                            <option value="90" selected>90 days</option>
+                            <option value="120">120 days</option>
+                            <option value="180">180 days</option>
+                            <option value="365">1 year</option>
                         </select>
                     </div>
                     <div id="settings-msg" class="hidden alert mb-4"></div>
@@ -964,6 +984,13 @@ async function renderSettings() {
                         <button type="button" class="btn btn-secondary" onclick="testTeamUp()">Test Connection</button>
                     </div>
                 </form>
+                <hr style="border-color:var(--hairline);margin:1.5rem 0">
+                <div>
+                    <h4 class="mb-1">Archive Old Jobs</h4>
+                    <p class="text-muted text-sm mb-3">Packages job records older than your threshold into a downloadable ZIP and removes them from active views. Photos are listed in a manifest inside the ZIP.</p>
+                    <div id="archive-result" class="hidden alert mb-3"></div>
+                    <button class="btn btn-secondary" id="archive-btn" onclick="runArchive()">⬇ Archive Old Jobs</button>
+                </div>
             </div>
         </details>
 
@@ -976,6 +1003,20 @@ async function renderSettings() {
                     <button class="btn btn-primary btn-sm" onclick="openStatusModal()">+ Add Status</button>
                 </div>
                 <div id="status-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
+        <!-- Portal Settings -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Portal Settings</h3><p>Finance goals and portal-wide configuration.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Monthly Collection Goal ($)</label>
+                    <input class="form-input" id="set-monthly-goal" type="number" min="0" step="100" placeholder="e.g. 30000" style="max-width:200px">
+                    <p class="text-muted text-sm mt-1">Displayed as a progress bar on the Finance dashboard.</p>
+                </div>
+                <div id="portal-settings-msg" class="hidden alert mb-3"></div>
+                <button class="btn btn-primary" onclick="savePortalSettings()">Save Portal Settings</button>
             </div>
         </details>
 
@@ -1063,8 +1104,9 @@ async function loadSettings() {
         // Guard against race condition where section was re-rendered while fetching
         const apikeyEl   = document.getElementById('set-apikey');
         const calidEl    = document.getElementById('set-calid');
-        const intervalEl = document.getElementById('set-interval');
-        const cocEl      = document.getElementById('set-coc-text');
+        const intervalEl   = document.getElementById('set-interval');
+        const thresholdEl  = document.getElementById('set-archive-threshold');
+        const cocEl        = document.getElementById('set-coc-text');
         if (!apikeyEl) return; // section was replaced; nothing to populate
 
         if (teamupDoc.exists) {
@@ -1075,13 +1117,38 @@ async function loadSettings() {
                 const opt = [...intervalEl.options].find(o => o.value === String(d.syncInterval));
                 if (opt) opt.selected = true;
             }
+            if (d.archiveThresholdDays && thresholdEl) {
+                const opt = [...thresholdEl.options].find(o => o.value === String(d.archiveThresholdDays));
+                if (opt) opt.selected = true;
+            }
         }
         if (cocEl) {
             cocEl.value = (portalDoc.exists && portalDoc.data().cocAgreementText)
                 ? portalDoc.data().cocAgreementText
                 : DEFAULT_COC_AGREEMENT_ADMIN;
         }
+        const goalEl = document.getElementById('set-monthly-goal');
+        if (goalEl && portalDoc.exists && portalDoc.data().monthlyGoal != null) {
+            goalEl.value = portalDoc.data().monthlyGoal;
+        }
     } catch(err) { flash('error', 'Could not load settings: ' + err.message); }
+}
+
+async function savePortalSettings() {
+    const goalEl  = document.getElementById('set-monthly-goal');
+    const msgEl   = document.getElementById('portal-settings-msg');
+    const goal    = goalEl ? parseFloat(goalEl.value) || 0 : 0;
+    try {
+        await db.collection('settings').doc('portal').set({ monthlyGoal: goal }, { merge: true });
+        msgEl.className = 'alert alert-ok';
+        msgEl.textContent = 'Portal settings saved.';
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 3000);
+    } catch(err) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Could not save: ' + err.message;
+        msgEl.classList.remove('hidden');
+    }
 }
 
 async function saveCocText() {
@@ -1104,7 +1171,8 @@ async function saveSettings(e) {
     e.preventDefault();
     const apiKey       = document.getElementById('set-apikey').value.trim();
     const calendarId   = document.getElementById('set-calid').value.trim();
-    const syncInterval = document.getElementById('set-interval').value;
+    const syncInterval         = document.getElementById('set-interval').value;
+    const archiveThresholdDays = Number(document.getElementById('set-archive-threshold').value);
     const msgEl                = document.getElementById('settings-msg');
 
     if (!apiKey || !calendarId) {
@@ -1116,7 +1184,7 @@ async function saveSettings(e) {
 
     try {
         await db.collection('settings').doc('teamup').set({
-            apiKey, calendarId, syncInterval
+            apiKey, calendarId, syncInterval, archiveThresholdDays
         }, { merge: true });
         msgEl.className = 'alert alert-ok';
         msgEl.textContent = 'Settings saved.';
@@ -1126,6 +1194,37 @@ async function saveSettings(e) {
         msgEl.className = 'alert alert-error';
         msgEl.textContent = 'Save failed: ' + err.message;
         msgEl.classList.remove('hidden');
+    }
+}
+
+async function runArchive() {
+    const btn    = document.getElementById('archive-btn');
+    const result = document.getElementById('archive-result');
+    btn.disabled = true;
+    btn.textContent = '⏳ Archiving…';
+    result.classList.add('hidden');
+
+    try {
+        const archiveOldJobs = firebase.functions().httpsCallable('archiveOldJobs');
+        const { data } = await archiveOldJobs();
+
+        if (data.jobCount === 0) {
+            result.className = 'alert alert-info';
+            result.textContent = 'Nothing to archive yet — no jobs are older than your threshold.';
+        } else {
+            result.className = 'alert alert-ok';
+            result.innerHTML = `✓ Archived ${data.jobCount} job(s).
+                <a href="${esc(data.downloadUrl)}" target="_blank" style="color:inherit;font-weight:600">Download ZIP ↗</a>
+                <span style="color:var(--muted);font-size:.8rem"> (link valid 7 days)</span>`;
+        }
+        result.classList.remove('hidden');
+    } catch(err) {
+        result.className = 'alert alert-error';
+        result.textContent = 'Archive failed: ' + err.message;
+        result.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '⬇ Archive Old Jobs';
     }
 }
 

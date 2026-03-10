@@ -120,6 +120,43 @@
     .stat-mini-lbl  { font-size: .65rem; font-weight: 700; text-transform: uppercase;
                        letter-spacing: .06em; color: var(--muted); margin-top: .2rem; }
 
+    /* Running totals bar */
+    .running-totals {
+      background: var(--surface); border: 1px solid var(--hairline);
+      border-radius: var(--r-card); padding: 1rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .totals-row {
+      display: flex; gap: 1.75rem; flex-wrap: wrap; margin-bottom: .6rem;
+    }
+    .total-cell { text-align: center; }
+    .total-cell-val { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+    .total-cell-lbl { font-size: .65rem; font-weight: 700; text-transform: uppercase;
+                      letter-spacing: .06em; color: var(--muted); margin-top: .2rem; }
+    .goal-bar-track { background: var(--surface-2); border-radius: 4px; height: 8px; overflow: hidden; }
+    .goal-bar-fill  { height: 100%; border-radius: 4px; transition: width .3s; }
+
+    /* Defect action cards */
+    .defect-action-card {
+      background: var(--surface); border: 1px solid var(--hairline);
+      border-left: 4px solid var(--bad);
+      border-radius: var(--r-card); padding: 1rem;
+      margin-bottom: .65rem;
+    }
+    .defect-action-card.tracked { border-left-color: var(--accent); }
+    .defect-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-start; margin-top: .65rem; }
+    .track-note-wrap { display: flex; gap: .3rem; align-items: center; }
+    .track-note-input {
+      padding: .3rem .5rem; border: 1px solid var(--hairline); border-radius: 4px;
+      background: var(--surface-2); color: var(--text); font-size: .78rem; width: 180px;
+    }
+
+    /* Material cards */
+    .material-note-input {
+      flex: 1; padding: .3rem .5rem; border: 1px solid var(--hairline);
+      border-radius: 4px; background: var(--surface-2); color: var(--text); font-size: .78rem;
+    }
+
     .reminder-modal-overlay {
       position: fixed; inset: 0; z-index: 1000;
       background: rgba(0,0,0,.55);
@@ -157,6 +194,7 @@ let currentRole    = null;
 let _statusOptions = [];
 let _financeStats  = [];
 let _serviceStats  = [];
+let _monthlyGoal   = 0;
 let activeTab      = null;
 let activeView     = 'dashboard'; // 'dashboard' | 'archive'
 let archiveFrom    = '';
@@ -180,8 +218,10 @@ auth.onAuthStateChanged(async user => {
 async function loadStatusConfig() {
     try {
         const snap = await db.collection('settings').doc('portal').get();
-        if (snap.exists && Array.isArray(snap.data().statuses)) {
-            _statusOptions = snap.data().statuses;
+        if (snap.exists) {
+            const d = snap.data();
+            if (Array.isArray(d.statuses)) _statusOptions = d.statuses;
+            if (d.monthlyGoal != null)     _monthlyGoal   = parseFloat(d.monthlyGoal) || 0;
         }
     } catch(e) {}
     _financeStats = _statusOptions.length
@@ -199,6 +239,11 @@ function statusLabel(val) {
 function statusColor(val) {
     const s = _statusOptions.find(s => s.val === val);
     return s ? s.color : '#94A3B8';
+}
+function isCollectedStatus(val) {
+    const s = _statusOptions.find(s => s.val === val);
+    if (s && 'collected' in s) return s.collected;
+    return val === 'completed_collected';
 }
 
 // ── Login ─────────────────────────────────────────────────────
@@ -263,6 +308,7 @@ function showPortal() {
     if (currentRole === 'manager') tabs.push({ id: 'daily', label: '📋 Daily Review' });
     if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'finance', label: '💰 Finance' });
     if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'service', label: '🔧 Service' });
+    if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'materials', label: '📦 Materials' });
 
     document.getElementById('app').innerHTML = `
         <nav class="admin-nav">
@@ -287,9 +333,10 @@ function switchTab(tab) {
     activeTab  = tab;
     activeView = 'dashboard';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + tab));
-    if (tab === 'daily')   loadDailyReview();
-    if (tab === 'finance') loadFinanceReport();
-    if (tab === 'service') loadServiceReport();
+    if (tab === 'daily')     loadDailyReview();
+    if (tab === 'finance')   loadFinanceReport();
+    if (tab === 'service')   loadServiceReport();
+    if (tab === 'materials') loadMaterialsTab();
 }
 
 // ── DAILY REVIEW ──────────────────────────────────────────────
@@ -334,28 +381,22 @@ function getFlags(rec, job) {
     const wtSigned  = !!(wt.customerAt && wt.installerAt);
     const cocSigned = !!(coc.customerAt && coc.installerAt);
 
-    // Bad outcome statuses (not complete and not neutral in-progress)
     if (rec.status && rec.status !== 'not_started' && !isComplete) {
         const sev = rec.status === 'in_progress' ? 1 : 2;
         flags.push({ type: 'outcome', label: statusLabel(rec.status), sev });
     }
 
-    // Missing required signatures
     if (requiresSig && !wtSigned)  flags.push({ type: 'sig', label: 'Missing Walkthrough Sig', sev: 1 });
     if (requiresSig && !cocSigned) flags.push({ type: 'sig', label: 'Missing COC Sig', sev: 1 });
 
-    // Defects
-    const defectCount = (rec.openings || []).reduce((n, o) => n + (o.defects || []).length, 0);
+    const defectCount = (rec.openings || []).reduce((n, o) => n + (o.defects || []).filter(d => !d.clearedAt).length, 0);
     if (defectCount > 0) flags.push({ type: 'defect', label: `${defectCount} Defect${defectCount > 1 ? 's' : ''}`, sev: 2 });
 
-    // Missing payment info on a complete job
     const balDue = rec.financials?.balanceDue || job?.financials?.balanceDue || '';
     if (isComplete && !balDue) flags.push({ type: 'payment', label: 'No Payment Info', sev: 1 });
 
-    // Incomplete walkthrough checklist
     if (rec.walkthroughIncomplete) flags.push({ type: 'wt', label: 'Incomplete Walkthrough', sev: 1 });
 
-    // Inventory issues reported at warehouse
     const invIssues = rec.inventoryIssues || [];
     if (invIssues.length > 0) {
         const label = invIssues.length === 1
@@ -426,7 +467,7 @@ function morningCard(item) {
         ${rec?.statusNote ? `<div style="margin-top:.4rem;font-size:.78rem;color:var(--muted)"><strong style="color:var(--text)">Note:</strong> ${esc(rec.statusNote)}</div>` : ''}
         ${(() => {
             const defects = (rec?.openings || []).flatMap(o =>
-                (o.defects || []).map(d => ({ opening: o.label || o.type || 'Opening', ...d }))
+                (o.defects || []).filter(d => !d.clearedAt).map(d => ({ opening: o.label || o.type || 'Opening', ...d }))
             );
             if (!defects.length) return '';
             return `<div class="rc-defects" style="margin-top:.6rem">${defects.map(d => {
@@ -444,7 +485,6 @@ function morningCard(item) {
                         ${d.description ? `<div><strong style="color:var(--text)">Description:</strong> ${esc(d.description)}</div>` : '<div style="color:var(--muted)">No description provided.</div>'}
                         ${d.opening    ? `<div><strong style="color:var(--text)">Opening:</strong> ${esc(d.opening)}</div>` : ''}
                         ${reportedStr  ? `<div style="color:var(--muted)">Reported: ${reportedStr}</div>` : ''}
-                        ${d.needsOrdering ? `<div style="color:var(--warn);font-weight:600">⚠ Parts need to be ordered</div>` : ''}
                     </div>
                 </details>`;
             }).join('')}</div>`;
@@ -461,12 +501,12 @@ async function loadDailyReview() {
         const start = new Date(_reviewDate + 'T00:00:00');
         const end   = new Date(_reviewDate + 'T23:59:59');
 
-        // Fetch all jobs scheduled on this date
-        const jobSnap = await db.collection('jobs')
-            .where('startDt', '>=', start)
-            .where('startDt', '<=', end)
-            .get();
+        const [jobSnap, matSnap] = await Promise.all([
+            db.collection('jobs').where('startDt', '>=', start).where('startDt', '<=', end).get(),
+            db.collection('material_orders').where('status', '==', 'pending').get()
+        ]);
 
+        const pendingMaterials = matSnap.size;
         const jobs = jobSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(j => !j.isServiceCall);
         jobs.sort((a, b) => {
             const at = a.startDt?.seconds || (a.startDt?.toDate?.().getTime() / 1000) || 0;
@@ -481,7 +521,7 @@ async function loadDailyReview() {
 
         // Fetch job_records for these jobs (batch by 10)
         const jobIds = jobs.map(j => j.id);
-        const recMap = {}; // jobId -> [records]
+        const recMap = {};
         for (let i = 0; i < jobIds.length; i += 10) {
             const snap = await db.collection('job_records')
                 .where('jobId', 'in', jobIds.slice(i, i + 10)).get();
@@ -503,10 +543,9 @@ async function loadDailyReview() {
             snap.docs.forEach(d => { instMap[d.id] = d.data(); });
         }
 
-        // Build display items — one item per job
         const items = jobs.map(job => {
             const records = recMap[job.id] || [];
-            const rec     = records[0] || null; // primary record
+            const rec     = records[0] || null;
             const assignedNames = records.length > 0
                 ? records.map(r => instMap[r.installerId]?.displayName || r.installerId || '—').join(', ')
                 : '—';
@@ -514,7 +553,6 @@ async function loadDailyReview() {
             return { job, rec, records, assignedNames, flags };
         });
 
-        // Sort: problems first, then warnings, then clean, then no-activity at bottom
         items.sort((a, b) => {
             const sevA = a.flags.some(f => f.sev >= 2) ? 2 : a.flags.length > 0 ? 1 : a.rec ? 0 : -1;
             const sevB = b.flags.some(f => f.sev >= 2) ? 2 : b.flags.length > 0 ? 1 : b.rec ? 0 : -1;
@@ -522,16 +560,27 @@ async function loadDailyReview() {
             return (a.job.startDt?.seconds || 0) - (b.job.startDt?.seconds || 0);
         });
 
-        // Split active (has record) from inactive (no portal activity)
         const active   = items.filter(i => i.rec);
         const inactive = items.filter(i => !i.rec);
 
-        // Summary bar
         const total    = items.length;
         const allClear = active.filter(i => i.flags.length === 0).length;
         const needAttn = active.filter(i => i.flags.some(f => f.sev >= 2)).length;
         const warnings = active.filter(i => i.flags.length > 0 && !i.flags.some(f => f.sev >= 2)).length;
-        const defects  = active.filter(i => i.flags.some(f => f.type === 'defect')).length;
+
+        // Finance + service snapshots (manager only)
+        const financeItems    = active.filter(i => i.rec && _financeStats.includes(i.rec.status));
+        const collectedToday  = financeItems.filter(i => i.rec.status !== 'completed_not_collected');
+        const notCollToday    = financeItems.filter(i => i.rec.status === 'completed_not_collected');
+        const totalCollected  = collectedToday.reduce((sum, i) => {
+            const r = i.rec;
+            if (r.amountCollected != null) return sum + (parseFloat(r.amountCollected) || 0);
+            if (r.status === 'completed_collected') return sum + (parseFloat(r.financials?.balanceDue) || 0);
+            return sum;
+        }, 0);
+        const totalDefects = active.reduce((n, i) =>
+            n + (i.rec?.openings || []).reduce((m, o) =>
+                m + (o.defects || []).filter(d => !d.clearedAt).length, 0), 0);
 
         const summaryHtml = `
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem">
@@ -539,11 +588,14 @@ async function loadDailyReview() {
             ${allClear > 0 ? `<div class="stat-mini ok"><div class="stat-mini-val">${allClear}</div><div class="stat-mini-lbl">ALL CLEAR</div></div>` : ''}
             ${needAttn > 0 ? `<div class="stat-mini bad"><div class="stat-mini-val">${needAttn}</div><div class="stat-mini-lbl">NEEDS ATTENTION</div></div>` : ''}
             ${warnings  > 0 ? `<div class="stat-mini warn"><div class="stat-mini-val">${warnings}</div><div class="stat-mini-lbl">WARNINGS</div></div>` : ''}
-            ${defects   > 0 ? `<div class="stat-mini bad"><div class="stat-mini-val">${defects}</div><div class="stat-mini-lbl">DEFECTS</div></div>` : ''}
             ${inactive.length > 0 ? `<div class="stat-mini"><div class="stat-mini-val">${inactive.length}</div><div class="stat-mini-lbl">NO ACTIVITY</div></div>` : ''}
+            ${currentRole === 'manager' && collectedToday.length > 0 ? `<div class="stat-mini ok"><div class="stat-mini-val">${collectedToday.length}</div><div class="stat-mini-lbl">COLLECTED</div></div>` : ''}
+            ${currentRole === 'manager' && notCollToday.length > 0 ? `<div class="stat-mini warn"><div class="stat-mini-val">${notCollToday.length}</div><div class="stat-mini-lbl">NOT COLLECTED</div></div>` : ''}
+            ${currentRole === 'manager' && totalCollected > 0 ? `<div class="stat-mini ok"><div class="stat-mini-val">${fmtDollar(totalCollected)}</div><div class="stat-mini-lbl">TODAY $</div></div>` : ''}
+            ${currentRole === 'manager' && totalDefects > 0 ? `<div class="stat-mini bad"><div class="stat-mini-val">${totalDefects}</div><div class="stat-mini-lbl">DEFECTS</div></div>` : ''}
+            ${currentRole === 'manager' && pendingMaterials > 0 ? `<div class="stat-mini warn"><div class="stat-mini-val">${pendingMaterials}</div><div class="stat-mini-lbl">MATERIALS</div></div>` : ''}
         </div>`;
 
-        // No-activity rollup
         const inactiveHtml = inactive.length === 0 ? '' : `
         <details style="margin:.5rem 0 .65rem;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-card);overflow:hidden">
             <summary style="padding:.65rem 1rem;cursor:pointer;font-size:.82rem;color:var(--muted);list-style:none;display:flex;align-items:center;gap:.4rem;user-select:none">
@@ -601,12 +653,11 @@ function applyDateFilter() {
 async function enrichRecords(records) {
     if (records.length === 0) return records;
 
-    const jobIds      = [...new Set(records.map(r => r.jobId).filter(Boolean))];
-    const instIds     = [...new Set(records.map(r => r.installerId).filter(Boolean))];
-    const jobMap      = {};
-    const instMap     = {};
+    const jobIds  = [...new Set(records.map(r => r.jobId).filter(Boolean))];
+    const instIds = [...new Set(records.map(r => r.installerId).filter(Boolean))];
+    const jobMap  = {};
+    const instMap = {};
 
-    // Firestore 'in' supports up to 10 values — batch accordingly
     for (let i = 0; i < jobIds.length; i += 10) {
         const snap = await db.collection('jobs')
             .where(firebase.firestore.FieldPath.documentId(), 'in', jobIds.slice(i, i + 10)).get();
@@ -636,6 +687,103 @@ async function enrichRecords(records) {
     });
 }
 
+// ── FINANCE — Running Totals Helpers ──────────────────────────
+function getDateBoundaries() {
+    const now = new Date();
+    const todayStr  = now.toISOString().slice(0, 10);
+    const todayStart = new Date(todayStr + 'T00:00:00');
+    const todayEnd   = new Date(todayStr + 'T23:59:59');
+    const dayOfWeek  = now.getDay();
+    const daysToMon  = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart  = new Date(now);
+    weekStart.setDate(now.getDate() - daysToMon);
+    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const yearStart  = new Date(now.getFullYear(), 0, 1);
+    return { todayStart, todayEnd, weekStart, monthStart, yearStart, now };
+}
+
+function recordAmountCollected(r) {
+    if (r.status === 'completed_not_collected') return 0;
+    if (r.amountCollected != null && r.amountCollected !== '') return parseFloat(r.amountCollected) || 0;
+    if (r.status === 'completed_collected')  return parseFloat(r.financials?.balanceDue) || 0;
+    return 0;
+}
+
+function recordDate(r) {
+    if (!r.startDt) return null;
+    if (r.startDt.toDate) return r.startDt.toDate();
+    if (r.startDt instanceof Date) return r.startDt;
+    return new Date(r.startDt);
+}
+
+function computeRunningTotals(records) {
+    const { todayStart, todayEnd, weekStart, monthStart, yearStart, now } = getDateBoundaries();
+    let today = 0, wtd = 0, mtd = 0, ytd = 0;
+    records.forEach(r => {
+        const amount = recordAmountCollected(r);
+        if (amount <= 0) return;
+        const d = recordDate(r);
+        if (!d) return;
+        if (d >= yearStart  && d <= now)     ytd  += amount;
+        if (d >= monthStart && d <= now)     mtd  += amount;
+        if (d >= weekStart  && d <= now)     wtd  += amount;
+        if (d >= todayStart && d <= todayEnd) today += amount;
+    });
+    return { today, wtd, mtd, ytd };
+}
+
+function fmtDollar(n) {
+    if (!n && n !== 0) return '$0';
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function renderRunningTotals(records, monthlyGoal, upcoming = 0) {
+    const { today, wtd, mtd, ytd } = computeRunningTotals(records);
+    const goalPct    = monthlyGoal > 0 ? Math.min(100, Math.round((mtd / monthlyGoal) * 100)) : null;
+    const fillColor  = goalPct >= 100 ? 'var(--ok)' : 'var(--accent)';
+    const projected  = mtd + upcoming;
+    const projPct    = monthlyGoal > 0 ? Math.min(100, Math.round((projected / monthlyGoal) * 100)) : null;
+
+    return `
+    <div class="running-totals">
+        <div class="totals-row">
+            <div class="total-cell">
+                <div class="total-cell-val" style="color:var(--ok)">${fmtDollar(today)}</div>
+                <div class="total-cell-lbl">TODAY</div>
+            </div>
+            <div class="total-cell">
+                <div class="total-cell-val">${fmtDollar(wtd)}</div>
+                <div class="total-cell-lbl">WTD</div>
+            </div>
+            <div class="total-cell">
+                <div class="total-cell-val">${fmtDollar(mtd)}</div>
+                <div class="total-cell-lbl">MTD</div>
+            </div>
+            <div class="total-cell">
+                <div class="total-cell-val">${fmtDollar(ytd)}</div>
+                <div class="total-cell-lbl">YTD</div>
+            </div>
+            ${upcoming > 0 ? `
+            <div class="total-cell" style="border-left:1px solid var(--hairline);padding-left:1.25rem">
+                <div class="total-cell-val" style="color:var(--muted)">${fmtDollar(upcoming)}</div>
+                <div class="total-cell-lbl">UPCOMING</div>
+            </div>` : ''}
+        </div>
+        ${goalPct !== null ? `
+        <div>
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-bottom:.3rem">
+                <span>${goalPct}% of ${fmtDollar(monthlyGoal)} goal collected${projPct !== null && upcoming > 0 ? ` · ${projPct}% projected` : ''}</span>
+                <span>${fmtDollar(mtd)} collected${upcoming > 0 ? ` + ${fmtDollar(upcoming)} upcoming` : ''}</span>
+            </div>
+            <div class="goal-bar-track" style="position:relative">
+                ${projPct !== null && upcoming > 0 ? `<div class="goal-bar-fill" style="width:${projPct}%;background:var(--hairline);position:absolute;inset:0"></div>` : ''}
+                <div class="goal-bar-fill" style="width:${goalPct}%;background:${fillColor};position:relative"></div>
+            </div>
+        </div>` : ''}
+    </div>`;
+}
+
 // ── FINANCE REPORT ────────────────────────────────────────────
 async function loadFinanceReport() {
     const content = document.getElementById('report-content');
@@ -647,9 +795,14 @@ async function loadFinanceReport() {
             return;
         }
 
-        const [recSnap, actSnap] = await Promise.all([
+        const now        = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+        const [recSnap, actSnap, jobsMonthSnap] = await Promise.all([
             db.collection('job_records').where('status','in',_financeStats.slice(0,10)).get(),
-            db.collection('management_actions').where('type','==','finance_report').get()
+            db.collection('management_actions').where('type','==','finance_report').get(),
+            db.collection('jobs').where('startDt','>=',monthStart).where('startDt','<=',monthEnd).get()
         ]);
 
         const actions = {};
@@ -658,11 +811,21 @@ async function loadFinanceReport() {
         let records = recSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         records = await enrichRecords(records);
 
+        // Upcoming = jobs this month with no finance-status record yet
+        const financeJobIds = new Set(records.map(r => r.jobId).filter(Boolean));
+        let upcoming = 0;
+        jobsMonthSnap.docs.forEach(d => {
+            if (!financeJobIds.has(d.id)) {
+                upcoming += parseFloat(d.data().financials?.balanceDue) || 0;
+            }
+        });
+
+        const totalsHtml = renderRunningTotals(records, _monthlyGoal, upcoming);
+
         if (activeView === 'dashboard') {
-            records = records.filter(r => !actions[r.id]);
-            content.innerHTML = viewControlsHtml() + renderFinanceCards(records, actions, false);
+            const pending = records.filter(r => !actions[r.id]);
+            content.innerHTML = viewControlsHtml() + totalsHtml + renderFinanceSections(pending, actions, false);
         } else {
-            // Archive view — filter by date range
             let archived = records.filter(r => actions[r.id]);
             archived = filterByDateRange(archived, actions);
             archived.sort((a,b) => {
@@ -670,10 +833,9 @@ async function loadFinanceReport() {
                 const bt = actions[b.id]?.acknowledgedAt?.seconds || 0;
                 return bt - at;
             });
-            content.innerHTML = viewControlsHtml() + renderFinanceCards(archived, actions, true);
+            content.innerHTML = viewControlsHtml() + totalsHtml + renderFinanceSections(archived, actions, true);
         }
 
-        // Re-attach date filter listeners
         document.getElementById('filter-from')?.addEventListener('change', applyDateFilter);
         document.getElementById('filter-to')?.addEventListener('change', applyDateFilter);
 
@@ -682,54 +844,127 @@ async function loadFinanceReport() {
     }
 }
 
-function renderFinanceCards(records, actions, isArchive) {
-    if (records.length === 0) {
-        return `<div class="empty-state">${isArchive ? 'No archived items in this date range.' : '✓ Nothing needs attention right now.'}</div>`;
+function renderFinanceSections(records, actions, isArchive) {
+    if (isArchive) {
+        if (records.length === 0) return '<div class="empty-state">No archived items in this date range.</div>';
+        return records.map(r => financeCard(r, actions, true)).join('');
     }
 
-    return records.map(r => {
-        const wt      = r.signatures?.walkthrough || {};
-        const coc     = r.signatures?.completion  || {};
-        const wtSig   = !!(wt.customerAt && wt.installerAt);
-        const cocSig  = !!(coc.customerAt && coc.installerAt);
-        const color   = statusColor(r.status);
-        const action  = actions[r.id];
-        const archived = isArchive && action;
+    const notCollected = records.filter(r => r.status === 'completed_not_collected');
+    const partial      = records.filter(r => r.status === 'completed_partial');
+    const collected    = records.filter(r => r.status === 'completed_collected');
 
-        const balanceDue    = r.financials?.balanceDue    || '—';
-        const paymentMethod = r.financials?.paymentMethod || '—';
-        const jobDate       = r.startDt
-            ? (r.startDt.toDate ? r.startDt.toDate() : new Date(r.startDt))
-                .toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-            : '';
+    let html = '';
+    if (notCollected.length > 0) {
+        html += `<div class="section-label">Not Collected (${notCollected.length})</div>`;
+        html += notCollected.map(r => financeCard(r, actions, false)).join('');
+    }
+    if (partial.length > 0) {
+        html += `<div class="section-label">Partial (${partial.length})</div>`;
+        html += partial.map(r => financeCard(r, actions, false)).join('');
+    }
+    if (collected.length > 0) {
+        html += `<div class="section-label">Collected — Ready to Archive (${collected.length})</div>`;
+        html += collected.map(r => financeCard(r, actions, false)).join('');
+    }
 
-        return `
-        <div class="report-card ${archived ? 'archived' : ''}">
-            <div class="rc-header">
-                <div>
-                    <div class="rc-name">${esc(r.customerName)}</div>
-                    <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
-                </div>
-                <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="Print COC &amp; Walkthrough">🖨 Print</button>
+    return html || '<div class="empty-state">✓ Nothing needs attention right now.</div>';
+}
+
+function financeCard(r, actions, isArchive) {
+    const wt      = r.signatures?.walkthrough || {};
+    const coc     = r.signatures?.completion  || {};
+    const wtSig   = !!(wt.customerAt && wt.installerAt);
+    const cocSig  = !!(coc.customerAt && coc.installerAt);
+    const color   = statusColor(r.status);
+    const action  = actions[r.id];
+
+    const balanceDue    = r.financials?.balanceDue;
+    const paymentMethod = r.financials?.paymentMethod || '—';
+    const jobDate       = r.startDt
+        ? (r.startDt.toDate ? r.startDt.toDate() : new Date(r.startDt))
+            .toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : '';
+
+    // Amount collected section
+    let amountSection = '';
+    if (r.status === 'completed_not_collected') {
+        amountSection = `<div style="font-size:.82rem;margin:.4rem 0"><strong>Collected:</strong> <span style="color:var(--muted)">$0</span></div>`;
+    } else if (r.status === 'completed_collected') {
+        const current = r.amountCollected != null ? r.amountCollected : (balanceDue || '');
+        amountSection = `
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;flex-wrap:wrap;margin:.4rem 0">
+            <strong>Collected:</strong>
+            <div style="display:flex;align-items:center;gap:.3rem">
+                <span style="color:var(--muted)">$</span>
+                <input type="number" id="amt-${r.id}" value="${esc(String(current))}" min="0" step="0.01"
+                    style="width:100px;padding:.25rem .4rem;border:1px solid var(--hairline);border-radius:4px;background:var(--surface-2);color:var(--text);font-size:.82rem">
+                <button class="btn btn-sm btn-secondary" onclick="setAmountCollected('${r.id}','amt-${r.id}')">Set</button>
             </div>
-            <div><span class="rc-status" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
-            <div class="rc-sig-row">
-                <div class="sig-badge ${wtSig  ? 'sig-ok' : 'sig-miss'}">${wtSig  ? '✓' : '⚠'} Walkthrough ${wtSig  ? 'Signed' : 'Not Signed'}</div>
-                <div class="sig-badge ${cocSig ? 'sig-ok' : 'sig-miss'}">${cocSig ? '✓' : '⚠'} COC ${cocSig ? 'Signed' : 'Not Signed'}</div>
-            </div>
-            <div class="rc-body">
-                <strong>Balance Due:</strong> ${esc(String(balanceDue))} &nbsp;·&nbsp;
-                <strong>Payment:</strong> ${esc(String(paymentMethod))}
-                ${r.statusNote ? `<br><strong>Note:</strong> ${esc(r.statusNote)}` : ''}
-            </div>
-            ${archived
-                ? `<div style="font-size:.75rem;color:var(--ok)">✓ Archived by ${esc(action.acknowledgedByName || '—')} · ${fmtDate(action.acknowledgedAt)}${action.note ? ' — ' + esc(action.note) : ''}</div>`
-                : `<div class="rc-actions">
-                       <div class="archive-note"><input id="fn-${r.id}" placeholder="Optional note before archiving…"></div>
-                       <button class="btn btn-primary btn-sm" onclick="archiveItem('${r.id}','finance_report','fn-${r.id}')">✓ Archive</button>
-                   </div>`}
         </div>`;
-    }).join('');
+    } else if (r.status === 'completed_partial') {
+        const current = r.amountCollected != null ? r.amountCollected : '';
+        amountSection = `
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;flex-wrap:wrap;margin:.4rem 0">
+            <strong>Collected:</strong>
+            <div style="display:flex;align-items:center;gap:.3rem">
+                <span style="color:var(--muted)">$</span>
+                <input type="number" id="amt-${r.id}" value="${current !== '' ? esc(String(current)) : ''}" min="0" step="0.01"
+                    placeholder="Enter amount"
+                    style="width:120px;padding:.25rem .4rem;border:1px solid var(--hairline);border-radius:4px;background:var(--surface-2);color:var(--text);font-size:.82rem">
+                <button class="btn btn-sm btn-secondary" onclick="setAmountCollected('${r.id}','amt-${r.id}')">Set</button>
+            </div>
+            ${balanceDue ? `<span style="color:var(--muted)">of $${esc(String(balanceDue))} due</span>` : ''}
+        </div>`;
+    }
+
+    // Archive action
+    let archiveSection = '';
+    if (!isArchive) {
+        const needsAmount = r.status === 'completed_partial' && (r.amountCollected == null || r.amountCollected === '');
+        archiveSection = needsAmount
+            ? `<div style="font-size:.75rem;color:var(--warn);margin-top:.5rem">⏳ Enter amount collected above before archiving.</div>`
+            : `<div class="rc-actions">
+                   <div class="archive-note"><input id="fn-${r.id}" placeholder="Optional note before archiving…"></div>
+                   <button class="btn btn-primary btn-sm" onclick="archiveItem('${r.id}','finance_report','fn-${r.id}')">✓ Archive</button>
+               </div>`;
+    }
+
+    return `
+    <div class="report-card ${isArchive ? 'archived' : ''}">
+        <div class="rc-header">
+            <div>
+                <div class="rc-name">${esc(r.customerName)}</div>
+                <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="Print COC &amp; Walkthrough">🖨 Print</button>
+        </div>
+        <div><span class="rc-status" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
+        <div class="rc-sig-row">
+            <div class="sig-badge ${wtSig  ? 'sig-ok' : 'sig-miss'}">${wtSig  ? '✓' : '⚠'} Walkthrough ${wtSig  ? 'Signed' : 'Not Signed'}</div>
+            <div class="sig-badge ${cocSig ? 'sig-ok' : 'sig-miss'}">${cocSig ? '✓' : '⚠'} COC ${cocSig ? 'Signed' : 'Not Signed'}</div>
+        </div>
+        <div class="rc-body">
+            <strong>Balance Due:</strong> ${balanceDue ? '$' + esc(String(balanceDue)) : '—'} &nbsp;·&nbsp;
+            <strong>Payment:</strong> ${esc(String(paymentMethod))}
+            ${r.statusNote ? `<br><strong>Note:</strong> ${esc(r.statusNote)}` : ''}
+        </div>
+        ${amountSection}
+        ${isArchive
+            ? `<div style="font-size:.75rem;color:var(--ok)">✓ Archived by ${esc(action?.acknowledgedByName || '—')} · ${fmtDate(action?.acknowledgedAt)}${action?.note ? ' — ' + esc(action.note) : ''}</div>`
+            : archiveSection}
+    </div>`;
+}
+
+async function setAmountCollected(recordId, inputId) {
+    const input = document.getElementById(inputId);
+    const value = parseFloat(input?.value);
+    if (isNaN(value) || value < 0) { flash('error', 'Please enter a valid amount.'); return; }
+    try {
+        await db.collection('job_records').doc(recordId).update({ amountCollected: value });
+        flash('ok', 'Amount saved.');
+        loadFinanceReport();
+    } catch(err) { flash('error', 'Could not save amount: ' + err.message); }
 }
 
 // ── SERVICE REPORT ────────────────────────────────────────────
@@ -755,7 +990,6 @@ async function loadServiceReport() {
         const actions = {};
         actSnap.docs.forEach(d => { actions[d.data().recordId] = { id: d.id, ...d.data() }; });
 
-        // Include records that: have a service status OR have any defects on openings
         let records = allRecSnap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .filter(r =>
@@ -766,8 +1000,7 @@ async function loadServiceReport() {
 
         if (activeView === 'dashboard') {
             const reminders = remSnap ? remSnap.docs.map(d => ({ id: d.id, ...d.data() })) : [];
-            const pending   = records.filter(r => !actions[r.id]);
-            content.innerHTML = viewControlsHtml() + renderFollowUpSection(reminders) + renderServiceCards(pending, actions, false);
+            content.innerHTML = viewControlsHtml() + renderServiceDashboard(records, actions, reminders);
         } else {
             let archived = records.filter(r => actions[r.id]);
             archived = filterByDateRange(archived, actions);
@@ -776,7 +1009,7 @@ async function loadServiceReport() {
                 const bt = actions[b.id]?.acknowledgedAt?.seconds || 0;
                 return bt - at;
             });
-            content.innerHTML = viewControlsHtml() + renderServiceCards(archived, actions, true);
+            content.innerHTML = viewControlsHtml() + renderServiceArchive(archived, actions);
         }
 
         document.getElementById('filter-from')?.addEventListener('change', applyDateFilter);
@@ -787,40 +1020,185 @@ async function loadServiceReport() {
     }
 }
 
-function renderServiceCards(records, actions, isArchive) {
-    if (records.length === 0) {
-        return `<div class="empty-state">${isArchive ? 'No archived items in this date range.' : '✓ Nothing needs attention right now.'}</div>`;
+function renderServiceDashboard(records, actions, reminders) {
+    let html = renderFollowUpSection(reminders);
+
+    const pending  = records.filter(r => !actions[r.id]);
+    const activeDefects  = [];
+    const trackedDefects = [];
+    const needService    = [];
+    const inspectionReady = [];
+
+    pending.forEach(r => {
+        (r.openings || []).forEach((o, oi) => {
+            (o.defects || []).forEach((d, di) => {
+                if (d.clearedAt) return;
+                const item = { r, openingIdx: oi, defectIdx: di, openingLabel: o.label || o.type || 'Opening', d };
+                if (d.tracked) trackedDefects.push(item);
+                else           activeDefects.push(item);
+            });
+        });
+        if (_serviceStats.includes(r.status))  needService.push(r);
+        if (_financeStats.includes(r.status))  inspectionReady.push(r);
+    });
+
+    if (activeDefects.length > 0) {
+        html += `<div class="section-label">Defects (${activeDefects.length})</div>`;
+        html += activeDefects.map(item => defectActionCard(item, false)).join('');
     }
-
-    // Split into "Ready for Inspection" vs "Need Service" vs "Defects only"
-    const inspectionReady = records.filter(r => _financeStats.includes(r.status)); // finance statuses = "Ready for Inspection"
-    const needService     = records.filter(r => _serviceStats.includes(r.status));
-    const defectsOnly     = records.filter(r =>
-        !_financeStats.includes(r.status) && !_serviceStats.includes(r.status) &&
-        (r.openings || []).some(o => (o.defects || []).length > 0)
-    );
-
-    let html = '';
-    if (inspectionReady.length > 0 && !isArchive) {
-        html += `<div class="section-label">Ready for Inspection (${inspectionReady.length})</div>`;
-        html += inspectionReady.map(r => serviceCard(r, actions, isArchive)).join('');
+    if (trackedDefects.length > 0) {
+        html += `<div class="section-label">Tracking (${trackedDefects.length})</div>`;
+        html += trackedDefects.map(item => defectActionCard(item, true)).join('');
     }
     if (needService.length > 0) {
-        html += `<div class="section-label">${isArchive ? 'Archived' : 'Needs Service'} (${needService.length})</div>`;
-        html += needService.map(r => serviceCard(r, actions, isArchive)).join('');
+        html += `<div class="section-label">Needs Service (${needService.length})</div>`;
+        html += needService.map(r => serviceCard(r, actions, false)).join('');
     }
-    if (defectsOnly.length > 0) {
-        html += `<div class="section-label">Defects Reported (${defectsOnly.length})</div>`;
-        html += defectsOnly.map(r => serviceCard(r, actions, isArchive)).join('');
+    if (inspectionReady.length > 0) {
+        html += `<div class="section-label">Ready for Inspection (${inspectionReady.length})</div>`;
+        html += inspectionReady.map(r => serviceCard(r, actions, false)).join('');
     }
-    return html || `<div class="empty-state">${isArchive ? 'No archived items in this date range.' : '✓ Nothing needs attention right now.'}</div>`;
+
+    return html || '<div class="empty-state">✓ Nothing needs attention right now.</div>';
+}
+
+function renderServiceArchive(records, actions) {
+    if (records.length === 0) return '<div class="empty-state">No archived items in this date range.</div>';
+    return records.map(r => serviceCard(r, actions, true)).join('');
+}
+
+function defectActionCard({ r, openingIdx, defectIdx, openingLabel, d }, isTracked) {
+    const jobDate = r.startDt
+        ? (r.startDt.toDate ? r.startDt.toDate() : new Date(r.startDt))
+            .toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : '';
+    const photos = d.photos || [];
+    const photosHtml = photos.length > 0
+        ? `<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem">${photos.map(p =>
+            `<img src="${esc(p.url||p)}" onclick="window.open('${esc(p.url||p)}','_blank')" alt="Defect photo"
+                style="width:72px;height:72px;object-fit:cover;border-radius:4px;border:1px solid var(--hairline);cursor:pointer">`
+          ).join('')}</div>`
+        : '';
+
+    const defectKey = `${r.id}_${openingIdx}_${defectIdx}`;
+    const borderColor = isTracked ? 'var(--accent)' : 'var(--bad)';
+
+    return `
+    <div class="report-card" style="border-left:4px solid ${borderColor}">
+        <div class="rc-header">
+            <div>
+                <div class="rc-name">${esc(r.customerName)}</div>
+                <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
+            </div>
+            <span style="font-size:.72rem;padding:.15rem .5rem;border:1px solid var(--bad);color:var(--bad);border-radius:4px;font-weight:600">${esc(d.typeName || d.type || 'Defect')}</span>
+        </div>
+        <div style="font-size:.82rem;color:var(--muted);margin-bottom:.25rem">
+            <strong style="color:var(--text)">Opening:</strong> ${esc(openingLabel)}
+        </div>
+        ${d.description ? `<div style="font-size:.82rem;margin-bottom:.4rem">${esc(d.description)}</div>` : ''}
+        ${photosHtml}
+        ${isTracked && d.trackingNote ? `<div style="margin-top:.5rem;font-size:.8rem;background:var(--surface-2);padding:.4rem .6rem;border-radius:4px"><strong>Tracking note:</strong> ${esc(d.trackingNote)}</div>` : ''}
+        <div class="defect-actions">
+            <button class="btn btn-sm btn-secondary" onclick="clearDefect('${r.id}',${openingIdx},${defectIdx})"
+                style="color:var(--ok);border-color:var(--ok)">✓ Clear</button>
+            ${!isTracked ? `
+            <div class="track-note-wrap">
+                <input class="track-note-input" id="tn-${defectKey}" type="text" placeholder="Tracking note (optional)">
+                <button class="btn btn-sm btn-secondary" onclick="trackDefect('${r.id}',${openingIdx},${defectIdx},'tn-${defectKey}')">📌 Track</button>
+            </div>` : `
+            <button class="btn btn-sm btn-ghost" onclick="clearDefect('${r.id}',${openingIdx},${defectIdx})"
+                style="color:var(--ok)">✓ Mark Resolved</button>`}
+            <button class="btn btn-sm btn-secondary" onclick="reorderDefect('${r.id}',${openingIdx},${defectIdx})">📦 Re-order</button>
+        </div>
+    </div>`;
+}
+
+async function clearDefect(recordId, openingIdx, defectIdx) {
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        const recDoc = await recRef.get();
+        if (!recDoc.exists) { flash('error', 'Record not found.'); return; }
+        const openings = recDoc.data().openings ? JSON.parse(JSON.stringify(recDoc.data().openings)) : [];
+        if (!openings[openingIdx]?.defects?.[defectIdx]) { flash('error', 'Defect not found.'); return; }
+        openings[openingIdx].defects[defectIdx] = {
+            ...openings[openingIdx].defects[defectIdx],
+            clearedAt: new Date().toISOString(),
+            clearedBy: currentUser.uid,
+            clearedByName: currentUser.displayName || currentUser.email
+        };
+        await recRef.update({ openings });
+        flash('ok', 'Defect marked as cleared.');
+        loadServiceReport();
+    } catch(err) { flash('error', 'Could not clear defect: ' + err.message); }
+}
+
+async function trackDefect(recordId, openingIdx, defectIdx, noteInputId) {
+    const note = (document.getElementById(noteInputId)?.value || '').trim();
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        const recDoc = await recRef.get();
+        if (!recDoc.exists) { flash('error', 'Record not found.'); return; }
+        const openings = recDoc.data().openings ? JSON.parse(JSON.stringify(recDoc.data().openings)) : [];
+        if (!openings[openingIdx]?.defects?.[defectIdx]) { flash('error', 'Defect not found.'); return; }
+        openings[openingIdx].defects[defectIdx] = {
+            ...openings[openingIdx].defects[defectIdx],
+            tracked: true,
+            trackingNote: note,
+            trackedAt: new Date().toISOString(),
+            trackedBy: currentUser.uid,
+            trackedByName: currentUser.displayName || currentUser.email
+        };
+        await recRef.update({ openings });
+        flash('ok', 'Defect added to tracking.');
+        loadServiceReport();
+    } catch(err) { flash('error', 'Could not track defect: ' + err.message); }
+}
+
+async function reorderDefect(recordId, openingIdx, defectIdx) {
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        const recDoc = await recRef.get();
+        if (!recDoc.exists) { flash('error', 'Record not found.'); return; }
+        const rec      = { id: recDoc.id, ...recDoc.data() };
+        const openings = rec.openings || [];
+        const defect   = openings[openingIdx]?.defects?.[defectIdx];
+        if (!defect) { flash('error', 'Defect not found.'); return; }
+        const openingLabel = openings[openingIdx]?.label || openings[openingIdx]?.type || 'Opening';
+
+        let jobData = {};
+        if (rec.jobId) {
+            try {
+                const jobDoc = await db.collection('jobs').doc(rec.jobId).get();
+                if (jobDoc.exists) jobData = jobDoc.data();
+            } catch(e) {}
+        }
+
+        await db.collection('material_orders').add({
+            material:      defect.typeName || defect.type || 'Unknown material',
+            jobId:         rec.jobId        || '',
+            jobNumber:     jobData.jobNumber || rec.jobNumber || '',
+            customerName:  jobData.customerName || rec.customerName || '',
+            installerId:   rec.installerId  || '',
+            installerName: rec.installerName || jobData.installerName || '',
+            defectType:    defect.type      || '',
+            defectDesc:    defect.description || '',
+            openingLabel:  openingLabel,
+            status:        'pending',
+            notes:         '',
+            createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy:     currentUser.uid,
+            createdByName: currentUser.displayName || currentUser.email,
+            orderedAt:     null,
+            completedAt:   null
+        });
+        flash('ok', 'Material re-order created. Check the Materials tab.');
+    } catch(err) { flash('error', 'Could not create re-order: ' + err.message); }
 }
 
 function serviceCard(r, actions, isArchive) {
     const color  = statusColor(r.status);
     const action = actions[r.id];
 
-    // All defects across all openings
     const defects = (r.openings || []).flatMap(o =>
         (o.defects || []).map(d => ({ opening: o.label || o.type || 'Opening', ...d }))
     );
@@ -836,18 +1214,19 @@ function serviceCard(r, actions, isArchive) {
                     `<img class="defect-photo" src="${esc(p.url||p)}" onclick="window.open('${esc(p.url||p)}','_blank')" alt="Defect photo">`
                   ).join('')}</div>`
                 : '';
+            const cleared = d.clearedAt ? `<div style="color:var(--ok);font-size:.75rem">✓ Cleared</div>` : '';
             return `
             <details class="defect-item">
                 <summary>
                     <span class="defect-type">${esc(d.typeName || d.type || 'Defect')}</span>
                     ${d.opening ? `<span style="color:var(--muted)">· ${esc(d.opening)}</span>` : ''}
-                    ${d.needsOrdering ? `<span style="color:var(--warn);font-weight:700;margin-left:auto">⚠ Needs Ordering</span>` : ''}
+                    ${d.clearedAt ? `<span style="color:var(--ok);margin-left:auto;font-size:.7rem">✓ Cleared</span>` : ''}
+                    ${d.tracked && !d.clearedAt ? `<span style="color:var(--accent);margin-left:auto;font-size:.7rem">📌 Tracking</span>` : ''}
                 </summary>
                 <div class="defect-detail">
                     ${d.description ? `<div><strong style="color:var(--text)">Description:</strong> ${esc(d.description)}</div>` : '<div style="color:var(--muted)">No description provided.</div>'}
                     ${d.opening    ? `<div><strong style="color:var(--text)">Opening:</strong> ${esc(d.opening)}</div>` : ''}
                     ${reportedStr  ? `<div style="color:var(--muted)">Reported: ${reportedStr}</div>` : ''}
-                    ${d.needsOrdering ? `<div style="color:var(--warn);font-weight:600">⚠ Parts need to be ordered</div>` : ''}
                     ${photosHtml}
                 </div>
             </details>`;
@@ -882,6 +1261,110 @@ function serviceCard(r, actions, isArchive) {
                    <button class="btn btn-primary btn-sm" onclick="archiveItem('${r.id}','service_report','sn-${r.id}')">✓ Archive</button>
                </div>`}
     </div>`;
+}
+
+// ── MATERIALS TAB ─────────────────────────────────────────────
+async function loadMaterialsTab() {
+    const content = document.getElementById('report-content');
+    content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    try {
+        const snap = await db.collection('material_orders').orderBy('createdAt', 'desc').get();
+        const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const pending  = orders.filter(o => o.status === 'pending');
+        const ordered  = orders.filter(o => o.status === 'ordered');
+        const complete = orders.filter(o => o.status === 'complete');
+
+        let html = '';
+
+        if (pending.length > 0) {
+            html += `<div class="section-label">Pending (${pending.length})</div>`;
+            html += pending.map(o => materialCard(o)).join('');
+        }
+        if (ordered.length > 0) {
+            html += `<div class="section-label">Ordered (${ordered.length})</div>`;
+            html += ordered.map(o => materialCard(o)).join('');
+        }
+        if (complete.length > 0) {
+            html += `
+            <details style="margin:.5rem 0;background:var(--surface);border:1px solid var(--hairline);border-radius:var(--r-card);overflow:hidden;opacity:.6">
+                <summary style="padding:.65rem 1rem;cursor:pointer;font-size:.82rem;color:var(--muted);list-style:none;display:flex;align-items:center;gap:.4rem;user-select:none">
+                    Complete (${complete.length}) — click to expand
+                </summary>
+                <div style="padding:.25rem .75rem .75rem;border-top:1px solid var(--hairline)">
+                    ${complete.map(o => materialCard(o, true)).join('')}
+                </div>
+            </details>`;
+        }
+
+        content.innerHTML = html || '<div class="empty-state">No material orders yet.</div>';
+    } catch(err) {
+        content.innerHTML = `<div class="empty-state">Error loading materials: ${esc(err.message)}</div>`;
+    }
+}
+
+function materialCard(o, isComplete = false) {
+    const createdAt  = o.createdAt?.toDate ? o.createdAt.toDate() : (o.createdAt ? new Date(o.createdAt) : null);
+    const orderedAt  = o.orderedAt?.toDate ? o.orderedAt.toDate() : (o.orderedAt ? new Date(o.orderedAt) : null);
+    const createdStr = createdAt ? createdAt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+    const orderedStr = orderedAt ? orderedAt.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+
+    return `
+    <div class="report-card${isComplete ? ' archived' : ''}">
+        <div class="rc-header">
+            <div>
+                <div class="rc-name">${esc(o.material || 'Unknown material')}</div>
+                <div class="rc-job">Job #${esc(o.jobNumber || o.jobId || '—')} · ${esc(o.customerName || '—')} · ${esc(o.installerName || '—')}</div>
+            </div>
+            ${o.defectType ? `<span style="font-size:.72rem;padding:.15rem .5rem;border:1px solid var(--hairline);color:var(--muted);border-radius:4px">${esc(o.defectType)}</span>` : ''}
+        </div>
+        ${o.defectDesc  ? `<div class="rc-body">${esc(o.defectDesc)}</div>` : ''}
+        ${o.openingLabel ? `<div style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem">Opening: ${esc(o.openingLabel)}</div>` : ''}
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">
+            Reported: ${createdStr || '—'} · By: ${esc(o.createdByName || '—')}${orderedStr ? ` · Ordered: ${orderedStr}` : ''}
+        </div>
+        ${o.notes ? `<div style="font-size:.8rem;background:var(--surface-2);padding:.4rem .6rem;border-radius:4px;margin-bottom:.5rem">${esc(o.notes)}</div>` : ''}
+        ${!isComplete ? `
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            ${o.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="markOrdered('${o.id}')">✓ Mark Ordered</button>` : ''}
+            ${o.status === 'ordered' ? `<button class="btn btn-primary btn-sm" onclick="markReceived('${o.id}')">✓ Mark Received</button>` : ''}
+            <div style="display:flex;gap:.3rem;align-items:center;flex:1;min-width:0">
+                <input class="material-note-input" id="mn-${o.id}" type="text" placeholder="Add note…" value="${esc(o.notes || '')}">
+                <button class="btn btn-sm btn-ghost" onclick="saveMaterialNote('${o.id}','mn-${o.id}')">Save</button>
+            </div>
+        </div>` : ''}
+    </div>`;
+}
+
+async function markOrdered(orderId) {
+    try {
+        await db.collection('material_orders').doc(orderId).update({
+            status: 'ordered',
+            orderedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        flash('ok', 'Marked as ordered.');
+        loadMaterialsTab();
+    } catch(err) { flash('error', 'Could not update: ' + err.message); }
+}
+
+async function markReceived(orderId) {
+    try {
+        await db.collection('material_orders').doc(orderId).update({
+            status: 'complete',
+            completedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        flash('ok', 'Marked as received/complete.');
+        loadMaterialsTab();
+    } catch(err) { flash('error', 'Could not update: ' + err.message); }
+}
+
+async function saveMaterialNote(orderId, inputId) {
+    const note = (document.getElementById(inputId)?.value || '').trim();
+    try {
+        await db.collection('material_orders').doc(orderId).update({ notes: note });
+        flash('ok', 'Note saved.');
+    } catch(err) { flash('error', 'Could not save note: ' + err.message); }
 }
 
 // ── Archive action ────────────────────────────────────────────

@@ -140,5 +140,15 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
     }
 
+    // --------------------------------------------------------
+    // MATERIAL ORDERS — re-order hopper for defect parts
+    // --------------------------------------------------------
+    match /material_orders/{id} {
+      allow read: if isAdmin() || isManagementUser();
+      allow create: if isManagementUser()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isManagementUser();
+    }
+
   }
 }

@@ -901,7 +901,12 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
 } else {
     auth.onAuthStateChanged(user => {
         if (user && user.uid === window.ADMIN_UID) {
-            showAdminPreviewPicker();
+            const previewId = new URLSearchParams(window.location.search).get('preview');
+            if (previewId) {
+                loadPortalAsInstaller(previewId);
+            } else {
+                showAdminPreviewPicker();
+            }
         } else if (user) {
             loadPortal(user);
         } else {
@@ -1101,11 +1106,6 @@ async function loadPortalAsInstaller(installerId) {
         // Load configurable statuses before showing portal
         await loadStatusOptions();
 
-        // Show admin preview banner
-        const banner = document.createElement('div');
-        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#f59e0b;color:#000;text-align:center;font-size:.75rem;font-weight:600;padding:.25rem;z-index:9999';
-        banner.textContent = '⚠ ADMIN PREVIEW — ' + (currentInstaller.displayName || installerId);
-        document.body.prepend(banner);
 
         document.getElementById('nav-installer-name').textContent = currentInstaller.displayName || '';
         document.getElementById('top-nav').style.display    = '';
@@ -1907,6 +1907,10 @@ function showStatusPicker(jobId, currentStatus) {
                 <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">Reason (required)</label>
                 <textarea class="form-input" id="sp-note" rows="3" placeholder="Describe why the job is not complete…"></textarea>
             </div>
+            <div id="sp-amount-wrap" class="hidden" style="margin-top:.75rem">
+                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">Amount Collected ($) <span style="font-weight:400">(optional)</span></label>
+                <input type="number" class="form-input" id="sp-amount" min="0" step="0.01" placeholder="Enter amount collected">
+            </div>
             <button class="btn btn-primary w-full" style="margin-top:1rem" onclick="saveNewStatus()">Save Status</button>
         </div>`;
     document.body.appendChild(overlay);
@@ -1926,6 +1930,20 @@ function spPickStatus(val) {
             const ta  = document.getElementById('sp-note');
             if (lbl) lbl.textContent = opt.noteLabel;
             if (ta)  ta.placeholder  = opt.notePlaceholder;
+        }
+    }
+    const amountWrap = document.getElementById('sp-amount-wrap');
+    if (amountWrap) {
+        const showAmount = (val === 'completed_partial' || val === 'completed_collected');
+        amountWrap.classList.toggle('hidden', !showAmount);
+        const amtInput = document.getElementById('sp-amount');
+        if (amtInput && val === 'completed_collected') {
+            // Pre-fill with balance due from job cache
+            const allJobs = Object.values(jobCache).flat();
+            const job = allJobs.find(j => j.id === _spJobId);
+            amtInput.value = job?.financials?.balanceDue || '';
+        } else if (amtInput && val === 'completed_partial') {
+            amtInput.value = '';
         }
     }
 }
@@ -1952,11 +1970,26 @@ async function saveNewStatus() {
         note = (document.getElementById('sp-note')?.value || '').trim();
         if (!note) { alert('Please enter a reason before saving.'); return; }
     }
+    // Collect amountCollected for partial/collected statuses
+    let amountCollected = null;
+    if (_spSelected === 'completed_partial' || _spSelected === 'completed_collected') {
+        const amtVal = document.getElementById('sp-amount')?.value;
+        if (amtVal !== '' && amtVal != null) {
+            const parsed = parseFloat(amtVal);
+            if (!isNaN(parsed)) amountCollected = parsed;
+        }
+        if (amountCollected == null && _spSelected === 'completed_collected') {
+            const allJobs = Object.values(jobCache).flat();
+            const job = allJobs.find(j => j.id === _spJobId);
+            const bd = parseFloat(job?.financials?.balanceDue);
+            if (!isNaN(bd)) amountCollected = bd;
+        }
+    }
     closeStatusPicker();
-    await updateJobStatus(_spJobId, _spSelected, note);
+    await updateJobStatus(_spJobId, _spSelected, note, amountCollected);
 }
 
-async function updateJobStatus(jobId, newStatus, statusNote) {
+async function updateJobStatus(jobId, newStatus, statusNote, amountCollected = null) {
     try {
         const now = firebase.firestore.FieldValue.serverTimestamp();
         const recRef = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
@@ -1975,6 +2008,7 @@ async function updateJobStatus(jobId, newStatus, statusNote) {
                 status:     newStatus,
                 statusNote: statusNote || '',
                 updatedAt:  now,
+                ...(amountCollected != null ? { amountCollected } : {}),
                 ...(newStatus === 'in_progress' && !recDoc.data().startedAt ? { startedAt: now } : {}),
                 ...(isComplete ? { completedAt: now } : {}),
                 statusHistory: firebase.firestore.FieldValue.arrayUnion(historyEntry)
@@ -1989,6 +2023,7 @@ async function updateJobStatus(jobId, newStatus, statusNote) {
                 statusHistory: [historyEntry],
                 startedAt:   newStatus === 'in_progress' ? now : null,
                 completedAt: isComplete ? now : null,
+                ...(amountCollected != null ? { amountCollected } : {}),
                 openings:    [],
                 signatures:  {},
                 createdAt:   now,
