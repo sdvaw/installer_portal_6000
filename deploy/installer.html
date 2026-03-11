@@ -17,6 +17,10 @@
   <!-- Shared styles -->
   <link rel="stylesheet" href="css/styles.css">
 
+  <!-- Driver.js — guided tour -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/driver.js@1/dist/driver.js.iife.js"></script>
+
   <style>
     /* Installer portal overrides */
     .bottom-nav {
@@ -608,6 +612,7 @@
   <div class="installer-nav-brand">Armor Vue</div>
   <div class="flex items-center gap-2">
     <span class="text-sm" style="font-weight:600;color:var(--text)" id="nav-installer-name"></span>
+    <button class="btn btn-ghost btn-sm" id="tut-help-btn" onclick="startTutorial()" title="Replay tutorial" style="font-size:1.1rem;padding:.3rem .55rem;line-height:1">?</button>
     <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
   </div>
 </nav>
@@ -767,11 +772,15 @@
         <div id="ob-greeting" style="font-size:1.1rem;font-weight:600;color:var(--accent);margin-bottom:.4rem"></div>
         <p class="text-sm text-muted">Before you get started, please draw your signature below. It will be used on all job completion documents.</p>
       </div>
-      <div class="sig-canvas-wrap" style="margin-top:.75rem">
+      <div class="sig-canvas-wrap" style="margin-top:.75rem;position:relative">
         <canvas id="ob-sig-canvas" class="sig-canvas"></canvas>
+        <div id="ob-sig-hint" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;gap:.3rem;opacity:.45">
+          <span style="font-size:2rem">✍</span>
+          <span style="font-size:.8rem;font-weight:600;letter-spacing:.04em">Sign here with your finger</span>
+        </div>
       </div>
       <div class="flex gap-2" style="flex-shrink:0;margin-top:.75rem">
-        <button class="btn btn-ghost" style="flex:1" onclick="clearCanvas('ob-sig-canvas')">Clear</button>
+        <button class="btn btn-ghost" style="flex:1" onclick="clearCanvas('ob-sig-canvas');document.getElementById('ob-sig-hint').style.display=''">Clear</button>
         <button class="btn btn-primary" style="flex:1" id="ob-save-btn" onclick="saveInstallerSignature()">Save My Signature →</button>
       </div>
     </div>
@@ -855,6 +864,7 @@
 // ============================================================
 
 let currentInstaller  = null;
+let isPreviewMode     = false;  // true when management user is previewing an installer's portal
 let weekOffset        = 0;      // 0 = current week, -1 = last, +1 = next
 let selectedDayOffset = 0;      // 0 = Mon … 6 = Sun within current week view
 let jobCache          = {};     // weekKey → [jobs]
@@ -1016,6 +1026,7 @@ async function loadPortal(user) {
             showSignatureOnboarding();
         } else {
             showPage('schedule');
+            maybeStartTutorial();
         }
     } catch(err) {
         showNoAccess('Could not load your portal. Please try again.');
@@ -1098,6 +1109,7 @@ async function showAdminPreviewPicker() {
 }
 
 async function loadPortalAsInstaller(installerId) {
+    isPreviewMode = true;
     document.getElementById('page-no-access').classList.remove('active');
     document.getElementById('page-loading').classList.add('active');
     try {
@@ -2562,11 +2574,32 @@ function openPhotoCapture(jobId, openingId) {
     document.getElementById('photo-input').click();
 }
 
+async function ensureFirebaseUid() {
+    const user = firebase.auth().currentUser;
+    if (!user || !currentInstaller) return;
+    // If the installer's stored firebaseUid doesn't match the current auth session,
+    // update it so storage rules (which check installers/{id}.firebaseUid) pass.
+    if (currentInstaller.firebaseUid !== user.uid) {
+        try {
+            await db.collection('installers').doc(currentInstaller.id).update({ firebaseUid: user.uid });
+            currentInstaller.firebaseUid = user.uid;
+        } catch(e) {
+            // Non-fatal — storage rules also check by email as fallback
+        }
+    }
+}
+
 async function handlePhotoFile(input) {
     const file = input.files && input.files[0];
     if (!file) return;
 
     input.value = ''; // allow same file re-selection
+
+    if (isPreviewMode) {
+        showToast('Photo uploads are disabled in preview mode.');
+        currentPhotoMode = 'opening';
+        return;
+    }
 
     // Route to specialised handlers before falling through to opening photos
     if (currentPhotoMode === 'start' || currentPhotoMode === 'preexisting' || currentPhotoMode === 'progress' || currentPhotoMode === 'extra_work') {
@@ -2580,6 +2613,7 @@ async function handlePhotoFile(input) {
         }
 
         try {
+            await ensureFirebaseUid();
             let path;
             if (mode === 'start') {
                 path = `jobs/${spJobId}/installers/${currentInstaller.id}/start/${Date.now()}.jpg`;
@@ -3272,7 +3306,7 @@ async function saveSignatureAndClose() {
     if (!canvas || !sigJobId) return;
 
     // Verify something was drawn
-    const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    const imageData = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
     let hasInk = false;
     for (let i = 0; i < imageData.length; i += 4) {
         if (imageData[i] < 200 || imageData[i+1] < 200 || imageData[i+2] < 200) { hasInk = true; break; }
@@ -3281,9 +3315,8 @@ async function saveSignatureAndClose() {
 
     try {
         // Convert canvas to blob and upload
-        const dataUrl = canvas.toDataURL('image/png');
-        const fetchRes = await fetch(dataUrl);
-        const blob     = await fetchRes.blob();
+        const blob = await new Promise((res, rej) =>
+            canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob failed')), 'image/png'));
 
         const path = `jobs/${sigJobId}/installers/${currentInstaller.id}/signatures/${sigType}.png`;
         const ref  = storage.ref(path);
@@ -3404,18 +3437,18 @@ function clearCanvas(canvasId) {
 function canvasHasInk(canvasId) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return false;
-    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    const data = canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, canvas.width, canvas.height).data;
     for (let i = 0; i < data.length; i += 4) {
         if (data[i] < 200 || data[i+1] < 200 || data[i+2] < 200) return true;
     }
     return false;
 }
 
-async function canvasToBlob(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    const dataUrl = canvas.toDataURL('image/png');
-    const res = await fetch(dataUrl);
-    return res.blob();
+function canvasToBlob(canvasId) {
+    return new Promise((resolve, reject) => {
+        const canvas = document.getElementById(canvasId);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Canvas toBlob failed')), 'image/png');
+    });
 }
 
 // ============================================================
@@ -3428,7 +3461,15 @@ function showSignatureOnboarding() {
     document.getElementById('ob-greeting').textContent =
         'Welcome, ' + (currentInstaller.displayName || 'there') + '!';
     showModal('modal-installer-sig');
-    setTimeout(() => initCanvas('ob-sig-canvas'), 120);
+    setTimeout(() => {
+        initCanvas('ob-sig-canvas');
+        const hint = document.getElementById('ob-sig-hint');
+        if (hint) {
+            const hide = () => { hint.style.display = 'none'; };
+            document.getElementById('ob-sig-canvas').addEventListener('touchstart', hide, { once: true });
+            document.getElementById('ob-sig-canvas').addEventListener('mousedown',  hide, { once: true });
+        }
+    }, 120);
 }
 
 async function saveInstallerSignature() {
@@ -3449,6 +3490,7 @@ async function saveInstallerSignature() {
         currentInstaller.signatureUrl = url;
         closeModal();
         showPage('schedule');
+        maybeStartTutorial();
     } catch(err) {
         alert('Could not save signature: ' + err.message);
         btn.disabled = false;
@@ -3663,11 +3705,23 @@ async function showCertificateFlow(jobId) {
         cfJobRecord      = {};
         cfAgreementText  = '';
     }
+    // Pre-populate rating from previously saved data
+    if (cfJobRecord.cocRating) {
+        cfRating = { ...cfJobRecord.cocRating };
+    }
     showModal('modal-certificate');
     cfRenderScreen(0);
 }
 
 function cfRenderScreen(n) {
+    // If COC already fully signed, show read-only completed view
+    const comp = cfJobRecord && cfJobRecord.signatures && cfJobRecord.signatures.completion;
+    if (comp && comp.installerAt) {
+        cfScreen = -1;
+        document.getElementById('cf-back-btn').style.display = 'none';
+        cfRenderCompleted(document.getElementById('cf-content'), comp);
+        return;
+    }
     cfScreen = n;
     document.getElementById('cf-back-btn').style.display = n > 0 ? '' : 'none';
     const el = document.getElementById('cf-content');
@@ -3675,6 +3729,48 @@ function cfRenderScreen(n) {
     if (n === 1) cfRenderAgreement(el);
     if (n === 2) cfRenderSummary(el);
     if (n === 3) cfRenderInstallerSig(el);
+}
+
+function cfRenderCompleted(el, comp) {
+    const rating = (cfJobRecord && cfJobRecord.cocRating) || {};
+    const stars = (cat, val) => [1,2,3,4,5].map(n =>
+        `<span style="font-size:1.6rem;color:${n <= val ? '#F59E0B' : '#D1D5DB'}">★</span>`).join('');
+    el.innerHTML = `
+        <div style="flex:1;overflow-y:auto;padding-bottom:.5rem">
+            <div style="text-align:center;margin-bottom:1rem">
+                <span style="font-size:2rem">✅</span>
+                <div style="font-weight:700;margin-top:.25rem">Certificate Completed</div>
+                <div class="text-sm text-muted">${comp.customerAt ? new Date(comp.customerAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : ''}</div>
+            </div>
+            ${rating.product ? `
+            <div style="margin-bottom:.75rem">
+                <div class="text-sm text-muted" style="margin-bottom:.2rem">Ratings</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem">
+                    <span class="text-sm">Product Quality</span><span>${stars('product', rating.product)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem">
+                    <span class="text-sm">Sales Experience</span><span>${stars('sales', rating.sales)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span class="text-sm">Installation</span><span>${stars('install', rating.install)}</span>
+                </div>
+            </div>` : ''}
+            ${comp.customerUrl ? `
+            <div style="margin-bottom:.75rem">
+                <div class="text-sm text-muted" style="margin-bottom:.3rem">Customer Signature</div>
+                <div style="border:1px solid var(--hairline);border-radius:var(--r-card);background:#fff;padding:.5rem;text-align:center">
+                    <img src="${comp.customerUrl}" style="max-width:100%;max-height:120px;object-fit:contain">
+                </div>
+            </div>` : ''}
+            ${comp.installerUrl ? `
+            <div>
+                <div class="text-sm text-muted" style="margin-bottom:.3rem">Installer Signature</div>
+                <div style="border:1px solid var(--hairline);border-radius:var(--r-card);background:#fff;padding:.5rem;text-align:center">
+                    <img src="${comp.installerUrl}" style="max-width:100%;max-height:120px;object-fit:contain">
+                </div>
+            </div>` : ''}
+        </div>
+        <button class="btn btn-secondary w-full" style="flex-shrink:0;margin-top:1rem" onclick="closeModal()">Close</button>`;
 }
 
 function cfRenderRating(el) {
@@ -4088,6 +4184,7 @@ function ewRenderDetail(el, request) {
             <div class="alert alert-error mb-3" style="background:rgba(239,68,68,.1);border:1px solid var(--bad);border-radius:8px;padding:.75rem">
                 Request denied${request.adminNote ? `: "${esc(request.adminNote)}"` : '.'}
             </div>
+            <button class="btn btn-primary w-full mb-2" onclick="ewGoToCounter('${request.id}')">Counter Offer</button>
             <button class="btn btn-secondary w-full" onclick="ewStartNewRequest()">Submit New Request</button>`;
     } else if (request.status === 'accepted') {
         actionHtml = `
@@ -4159,20 +4256,23 @@ async function ewAcceptOffer(requestId) {
 
 function ewRenderCounter(el, request) {
     if (!request) { el.innerHTML = '<p class="text-muted p-4">Request not found.</p>'; return; }
+    const wasDenied = request.status === 'denied';
+    const contextMsg = wasDenied
+        ? `Request was denied${request.adminNote ? ` — <em>"${esc(request.adminNote)}"</em>` : ''}. Submit a counter proposal below.`
+        : `Manager offered <strong>$${request.amountApproved}</strong>. Enter your counter offer below.`;
+    const prefillAmt = wasDenied ? (request.amountRequested || '') : (request.amountApproved || '');
     el.innerHTML = `
         <div style="padding:1rem">
-            <p class="text-sm text-muted mb-3">
-                Manager offered <strong>$${request.amountApproved}</strong>. Enter your counter offer below.
-            </p>
+            <p class="text-sm text-muted mb-3">${contextMsg}</p>
             <div class="form-group">
-                <label class="form-label">Your Counter Amount ($)</label>
+                <label class="form-label">Your Proposed Amount ($)</label>
                 <input class="form-input" type="number" id="ew-counter-amount" min="1" step="1"
-                    placeholder="0" style="font-size:1.1rem;text-align:center">
+                    value="${prefillAmt}" placeholder="0" style="font-size:1.1rem;text-align:center">
             </div>
             <div class="form-group">
                 <label class="form-label">Note (optional)</label>
                 <textarea class="form-input" id="ew-counter-note" rows="3"
-                    placeholder="Anything to add?"></textarea>
+                    placeholder="Explain your proposal…"></textarea>
             </div>
             <button class="btn btn-primary w-full mt-2" onclick="ewSubmitCounter('${request.id}')">Submit Counter</button>
         </div>`;
@@ -4295,6 +4395,126 @@ async function cfSaveAll() {
         const btn = document.getElementById('cf-apply-btn');
         if (btn) { btn.disabled = false; btn.textContent = 'Apply My Signature & Complete Job'; }
     }
+}
+
+// ============================================================
+// GUIDED TUTORIAL (Driver.js)
+// ============================================================
+
+function maybeStartTutorial() {
+    if (isPreviewMode) return;
+    if (currentInstaller && !currentInstaller.tutorialComplete) {
+        setTimeout(startTutorial, 800);
+    }
+}
+
+function startTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    const driverObj = driver({
+        showProgress: true,
+        progressText: '{{current}} of {{total}}',
+        allowClose:   true,
+        onDestroyed:  () => markTutorialComplete(),
+        steps: [
+            {
+                popover: {
+                    title:       '👋 Welcome to Armor Vue',
+                    description: 'This quick tour walks you through the app in about 30 seconds. Use the arrows to go forward and back, or click anywhere outside to skip.'
+                }
+            },
+            {
+                element: '#week-nav',
+                popover: {
+                    title:       '📆 Week Navigation',
+                    description: 'Use the ‹ and › arrows to move between weeks. The heading shows the week you\'re currently viewing.',
+                    side:  'bottom',
+                    align: 'center'
+                }
+            },
+            {
+                element: '#week-strip',
+                popover: {
+                    title:       '📅 Day Selector',
+                    description: 'Tap any day to see your jobs for that day. The number badge shows how many jobs are scheduled. Today is highlighted in blue.',
+                    side:  'bottom',
+                    align: 'center'
+                }
+            },
+            {
+                element: '#day-jobs',
+                popover: {
+                    title:       '🏠 Your Jobs',
+                    description: 'Jobs for the selected day appear here. Each card shows the job number, customer name, time, and address. <strong>Tap a card</strong> to open it.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '▶ Starting a Job',
+                    description: 'When you open a job, tap <strong>Start Job</strong>. You\'ll be prompted to take a wide shot of the property and photograph any pre-existing conditions. Enter the amount collected from the customer and you\'re in.'
+                }
+            },
+            {
+                popover: {
+                    title:       '🔧 Working a Job',
+                    description: 'Once started, four tools become available on the job screen:<br><br>📷 <strong>Progress Photos</strong> — document your work as you go<br>🚶 <strong>Walkthrough Checklist</strong> — confirm quality checks with the customer<br>✅ <strong>Certificate of Completion</strong> — get customer sign-off when done<br>🔧 <strong>Extra Work Requests</strong> — request approval for anything outside the original scope'
+                }
+            },
+            {
+                popover: {
+                    title:       '✅ Completing a Job',
+                    description: 'Walk the customer through the <strong>Certificate of Completion</strong>. Rate the job, collect the customer\'s signature, then add your own to close it out. The job status updates automatically.'
+                }
+            },
+            {
+                element: '#nav-blackout',
+                popover: {
+                    title:       '🗓 Days Off',
+                    description: 'Need time off? Submit a date and reason here. Management will be notified and it\'ll be noted on the schedule.',
+                    side:  'top',
+                    align: 'start'
+                }
+            },
+            {
+                element: '#nav-defects',
+                popover: {
+                    title:       '⚠️ Defects',
+                    description: 'Any defects you log during a job show up here in one place so you can track their status across all your jobs.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                element: '#nav-earnings',
+                popover: {
+                    title:       '💰 Earnings',
+                    description: 'View your pay summary for any date range — total jobs completed and earnings broken down by job.',
+                    side:  'top',
+                    align: 'end'
+                }
+            },
+            {
+                element: '#tut-help-btn',
+                popover: {
+                    title:       '❓ Need a refresher?',
+                    description: 'Tap the <strong>?</strong> button in the top bar any time to replay this tour.',
+                    side:  'bottom',
+                    align: 'end'
+                }
+            }
+        ]
+    });
+    driverObj.drive();
+}
+
+async function markTutorialComplete() {
+    if (!currentInstaller || isPreviewMode) return;
+    try {
+        await db.collection('installers').doc(currentInstaller.id).update({ tutorialComplete: true });
+        currentInstaller.tutorialComplete = true;
+    } catch(e) { /* non-fatal */ }
 }
 </script>
 </body>

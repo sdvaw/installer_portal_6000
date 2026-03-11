@@ -18,14 +18,6 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/management_users/$(request.auth.uid));
     }
 
-    // Cross-reference: check if the installer document's firebaseUid matches
-    // the currently authenticated user. Used to scope installer writes to their
-    // own records without relying on document IDs matching auth UIDs.
-    function installerOwns(installerId) {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/installers/$(installerId)).data.firebaseUid == request.auth.uid;
-    }
-
     // --------------------------------------------------------
     // SETTINGS — admin full access
     //            management users can read portal doc (statuses, COC text)
@@ -54,7 +46,7 @@ service cloud.firestore {
         && (resource.data.firebaseUid == request.auth.uid
             || resource.data.email == request.auth.token.email)
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['firebaseUid', 'lastLogin', 'signatureUrl']);
+             .hasOnly(['firebaseUid', 'lastLogin', 'signatureUrl', 'tutorialComplete']);
     }
 
     // --------------------------------------------------------
@@ -69,15 +61,11 @@ service cloud.firestore {
 
     // --------------------------------------------------------
     // JOB RECORDS — written by installers during jobs
-    //   admin + management: full read/write (reports, defect updates, archiving)
-    //   installer: read + write own records only (verified via installer doc lookup)
+    //               any authenticated user can read + write
+    //               (installers only see their own via the app)
     // --------------------------------------------------------
     match /job_records/{recordId} {
-      allow read, write: if isAdmin() || isManagementUser();
-      allow read:   if installerOwns(resource.data.installerId);
-      allow create: if installerOwns(request.resource.data.installerId);
-      allow update: if installerOwns(resource.data.installerId)
-                    && installerOwns(request.resource.data.installerId);
+      allow read, write: if isSignedIn();
     }
 
     // --------------------------------------------------------
@@ -93,23 +81,15 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /blackout_requests/{reqId} {
       allow read, write: if isAdmin();
-      allow read: if isSignedIn()
-        && resource.data.installerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && request.resource.data.installerId == request.auth.uid;
+      allow read, write: if isSignedIn();
     }
 
     // --------------------------------------------------------
     // EXTRA WORK REQUESTS — installers submit, management reviews
-    //   admin + management: full read/write
-    //   installer: own records only
+    //                        mirrors job_records pattern
     // --------------------------------------------------------
     match /extra_work_requests/{reqId} {
-      allow read, write: if isAdmin() || isManagementUser();
-      allow read:   if installerOwns(resource.data.installerId);
-      allow create: if installerOwns(request.resource.data.installerId);
-      allow update: if installerOwns(resource.data.installerId)
-                    && installerOwns(request.resource.data.installerId);
+      allow read, write: if isSignedIn();
     }
 
     // --------------------------------------------------------

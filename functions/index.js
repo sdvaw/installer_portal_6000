@@ -450,8 +450,8 @@ const TeamUp = {
 
     async _syncJobs(events, settings) {
         const jobs = events.filter(e => e.who || e.location);
-        if (jobs.length === 0) return 0;
 
+        // Write / update all jobs from TeamUp
         const batchSize = 400;
         for (let i = 0; i < jobs.length; i += batchSize) {
             const batch = db.batch();
@@ -493,6 +493,28 @@ const TeamUp = {
                 }, { merge: true });
             });
             await batch.commit();
+        }
+
+        // Remove stale jobs — any Firestore job whose startDt falls inside the
+        // sync window but whose ID is no longer in the TeamUp response has been
+        // rescheduled outside the window, cancelled, or deleted in TeamUp.
+        const teamupIds = new Set(jobs.map(e => String(e.id)));
+        const windowStart = new Date(); windowStart.setDate(windowStart.getDate() - 30);
+        const windowEnd   = new Date(); windowEnd.setDate(windowEnd.getDate() + 90);
+
+        const staleSnap = await db.collection('jobs')
+            .where('startDt', '>=', windowStart)
+            .where('startDt', '<=', windowEnd)
+            .get();
+
+        const stale = staleSnap.docs.filter(d => !teamupIds.has(d.id));
+        if (stale.length > 0) {
+            logger.info(`Removing ${stale.length} stale job(s) no longer in TeamUp`);
+            for (let i = 0; i < stale.length; i += batchSize) {
+                const batch = db.batch();
+                stale.slice(i, i + batchSize).forEach(d => batch.delete(d.ref));
+                await batch.commit();
+            }
         }
 
         return jobs.length;

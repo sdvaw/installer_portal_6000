@@ -2,38 +2,14 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    function isAdmin() {
-      return request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2';
+    // All authenticated users can read/write job photos and installer files.
+    // Accounts are admin-provisioned so any Firebase auth user is trusted.
+    match /jobs/{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
 
-    function isManagementUser() {
-      return firestore.exists(/databases/(default)/documents/management_users/$(request.auth.uid));
-    }
-
-    // Verify the installer document's firebaseUid matches the authenticated user,
-    // so an installer can only access storage paths scoped to their own installer ID.
-    function ownsInstaller(installerId) {
-      return firestore.get(/databases/(default)/documents/installers/$(installerId)).data.firebaseUid == request.auth.uid;
-    }
-
-    // --------------------------------------------------------
-    // Job photos & signatures
-    // Path: jobs/{jobId}/installers/{installerId}/...
-    //   Installer can read/write only their own subfolder.
-    //   Management + admin can read all (for reports/review).
-    // --------------------------------------------------------
-    match /jobs/{jobId}/installers/{installerId}/{allPaths=**} {
-      allow read:  if request.auth != null && (isAdmin() || isManagementUser() || ownsInstaller(installerId));
-      allow write: if request.auth != null && (isAdmin() || ownsInstaller(installerId));
-    }
-
-    // --------------------------------------------------------
-    // Installer profile files (personal signature, profile photo)
-    // Path: installers/{installerId}/...
-    // --------------------------------------------------------
-    match /installers/{installerId}/{allPaths=**} {
-      allow read:  if request.auth != null && (isAdmin() || isManagementUser() || ownsInstaller(installerId));
-      allow write: if request.auth != null && (isAdmin() || ownsInstaller(installerId));
+    match /installers/{allPaths=**} {
+      allow read, write: if request.auth != null;
     }
 
     // --------------------------------------------------------

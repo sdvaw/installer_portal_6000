@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(firebase deploy:*)",
+      "Bash(firebase projects:list 2>&1)",
+      "Bash(firebase functions:list --project installer-portal-6000 2>&1)",
+      "Bash(cat storage.rules 2>/dev/null || find . -name \"*.rules\" | grep -v node_modules)",
+      "Bash(cat deploy/js/firebase-config.js 2>/dev/null || find deploy -name \"firebase-config*\" | head -5)",
+      "Bash(firebase storage:buckets:list 2>&1)",
+      "Bash(ls .firebase/ 2>/dev/null && cat .firebase/hosting.*.cache 2>/dev/null | head -5 || echo \"no cache\")",
+      "Bash(ls deploy/*.js deploy/js/*.js 2>/dev/null)",
+      "Bash(firebase projects:list 2>/dev/null | head -20)",
+      "Bash(git add:*)"
+    ]
+  }
+}

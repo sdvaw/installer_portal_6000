@@ -1,0 +1,10 @@
+# Firebase
+.firebase/
+
+# Node
+functions/node_modules/
+functions/package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
