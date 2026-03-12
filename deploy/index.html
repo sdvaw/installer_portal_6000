@@ -64,10 +64,8 @@ auth.onAuthStateChanged(user => {
         _dashboardActive = true;
         showDashboard();
     } else if (!_dashboardActive) {
-        // If a non-admin user is cached (e.g. a management user from another page),
-        // sign them out silently so the admin can log in cleanly.
         if (user) {
-            auth.signOut();
+            auth.signOut().then(() => showLogin('This account does not have admin access.'));
         } else {
             showLogin();
         }
