@@ -247,6 +247,8 @@
         border-radius: 0 !important; max-width: 100% !important; }
       .coc-modal-header .coc-actions { display: none !important; }
       .coc-sig-img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .coc-section { break-inside: avoid; page-break-inside: avoid; }
+      .coc-section:not(:last-child) { break-after: page; page-break-after: always; }
     }
   </style>
 </head>
