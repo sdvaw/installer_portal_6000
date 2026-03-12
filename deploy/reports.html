@@ -1210,7 +1210,9 @@ function defectActionCard({ r, openingIdx, defectIdx, openingLabel, d }, isTrack
             </div>` : `
             <button class="btn btn-sm btn-ghost" onclick="clearDefect('${r.id}',${openingIdx},${defectIdx})"
                 style="color:var(--ok)">✓ Mark Resolved</button>`}
-            <button class="btn btn-sm btn-secondary" onclick="reorderDefect('${r.id}',${openingIdx},${defectIdx})">📦 Re-order</button>
+            ${d.reorderedAt
+                ? `<span style="font-size:.75rem;padding:.2rem .6rem;border:1px solid var(--muted);color:var(--muted);border-radius:4px">📦 Re-ordered</span>`
+                : `<button class="btn btn-sm btn-secondary" onclick="reorderDefect('${r.id}',${openingIdx},${defectIdx})">📦 Re-order</button>`}
         </div>
     </div>`;
 }
@@ -1275,6 +1277,12 @@ async function reorderDefect(recordId, openingIdx, defectIdx) {
             } catch(e) {}
         }
 
+        // Prevent duplicate re-orders for the same defect
+        if (defect.reorderedAt) {
+            flash('error', 'A re-order has already been created for this defect.');
+            return;
+        }
+
         await db.collection('material_orders').add({
             material:      defect.typeName || defect.type || 'Unknown material',
             jobId:         rec.jobId        || '',
@@ -1293,7 +1301,19 @@ async function reorderDefect(recordId, openingIdx, defectIdx) {
             orderedAt:     null,
             completedAt:   null
         });
+
+        // Mark the defect as re-ordered so the button is disabled on reload
+        const updatedOpenings = JSON.parse(JSON.stringify(openings));
+        updatedOpenings[openingIdx].defects[defectIdx] = {
+            ...defect,
+            reorderedAt:     new Date().toISOString(),
+            reorderedBy:     currentUser.uid,
+            reorderedByName: currentUser.displayName || currentUser.email
+        };
+        await recRef.update({ openings: updatedOpenings });
+
         flash('ok', 'Material re-order created. Check the Materials tab.');
+        loadServiceReport();
     } catch(err) { flash('error', 'Could not create re-order: ' + err.message); }
 }
 
