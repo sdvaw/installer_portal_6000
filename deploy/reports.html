@@ -1525,8 +1525,9 @@ async function printJob(recordId) {
         ]);
         if (!recSnap.exists) { body.innerHTML = '<p style="padding:2rem;text-align:center;color:var(--bad)">Record not found.</p>'; return; }
 
+        const DEFAULT_COC_AGREEMENT = 'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.';
         const rec     = { id: recSnap.id, ...recSnap.data() };
-        const cocText = settingsSnap.exists ? (settingsSnap.data().cocAgreementText || '') : '';
+        const cocText = (settingsSnap.exists && settingsSnap.data().cocAgreementText) ? settingsSnap.data().cocAgreementText : DEFAULT_COC_AGREEMENT;
 
         let job = null;
         if (rec.jobId) {
