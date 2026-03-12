@@ -64,9 +64,10 @@ auth.onAuthStateChanged(user => {
         _dashboardActive = true;
         showDashboard();
     } else if (!_dashboardActive) {
-        // Only redirect to login on initial load, not due to a cross-tab auth change
+        // If a non-admin user is cached (e.g. a management user from another page),
+        // sign them out silently so the admin can log in cleanly.
         if (user) {
-            showLogin('This account does not have admin access.');
+            auth.signOut();
         } else {
             showLogin();
         }

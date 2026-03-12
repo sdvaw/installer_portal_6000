@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "failed_inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "installers",
       "queryScope": "COLLECTION",
       "fields": [
