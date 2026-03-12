@@ -297,14 +297,20 @@ async function renderDashboard(retries = 1) {
     try {
         const now         = new Date();
         const twoDaysOut  = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-        const [pending, blackouts, active, settings, upcomingSnap, ewSnap, wtSnap] = await Promise.all([
+
+        // Critical queries — stat cards depend on these
+        const [pending, blackouts, active, settings] = await Promise.all([
             db.collection('installers').where('status','==','pending').get(),
             db.collection('blackout_requests').where('status','==','pending').get(),
             db.collection('installers').where('status','==','active').get(),
-            db.collection('settings').doc('teamup').get(),
-            db.collection('jobs').where('startDt','>=',now).where('startDt','<=',twoDaysOut).get(),
-            db.collection('extra_work_requests').where('status','in',['pending','counter_pending']).get(),
-            db.collection('job_records').where('walkthroughIncomplete','==',true).get()
+            db.collection('settings').doc('teamup').get()
+        ]);
+
+        // Secondary queries — run independently, failures won't block the stat cards
+        const [upcomingSnap, ewSnap, wtSnap] = await Promise.all([
+            db.collection('jobs').where('startDt','>=',now).where('startDt','<=',twoDaysOut).get().catch(() => ({ docs: [] })),
+            db.collection('extra_work_requests').where('status','in',['pending','counter_pending']).get().catch(() => ({ size: 0, docs: [] })),
+            db.collection('job_records').where('walkthroughIncomplete','==',true).get().catch(() => ({ size: 0, docs: [] }))
         ]);
         document.getElementById('stat-pending').textContent  = pending.size;
         document.getElementById('stat-blackout').textContent = blackouts.size;
@@ -418,6 +424,11 @@ async function renderDashboard(retries = 1) {
             await auth.currentUser.getIdToken(true);
             return renderDashboard(0);
         }
+        // Clear spinners so they don't hang indefinitely
+        ['stat-pending','stat-blackout','stat-active'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.querySelector('.spinner')) el.textContent = '—';
+        });
         flash('error', 'Dashboard error: ' + err.message);
     }
 }
