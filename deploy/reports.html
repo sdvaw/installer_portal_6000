@@ -450,7 +450,7 @@ function morningCard(item) {
                     ? `<div style="font-size:.75rem;font-weight:600;color:${statusCol}">${esc(statusLabel(rec.status))}</div>`
                     : `<div style="font-size:.75rem;font-weight:600;color:var(--warn)">No Activity</div>`}
                 <div style="font-size:.72rem;color:var(--muted)">${esc(assignedNames)}</div>
-                ${rec ? `<button class="btn btn-sm btn-secondary" style="font-size:.72rem;padding:.2rem .5rem" onclick="printJob('${rec.id}')" title="Print COC &amp; Walkthrough">🖨 Print</button>` : ''}
+                ${rec ? `<button class="btn btn-sm btn-secondary" style="font-size:.72rem;padding:.2rem .5rem" onclick="printJob('${rec.id}')" title="View COC &amp; Walkthrough">📄 View COC/Walkthrough</button>` : ''}
             </div>
         </div>
 
@@ -940,7 +940,7 @@ function financeCard(r, actions, isArchive) {
                 <div class="rc-name">${esc(r.customerName)}</div>
                 <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="Print COC &amp; Walkthrough">🖨 Print</button>
+            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="View COC &amp; Walkthrough">📄 View COC/Walkthrough</button>
         </div>
         <div><span class="rc-status" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
         <div class="rc-sig-row">
@@ -1249,7 +1249,7 @@ function serviceCard(r, actions, isArchive) {
                 <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
                 ${r.address ? `<div style="font-size:.72rem;color:var(--muted)">${esc(r.address.replace(/\n/g,' '))}</div>` : ''}
             </div>
-            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="Print Document">🖨 Print</button>
+            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="View COC &amp; Walkthrough">📄 View COC/Walkthrough</button>
         </div>
         <div><span class="rc-status" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
         ${r.statusNote ? `<div class="rc-body"><strong>Service Note:</strong> ${esc(r.statusNote)}</div>` : ''}
@@ -1388,7 +1388,7 @@ async function archiveItem(recordId, type, noteInputId) {
     } catch(err) { flash('error', 'Could not archive: ' + err.message); }
 }
 
-// ── Print ─────────────────────────────────────────────────────
+// ── View COC / Walkthrough ────────────────────────────────────
 function printJob(recordId) {
     window.open('print-job.html?recordId=' + encodeURIComponent(recordId), '_blank');
 }
