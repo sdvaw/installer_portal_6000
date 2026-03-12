@@ -185,6 +185,25 @@ function extractStoragePaths(obj) {
 }
 
 // ============================================================
+// MANUAL SYNC — callable from admin portal by any authenticated user
+// Runs server-side so it bypasses Firestore security rules.
+// ============================================================
+exports.manualTeamUpSync = onCall(async (request) => {
+    if (!request.auth) throw new Error('Unauthenticated');
+
+    const settingsSnap = await db.collection('settings').doc('teamup').get();
+    if (!settingsSnap.exists) throw new Error('TeamUp not configured.');
+
+    const settings = settingsSnap.data();
+    if (!settings.apiKey || !settings.calendarId) {
+        throw new Error('TeamUp API key or Calendar ID missing.');
+    }
+
+    const result = await TeamUp.sync(settings, msg => logger.info('[manualSync]', msg));
+    return result;
+});
+
+// ============================================================
 // SCHEDULED SYNC — runs every 15 minutes, checks syncInterval
 // from Firestore settings before doing real work.
 // ============================================================

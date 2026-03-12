@@ -205,7 +205,8 @@ async function runSync() {
     btn.disabled = true;
     btn.textContent = '⟳ Syncing…';
     try {
-        const result = await TeamUp.sync(msg => console.log('[Sync]', msg));
+        const fn = firebase.functions().httpsCallable('manualTeamUpSync');
+        const { data: result } = await fn();
         let syncMsg = `Sync complete — ${result.newInstallers} new installer(s), ${result.jobCount} job(s) updated.`;
         if (result.fixedInstallers > 0) syncMsg += ` Repaired ${result.fixedInstallers} installer ID mismatch(es).`;
         flash('ok', syncMsg);
@@ -218,7 +219,7 @@ async function runSync() {
         if (currentSection === 'management') { renderManagement(); }
         else loadMgmtStats();
     } catch (err) {
-        flash('error', 'Sync failed: ' + err.message);
+        flash('error', 'Sync failed: ' + (err.message || err.details || String(err)));
     } finally {
         btn.disabled = false;
         btn.textContent = '⟳ Sync TeamUp';
