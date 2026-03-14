@@ -665,7 +665,7 @@
   <div id="modal-inventory" class="modal-sheet" style="display:none">
     <div class="modal-header">
       <h3>Receive Inventory</h3>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeInventoryModal()">✕</button>
     </div>
     <div id="inv-content" style="padding-top:.75rem"></div>
   </div>
@@ -1487,6 +1487,11 @@ function jasInventory() {
     showInventoryModal(jasCurrentJobId);
 }
 
+function closeInventoryModal() {
+    closeModal();
+    if (jasCurrentJobId) showJobActions(jasCurrentJobId);
+}
+
 async function showInventoryModal(jobId) {
     showModal('modal-inventory');
     const contentEl = document.getElementById('inv-content');
@@ -1589,7 +1594,7 @@ async function invToggle(jobId, key, checkbox) {
                          && (!(job.doorCount   > 0) || updatedInv.doors)
                          && (!(job.sgdCount    > 0) || updatedInv.sgds);
             if (allDone) {
-                closeModal();
+                closeInventoryModal();
                 showToast('All inventory received ✅');
             }
         }
