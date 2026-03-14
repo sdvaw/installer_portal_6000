@@ -1576,7 +1576,7 @@ async function invToggle(jobId, key, checkbox) {
         }
         await recRef.update(update);
         // Refresh local cache
-        if (!jobRecordCache[jobId]) jobRecordCache[jobId] = {};
+        if (!jobRecordCache[jobId]) jobRecordCache[jobId] = { status: 'not_started' };
         if (!jobRecordCache[jobId].inventoryReceived) jobRecordCache[jobId].inventoryReceived = {};
         if (checked) jobRecordCache[jobId].inventoryReceived[key] = new Date();
         else delete jobRecordCache[jobId].inventoryReceived[key];
