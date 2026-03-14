@@ -786,6 +786,7 @@ async function enrichRecords(records) {
             financials:    job.financials    || r.financials    || {},
             address:       job.address       || '',
             startDt:       job.startDt       || null,
+            seriesId:      job.seriesId      || null,
             windowCount:   job.windowCount   ?? null,
             doorCount:     job.doorCount     ?? null,
         };
@@ -822,14 +823,20 @@ function recordDate(r) {
 function computeRunningTotals(records) {
     const { todayStart, todayEnd, weekStart, monthStart, yearStart, now } = getDateBoundaries();
     let today = 0, wtd = 0, mtd = 0, ytd = 0;
+    const seenSeries = new Set();
     records.forEach(r => {
+        // Deduplicate multi-day jobs — only count the contract amount once per series
+        if (r.seriesId) {
+            if (seenSeries.has(r.seriesId)) return;
+            seenSeries.add(r.seriesId);
+        }
         const amount = recordAmountCollected(r);
         if (amount <= 0) return;
         const d = recordDate(r);
         if (!d) return;
-        if (d >= yearStart  && d <= now)     ytd  += amount;
-        if (d >= monthStart && d <= now)     mtd  += amount;
-        if (d >= weekStart  && d <= now)     wtd  += amount;
+        if (d >= yearStart  && d <= now)      ytd  += amount;
+        if (d >= monthStart && d <= now)      mtd  += amount;
+        if (d >= weekStart  && d <= now)      wtd  += amount;
         if (d >= todayStart && d <= todayEnd) today += amount;
     });
     return { today, wtd, mtd, ytd };
@@ -914,15 +921,23 @@ async function loadFinanceReport() {
         records = await enrichRecords(records);
 
         // Upcoming = future jobs this month with no finance-status record yet
+        // Deduplicate multi-day jobs by seriesId to avoid counting same contract multiple times
         const financeJobIds = new Set(records.map(r => r.jobId).filter(Boolean));
         const todayMs = new Date().setHours(0, 0, 0, 0);
+        const seenSeries = new Set();
         let upcoming = 0;
         jobsMonthSnap.docs.forEach(d => {
             if (financeJobIds.has(d.id)) return;
-            const startDt = d.data().startDt;
+            const data = d.data();
+            const startDt = data.startDt;
             const jobMs = startDt?.toDate ? startDt.toDate().getTime() : startDt ? new Date(startDt).getTime() : 0;
-            if (jobMs < todayMs) return; // skip past jobs
-            upcoming += parseFloat(d.data().financials?.balanceDue) || 0;
+            if (jobMs < todayMs) return;
+            // Skip subsequent days of the same multi-day job
+            if (data.seriesId) {
+                if (seenSeries.has(data.seriesId)) return;
+                seenSeries.add(data.seriesId);
+            }
+            upcoming += parseFloat(data.financials?.balanceDue) || 0;
         });
 
         const totalsHtml = renderRunningTotals(records, _monthlyGoal, upcoming);
