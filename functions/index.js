@@ -401,10 +401,11 @@ const TeamUp = {
         log('Syncing jobs…');
         const jobCount = await this._syncJobs(events, settings);
 
+        const installerSubCount = subcalendars.filter(s => this.classifySubcalendar(s.name) === 'installer').length;
         await db.collection('settings').doc('teamup').update({
             lastSyncedAt:          admin.firestore.FieldValue.serverTimestamp(),
             cachedJobCount:        jobCount,
-            cachedInstallerCount:  subcalendars.length
+            cachedInstallerCount:  installerSubCount
         });
 
         log('Done.');
