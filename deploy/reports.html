@@ -601,9 +601,12 @@ async function loadDailyReview() {
         const end   = new Date(_reviewDate + 'T23:59:59');
 
         const [jobSnap, matSnap, fiSnap] = await Promise.all([
-            db.collection('jobs').where('startDt', '>=', start).where('startDt', '<=', end).get(),
-            db.collection('material_orders').where('status', '==', 'pending').get(),
+            db.collection('jobs').where('startDt', '>=', start).where('startDt', '<=', end).get()
+                .catch(e => { throw new Error('jobs: ' + e.message); }),
+            db.collection('material_orders').where('status', '==', 'pending').get()
+                .catch(e => { throw new Error('material_orders: ' + e.message); }),
             db.collection('failed_inspections').where('status', '==', 'open').get()
+                .catch(e => { throw new Error('failed_inspections: ' + e.message); }),
         ]);
 
         const pendingMaterials  = matSnap.size;
@@ -791,15 +794,12 @@ async function enrichRecords(records) {
 
 // ── FINANCE — Running Totals Helpers ──────────────────────────
 function getDateBoundaries() {
-    const now = new Date();
-    const todayStr  = now.toISOString().slice(0, 10);
-    const todayStart = new Date(todayStr + 'T00:00:00');
-    const todayEnd   = new Date(todayStr + 'T23:59:59');
+    const now        = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     const dayOfWeek  = now.getDay();
     const daysToMon  = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const weekStart  = new Date(now);
-    weekStart.setDate(now.getDate() - daysToMon);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysToMon, 0, 0, 0);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart  = new Date(now.getFullYear(), 0, 1);
     return { todayStart, todayEnd, weekStart, monthStart, yearStart, now };
@@ -867,9 +867,9 @@ function renderRunningTotals(records, monthlyGoal, upcoming = 0) {
                 <div class="total-cell-lbl">YTD</div>
             </div>
             ${upcoming > 0 ? `
-            <div class="total-cell" style="border-left:1px solid var(--hairline);padding-left:1.25rem">
-                <div class="total-cell-val" style="color:var(--muted)">${fmtDollar(upcoming)}</div>
-                <div class="total-cell-lbl">UPCOMING</div>
+            <div class="total-cell" style="border-left:2px dashed var(--hairline);padding-left:1.25rem;opacity:.7">
+                <div class="total-cell-val" style="color:var(--muted);font-style:italic">${fmtDollar(upcoming)}</div>
+                <div class="total-cell-lbl" style="font-style:italic">UPCOMING ↗</div>
             </div>` : ''}
         </div>
         ${goalPct !== null ? `
@@ -902,7 +902,7 @@ async function loadFinanceReport() {
         const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
         const [recSnap, actSnap, jobsMonthSnap] = await Promise.all([
-            db.collection('job_records').where('status','in',_financeStats.slice(0,10)).get(),
+            db.collection('job_records').where('status','in',_financeStats.slice(0,30)).get(),
             db.collection('management_actions').where('type','==','finance_report').get(),
             db.collection('jobs').where('startDt','>=',monthStart).where('startDt','<=',monthEnd).get()
         ]);
@@ -913,13 +913,16 @@ async function loadFinanceReport() {
         let records = recSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         records = await enrichRecords(records);
 
-        // Upcoming = jobs this month with no finance-status record yet
+        // Upcoming = future jobs this month with no finance-status record yet
         const financeJobIds = new Set(records.map(r => r.jobId).filter(Boolean));
+        const todayMs = new Date().setHours(0, 0, 0, 0);
         let upcoming = 0;
         jobsMonthSnap.docs.forEach(d => {
-            if (!financeJobIds.has(d.id)) {
-                upcoming += parseFloat(d.data().financials?.balanceDue) || 0;
-            }
+            if (financeJobIds.has(d.id)) return;
+            const startDt = d.data().startDt;
+            const jobMs = startDt?.toDate ? startDt.toDate().getTime() : startDt ? new Date(startDt).getTime() : 0;
+            if (jobMs < todayMs) return; // skip past jobs
+            upcoming += parseFloat(d.data().financials?.balanceDue) || 0;
         });
 
         const totalsHtml = renderRunningTotals(records, _monthlyGoal, upcoming);

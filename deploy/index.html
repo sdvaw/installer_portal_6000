@@ -1771,13 +1771,32 @@ async function renderTeamUpStatus() {
                 <div class="stat-label">Last Sync</div>
                 <div class="text-sm" id="tu-last-sync">Loading…</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Jobs in Database</div>
-                <div class="stat-value" id="tu-job-count"><span class="spinner"></span></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Installers (TeamUp)</div>
-                <div class="stat-value" id="tu-inst-count"><span class="spinner"></span></div>
+            <div class="stat-card" style="grid-column:span 2">
+                <div class="stat-label mb-3">Sync Accuracy</div>
+                <table style="width:100%;border-collapse:collapse;font-size:14px">
+                    <thead>
+                        <tr style="color:var(--color-muted,#9ca3af);font-size:11px;text-transform:uppercase;letter-spacing:.05em">
+                            <th style="text-align:left;padding-bottom:6px;font-weight:500"></th>
+                            <th style="text-align:right;padding-bottom:6px;font-weight:500">TeamUp</th>
+                            <th style="text-align:right;padding-bottom:6px;font-weight:500">Firebase</th>
+                            <th style="text-align:right;padding-bottom:6px;font-weight:500"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-top:1px solid var(--color-border,#e5e7eb)">
+                            <td style="padding:8px 0;font-weight:500">Jobs</td>
+                            <td style="text-align:right;padding:8px 0"><span id="tu-job-count" class="stat-value" style="font-size:20px"><span class="spinner"></span></span></td>
+                            <td style="text-align:right;padding:8px 0"><span id="tu-job-fb-count" class="stat-value" style="font-size:20px"><span class="spinner"></span></span></td>
+                            <td style="text-align:right;padding:8px 0;font-size:16px"><span id="tu-job-match"></span></td>
+                        </tr>
+                        <tr style="border-top:1px solid var(--color-border,#e5e7eb)">
+                            <td style="padding:8px 0;font-weight:500">Installers</td>
+                            <td style="text-align:right;padding:8px 0"><span id="tu-inst-count" class="stat-value" style="font-size:20px"><span class="spinner"></span></span></td>
+                            <td style="text-align:right;padding:8px 0"><span id="tu-inst-fb-count" class="stat-value" style="font-size:20px"><span class="spinner"></span></span></td>
+                            <td style="text-align:right;padding:8px 0;font-size:16px"><span id="tu-inst-match"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -1787,7 +1806,12 @@ async function renderTeamUpStatus() {
         </div>`;
 
     try {
-        const settings = await db.collection('settings').doc('teamup').get();
+        const [settings, jobsSnap, installersSnap] = await Promise.all([
+            db.collection('settings').doc('teamup').get(),
+            db.collection('jobs').get(),
+            db.collection('installers').where('status', '==', 'active').get(),
+        ]);
+
         const lastSyncEl = document.getElementById('tu-last-sync');
         if (settings.exists && settings.data().lastSyncedAt) {
             lastSyncEl.className = 'text-sm text-ok';
@@ -1796,9 +1820,28 @@ async function renderTeamUpStatus() {
             lastSyncEl.className = 'text-sm text-warn';
             lastSyncEl.textContent = 'Never synced';
         }
+
         const d = settings.exists ? settings.data() : {};
-        document.getElementById('tu-job-count').textContent  = d.cachedJobCount ?? '—';
-        document.getElementById('tu-inst-count').textContent = d.cachedInstallerCount ?? '—';
+        const tuJobs  = d.cachedJobCount ?? null;
+        const tuInst  = d.cachedInstallerCount ?? null;
+        const fbJobs  = jobsSnap.size;
+        const fbInst  = installersSnap.size;
+
+        document.getElementById('tu-job-count').textContent    = tuJobs ?? '—';
+        document.getElementById('tu-inst-count').textContent   = tuInst ?? '—';
+        document.getElementById('tu-job-fb-count').textContent = fbJobs;
+        document.getElementById('tu-inst-fb-count').textContent = fbInst;
+
+        const jobMatch  = document.getElementById('tu-job-match');
+        const instMatch = document.getElementById('tu-inst-match');
+        if (tuJobs !== null) {
+            jobMatch.textContent  = tuJobs === fbJobs  ? '✓' : '⚠';
+            jobMatch.style.color  = tuJobs === fbJobs  ? 'var(--color-ok, #22c55e)' : 'var(--color-warn, #f59e0b)';
+        }
+        if (tuInst !== null) {
+            instMatch.textContent = tuInst === fbInst ? '✓' : '⚠';
+            instMatch.style.color = tuInst === fbInst ? 'var(--color-ok, #22c55e)' : 'var(--color-warn, #f59e0b)';
+        }
     } catch(err) { flash('error', 'Could not load status: ' + err.message); }
 }
 

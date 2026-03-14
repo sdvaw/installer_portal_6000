@@ -868,6 +868,15 @@ let isPreviewMode     = false;  // true when management user is previewing an in
 let weekOffset        = 0;      // 0 = current week, -1 = last, +1 = next
 let selectedDayOffset = 0;      // 0 = Mon … 6 = Sun within current week view
 let jobCache          = {};     // weekKey → [jobs]
+
+function findCachedJob(jobId) {
+    for (const jobs of Object.values(jobCache)) {
+        if (!Array.isArray(jobs)) continue;
+        const found = jobs.find(j => j.id === jobId);
+        if (found) return found;
+    }
+    return null;
+}
 let jobRecordCache    = {};     // jobId → record doc data
 let weekJobsData      = null;   // { jobs, jobRecords, monday } — loaded per week
 
@@ -2061,7 +2070,7 @@ async function updateJobStatus(jobId, newStatus, statusNote, amountCollected = n
         } else {
             await recRef.set({
                 jobId:       jobId,
-                jobNumber:   null,
+                jobNumber:   findCachedJob(jobId)?.jobNumber || null,
                 installerId: currentInstaller.id,
                 status:      newStatus,
                 statusNote:  statusNote || '',
@@ -2537,7 +2546,7 @@ async function submitNewOpening() {
         } else {
             const now = firebase.firestore.FieldValue.serverTimestamp();
             await recRef.set({
-                jobId, jobNumber: null, installerId: currentInstaller.id,
+                jobId, jobNumber: findCachedJob(jobId)?.jobNumber || null, installerId: currentInstaller.id,
                 status: 'in_progress', statusHistory: [],
                 startedAt: now, completedAt: null,
                 openings: [newOpening], signatures: {},
@@ -2944,7 +2953,7 @@ async function spBeginJob() {
             await recRef.update({ startPhotos, preExistingConditions: spPecItems, updatedAt: now });
         } else {
             await recRef.set({
-                jobId, jobNumber: null, installerId,
+                jobId, jobNumber: findCachedJob(jobId)?.jobNumber || null, installerId,
                 status: 'not_started', statusHistory: [],
                 startedAt: null, completedAt: null,
                 openings: [], signatures: {},
@@ -3822,7 +3831,8 @@ function cfRatingContinue() {
 function cfRenderAgreement(el) {
     const job    = cfJobData || {};
     const fin    = job.financials || {};
-    const amount = fin.balanceDue ? '$' + fin.balanceDue : 'the remaining balance';
+    const bd = parseFloat(fin.balanceDue);
+    const amount = (!isNaN(bd) && bd > 0) ? '$' + bd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'the remaining balance';
     const raw    = (cfAgreementText || DEFAULT_COC_AGREEMENT).replace('{AMOUNT}', amount);
     const html   = esc(raw).replace(/\n/g, '<br>');
     el.innerHTML = `
