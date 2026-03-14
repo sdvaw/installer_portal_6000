@@ -1135,11 +1135,8 @@ async function loadPortalAsInstaller(installerId) {
         document.getElementById('bottom-nav').style.display = '';
         document.getElementById('page-loading').classList.remove('active');
 
-        if (!currentInstaller.signatureUrl) {
-            showSignatureOnboarding();
-        } else {
-            showPage('schedule');
-        }
+        // In preview mode, skip signature onboarding — admin can't save to installer's doc
+        showPage('schedule');
     } catch(err) {
         showNoAccess('Could not load installer: ' + err.message);
     }
@@ -3482,6 +3479,7 @@ function showSignatureOnboarding() {
 }
 
 async function saveInstallerSignature() {
+    if (isPreviewMode) return;
     if (!canvasHasInk('ob-sig-canvas')) {
         alert('Please draw your signature before saving.');
         return;
