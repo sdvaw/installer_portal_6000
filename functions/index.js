@@ -25,6 +25,30 @@ function requireAdmin(request) {
 }
 
 // ============================================================
+// SAVE SETTINGS — admin-only callable; uses Admin SDK so it
+// bypasses client-side Firestore rules entirely.
+// ============================================================
+exports.saveSettings = onCall(async (request) => {
+    requireAdmin(request);
+
+    const { apiKey, calendarId, syncInterval, archiveThresholdDays } = request.data || {};
+
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '')
+        throw new Error('apiKey is required');
+    if (!calendarId || typeof calendarId !== 'string' || calendarId.trim() === '')
+        throw new Error('calendarId is required');
+
+    await db.collection('settings').doc('teamup').set({
+        apiKey:               apiKey.trim(),
+        calendarId:           calendarId.trim(),
+        syncInterval:         syncInterval         ?? 14400,
+        archiveThresholdDays: archiveThresholdDays ?? 90
+    }, { merge: true });
+
+    return { ok: true };
+});
+
+// ============================================================
 // INSPECTION WEBHOOK — receives failed inspection notices from
 // Power Automate and stores them in failed_inspections.
 // Secured via X-Webhook-Secret header.

@@ -1288,16 +1288,15 @@ async function saveSettings(e) {
     }
 
     try {
-        await db.collection('settings').doc('teamup').set({
-            apiKey, calendarId, syncInterval, archiveThresholdDays
-        }, { merge: true });
+        const fn = firebase.functions().httpsCallable('saveSettings');
+        await fn({ apiKey, calendarId, syncInterval, archiveThresholdDays });
         msgEl.className = 'alert alert-ok';
         msgEl.textContent = 'Settings saved.';
         msgEl.classList.remove('hidden');
         setTimeout(() => msgEl.classList.add('hidden'), 3000);
     } catch(err) {
         msgEl.className = 'alert alert-error';
-        msgEl.textContent = 'Save failed: ' + err.message;
+        msgEl.textContent = 'Save failed: ' + (err.message || String(err));
         msgEl.classList.remove('hidden');
     }
 }
