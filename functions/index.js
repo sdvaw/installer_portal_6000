@@ -16,6 +16,14 @@ const db = admin.firestore();
 
 const webhookSecret = defineSecret('WEBHOOK_SECRET');
 
+// Admin UID — must match firestore.rules and installer.html
+const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
+
+function requireAdmin(request) {
+    if (!request.auth) throw new Error('Unauthenticated');
+    if (request.auth.uid !== ADMIN_UID) throw new Error('Forbidden: admin only');
+}
+
 // ============================================================
 // INSPECTION WEBHOOK — receives failed inspection notices from
 // Power Automate and stores them in failed_inspections.
@@ -72,6 +80,7 @@ exports.inspectionWebhook = onRequest({ secrets: [webhookSecret] }, async (req, 
 // ── Option A migration point is clearly marked below ──
 // ============================================================
 exports.archiveOldJobs = onCall({ timeoutSeconds: 300 }, async (request) => {
+    requireAdmin(request);
 
     // Load threshold from settings (default 90 days)
     const settingsSnap   = await db.collection('settings').doc('teamup').get();
@@ -189,7 +198,14 @@ function extractStoragePaths(obj) {
 // Runs server-side so it bypasses Firestore security rules.
 // ============================================================
 exports.manualTeamUpSync = onCall(async (request) => {
+    // Must be admin or an active management user
     if (!request.auth) throw new Error('Unauthenticated');
+    if (request.auth.uid !== ADMIN_UID) {
+        const mgmtSnap = await db.collection('management_users').doc(request.auth.uid).get();
+        if (!mgmtSnap.exists || mgmtSnap.data().status !== 'active') {
+            throw new Error('Forbidden: admin or management access required');
+        }
+    }
 
     const settingsSnap = await db.collection('settings').doc('teamup').get();
     if (!settingsSnap.exists) throw new Error('TeamUp not configured.');
