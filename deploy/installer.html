@@ -701,18 +701,18 @@
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
     </div>
     <div style="padding-top:.75rem">
-      <div class="form-group">
-        <label class="form-label">Label</label>
-        <input class="form-input" type="text" id="opening-label"
-               placeholder="e.g. Front Door, Bedroom Window">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <div class="seg-group" id="opening-type-group">
-          <button class="seg-btn active" data-val="window"  onclick="selectSeg(this,'opening-type-group')">Window</button>
-          <button class="seg-btn"        data-val="door"    onclick="selectSeg(this,'opening-type-group')">Door</button>
-          <button class="seg-btn"        data-val="sgd"     onclick="selectSeg(this,'opening-type-group')">Slider</button>
-          <button class="seg-btn"        data-val="other"   onclick="selectSeg(this,'opening-type-group')">Other</button>
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem">
+        <div class="form-group" style="flex:1;margin-bottom:0">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="opening-type" onchange="openingTypeChanged()">
+            <option value="window">Window</option>
+            <option value="door">Door</option>
+            <option value="sgd">SGD / Slider</option>
+          </select>
+        </div>
+        <div class="form-group" style="width:90px;margin-bottom:0">
+          <label class="form-label">Number</label>
+          <select class="form-input" id="opening-number"></select>
         </div>
       </div>
       <button class="btn btn-primary w-full mt-2" onclick="submitNewOpening()">Add Opening</button>
@@ -726,7 +726,21 @@
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
     </div>
     <div style="padding-top:.75rem">
-      <p class="text-sm text-muted mb-3" id="defect-opening-label"></p>
+      <div style="display:flex;gap:.75rem;margin-bottom:1rem">
+        <div class="form-group" style="flex:1;margin-bottom:0">
+          <label class="form-label">Opening Type</label>
+          <select class="form-input" id="defect-opening-type" onchange="defectOpeningTypeChanged()">
+            <option value="window">Window</option>
+            <option value="door">Door</option>
+            <option value="sgd">SGD / Slider</option>
+            <option value="property">Owner Property</option>
+          </select>
+        </div>
+        <div class="form-group" style="width:90px;margin-bottom:0" id="defect-number-wrap">
+          <label class="form-label">Number</label>
+          <select class="form-input" id="defect-opening-number"></select>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">Type of Defect</label>
         <div class="seg-group" id="defect-type-group">
@@ -1065,6 +1079,7 @@ async function loadPortal(user) {
         document.getElementById('top-nav').style.display    = '';
         document.getElementById('bottom-nav').style.display = '';
 
+        weekOffset = 0;
         if (!currentInstaller.signatureUrl) {
             showSignatureOnboarding();
         } else {
@@ -1178,6 +1193,7 @@ async function loadPortalAsInstaller(installerId) {
         }
 
         // In preview mode, skip signature onboarding — admin can't save to installer's doc
+        weekOffset = 0;
         showPage('schedule');
     } catch(err) {
         showNoAccess('Could not load installer: ' + err.message);
@@ -2557,21 +2573,36 @@ function buildOpeningCardHtml(jobId, op) {
         </div>`;
 }
 
-function showAddOpeningModal(jobId) {
+function populateOpeningNumbers(type, openings, selectId) {
+    const used = (openings || [])
+        .filter(o => o.type === type)
+        .map(o => parseInt(o.number) || 0);
+    const next = used.length ? Math.max(...used) + 1 : 1;
+    const sel  = document.getElementById(selectId);
+    if (!sel) return;
+    sel.innerHTML = Array.from({length: 20}, (_, i) => i + 1)
+        .map(n => `<option value="${n}"${n === next ? ' selected' : ''}>${n}</option>`)
+        .join('');
+}
+
+function openingTypeChanged() {
+    const type = document.getElementById('opening-type').value;
+    populateOpeningNumbers(type, window._addOpeningExisting || [], 'opening-number');
+}
+
+function showAddOpeningModal(jobId, existingOpenings) {
     currentJobIdForCapture = jobId;
-    document.getElementById('opening-label').value = '';
-    document.querySelectorAll('#opening-type-group .seg-btn')
-        .forEach((b, i) => b.classList.toggle('active', i === 0));
+    window._addOpeningExisting = existingOpenings || [];
+    document.getElementById('opening-type').value = 'window';
+    populateOpeningNumbers('window', existingOpenings || [], 'opening-number');
     showModal('modal-add-opening');
-    setTimeout(() => document.getElementById('opening-label').focus(), 150);
 }
 
 async function submitNewOpening() {
-    const label = (document.getElementById('opening-label').value || '').trim();
-    if (!label) { alert('Please enter a label for this opening.'); return; }
-
-    const typeBtn = document.querySelector('#opening-type-group .seg-btn.active');
-    const type    = typeBtn ? typeBtn.dataset.val : 'window';
+    const type   = document.getElementById('opening-type').value || 'window';
+    const number = parseInt(document.getElementById('opening-number').value) || 1;
+    const typeLabel = { window: 'Window', door: 'Door', sgd: 'SGD' }[type] || 'Window';
+    const label  = `${typeLabel} ${number}`;
     const jobId   = currentJobIdForCapture;
     const recRef  = db.collection('job_records').doc(`${jobId}_${currentInstaller.id}`);
 
@@ -2579,6 +2610,7 @@ async function submitNewOpening() {
         id:      'op_' + Date.now(),
         label,
         type,
+        number,
         photos:  [],
         defects: []
     };
@@ -2748,20 +2780,52 @@ async function handlePhotoFile(input) {
 // DEFECT REPORTING
 // ============================================================
 
+function defectOpeningTypeChanged() {
+    const type = document.getElementById('defect-opening-type').value;
+    const wrap = document.getElementById('defect-number-wrap');
+    wrap.style.display = (type === 'property') ? 'none' : '';
+}
+
+function _prefillDefectOpening(op) {
+    const typeSel = document.getElementById('defect-opening-type');
+    const numWrap = document.getElementById('defect-number-wrap');
+    if (op && op.type) {
+        typeSel.value = op.type;
+    } else {
+        typeSel.value = 'window';
+    }
+    const isProperty = typeSel.value === 'property';
+    numWrap.style.display = isProperty ? 'none' : '';
+    if (!isProperty) {
+        const num = (op && op.number) ? parseInt(op.number) : 1;
+        const numSel = document.getElementById('defect-opening-number');
+        numSel.innerHTML = Array.from({length: 20}, (_, i) => i + 1)
+            .map(n => `<option value="${n}"${n === num ? ' selected' : ''}>${n}</option>`)
+            .join('');
+    }
+}
+
 function showDefectModal(jobId, openingId, openingLabel) {
-    currentJobIdForCapture  = jobId;
-    currentDefectOpeningId  = openingId;
-    document.getElementById('defect-opening-label').textContent = 'Opening: ' + (openingLabel || '');
+    currentJobIdForCapture = jobId;
+    currentDefectOpeningId = openingId;
     document.getElementById('defect-description').value = '';
+    // Parse label like "Window 1" or "Door 3" to pre-fill dropdowns
+    const parts = (openingLabel || '').match(/^(window|door|sgd)\s+(\d+)$/i);
+    const opType = parts ? parts[1].toLowerCase() : 'window';
+    const opNum  = parts ? parseInt(parts[2]) : 1;
+    _prefillDefectOpening({ type: opType, number: opNum });
     document.querySelectorAll('#defect-type-group .seg-btn')
         .forEach((b, i) => b.classList.toggle('active', i === 0));
     showModal('modal-defect');
 }
 
 async function submitDefect() {
-    const typeBtn = document.querySelector('#defect-type-group .seg-btn.active');
-    const type    = typeBtn ? typeBtn.dataset.val : 'other';
-    const desc    = (document.getElementById('defect-description').value || '').trim();
+    const typeBtn     = document.querySelector('#defect-type-group .seg-btn.active');
+    const type        = typeBtn ? typeBtn.dataset.val : 'other';
+    const desc        = (document.getElementById('defect-description').value || '').trim();
+    const openingType = document.getElementById('defect-opening-type').value || 'window';
+    const openingNum  = document.getElementById('defect-opening-number')?.value;
+    const openingNumber = openingType === 'property' ? null : (parseInt(openingNum) || 1);
     const jobId     = currentJobIdForCapture;
     const openingId = currentDefectOpeningId;
 
@@ -2780,11 +2844,9 @@ async function submitDefect() {
 
         openings[opIdx].defects = openings[opIdx].defects || [];
         openings[opIdx].defects.push({
-            id:          'def_' + Date.now(),
-            type,
-            description: desc,
-            photos:      [],
-            reportedAt:  new Date().toISOString()
+            id: 'def_' + Date.now(),
+            type, openingType, openingNumber,
+            description: desc, photos: [], reportedAt: new Date().toISOString()
         });
 
         await recRef.update({ openings, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
@@ -3122,11 +3184,10 @@ function ppRenderList() {
 
 function ppAddOpening() {
     currentJobIdForCapture = ppJobId;
-    document.getElementById('opening-label').value = '';
-    document.querySelectorAll('#opening-type-group .seg-btn')
-        .forEach((b, i) => b.classList.toggle('active', i === 0));
+    window._addOpeningExisting = ppOpenings || [];
+    document.getElementById('opening-type').value = 'window';
+    populateOpeningNumbers('window', ppOpenings || [], 'opening-number');
     showModal('modal-add-opening');
-    setTimeout(() => document.getElementById('opening-label').focus(), 150);
 }
 
 function ppOpenCapture(openingId) {
@@ -3247,8 +3308,12 @@ async function ppHandlePhoto(url) {
 
 function ppShowDefectModal(openingId, openingLabel) {
     currentDefectOpeningId = openingId;
-    document.getElementById('defect-opening-label').textContent = openingLabel || '';
     document.getElementById('defect-description').value = '';
+    const op = ppOpenings ? ppOpenings.find(o => o.id === openingId) : null;
+    _prefillDefectOpening(op || (() => {
+        const parts = (openingLabel || '').match(/^(window|door|sgd)\s+(\d+)$/i);
+        return parts ? { type: parts[1].toLowerCase(), number: parseInt(parts[2]) } : { type: 'window', number: 1 };
+    })());
 
     const group = document.getElementById('defect-type-group');
     const renderTypes = types => {
@@ -3269,11 +3334,14 @@ function ppShowDefectModal(openingId, openingLabel) {
 }
 
 async function ppSubmitDefect() {
-    const typeBtn  = document.querySelector('#defect-type-group .seg-btn.active');
-    const typeId   = typeBtn?.dataset.id   || '';
-    const typeName = typeBtn?.dataset.name || 'Other';
-    const desc     = (document.getElementById('defect-description').value || '').trim();
-    const openingId = currentDefectOpeningId;
+    const typeBtn     = document.querySelector('#defect-type-group .seg-btn.active');
+    const typeId      = typeBtn?.dataset.id   || '';
+    const typeName    = typeBtn?.dataset.name || 'Other';
+    const desc        = (document.getElementById('defect-description').value || '').trim();
+    const openingType = document.getElementById('defect-opening-type').value || 'window';
+    const openingNum  = document.getElementById('defect-opening-number')?.value;
+    const openingNumber = openingType === 'property' ? null : (parseInt(openingNum) || 1);
+    const openingId   = currentDefectOpeningId;
 
     try {
         const recRef = db.collection('job_records').doc(`${ppJobId}_${currentInstaller.id}`);
@@ -3287,6 +3355,7 @@ async function ppSubmitDefect() {
         openings[opIdx].defects = openings[opIdx].defects || [];
         openings[opIdx].defects.push({
             id: 'def_' + Date.now(), typeId, typeName,
+            openingType, openingNumber,
             description: desc, photos: [], reportedAt: new Date().toISOString()
         });
 
