@@ -207,8 +207,9 @@ async function runSync() {
     try {
         const fn = firebase.functions().httpsCallable('manualTeamUpSync');
         const { data: result } = await fn();
-        let syncMsg = `Sync complete — ${result.newInstallers} new installer(s), ${result.jobCount} job(s) updated.`;
-        if (result.fixedInstallers > 0) syncMsg += ` Repaired ${result.fixedInstallers} installer ID mismatch(es).`;
+        let syncMsg = `Sync complete — ${result.newInstallers} new installer(s) discovered, ${result.jobCount} job(s) updated.`;
+        if (result.fixedInstallers   > 0) syncMsg += ` Repaired ${result.fixedInstallers} ID mismatch(es).`;
+        if (result.installerSubsFound != null) syncMsg += ` (${result.installerSubsFound} installer calendar(s) found on TeamUp)`;
         flash('ok', syncMsg);
         // Refresh current section (clear loaded flag so section re-renders)
         const refreshEl = document.getElementById('section-' + currentSection);

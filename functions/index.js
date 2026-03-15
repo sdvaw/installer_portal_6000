@@ -315,17 +315,19 @@ const TeamUp = {
     },
 
     classifySubcalendar(name) {
-        const n = name.toLowerCase();
-        if (n.startsWith('installer -') || n.startsWith('installer-')) return 'installer';
-        if (n.startsWith('ft -'))         return 'fulltime';
-        if (n.startsWith('im -'))         return 'manager';
-        if (n.startsWith('om -'))         return 'operations';
-        if (n.includes('inspection'))     return 'inspection';
+        const n = name.toLowerCase().trim();
+        // Installer: starts with "installer" (with any separator) or "ft -" (full-time field worker)
+        if (/^installer[\s\-:]+/.test(n)) return 'installer';
+        if (n.startsWith('ft -') || n.startsWith('ft-')) return 'installer'; // full-time treated same
+        if (n.startsWith('im -') || n.startsWith('im-')) return 'manager';
+        if (n.startsWith('om -') || n.startsWith('om-')) return 'operations';
+        if (n.includes('inspection'))                    return 'inspection';
         return 'other';
     },
 
     parseInstallerName(teamupName) {
-        let name = teamupName.replace(/^installer\s*-\s*/i, '').trim();
+        // Strip any common prefix: "Installer - ", "Installer: ", "FT - ", etc.
+        let name = teamupName.replace(/^(installer|ft)\s*[\-:]\s*/i, '').trim();
         const m  = name.match(/^(.+?)\s*\((.+)\)\s*$/);
         if (m) return { displayName: m[1].trim(), company: m[2].trim() };
         return { displayName: name, company: '' };
@@ -434,7 +436,12 @@ const TeamUp = {
         });
 
         log('Done.');
-        return { newInstallers: newCount, fixedInstallers: fixedCount, jobCount };
+        return {
+            newInstallers:    newCount,
+            fixedInstallers:  fixedCount,
+            jobCount,
+            installerSubsFound: installerSubCount
+        };
     },
 
     async _syncInstallers(subcalendars) {
