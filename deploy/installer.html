@@ -613,7 +613,7 @@
   <div class="flex items-center gap-2">
     <span class="text-sm" style="font-weight:600;color:var(--text)" id="nav-installer-name"></span>
     <button class="btn btn-ghost btn-sm" id="tut-help-btn" onclick="startTutorial()" title="Replay tutorial" style="font-size:1.1rem;padding:.3rem .55rem;line-height:1">?</button>
-    <button class="btn btn-ghost btn-sm" onclick="handleLogout()">Logout</button>
+    <button class="btn btn-ghost btn-sm" id="nav-logout-btn" onclick="handleLogout()">Logout</button>
   </div>
 </nav>
 
@@ -921,9 +921,12 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
     auth.onAuthStateChanged(async user => {
         if (!user) { showNoAccess('Access your portal using the link sent to your email.'); return; }
         try {
-            // Management/admin users get installer preview mode instead of the installer portal
-            const mgmtSnap = await db.collection('management_users').doc(user.uid).get();
-            if (mgmtSnap.exists && mgmtSnap.data().status === 'active') {
+            // Admin or active management users get installer preview mode
+            const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
+            const isAdmin   = user.uid === ADMIN_UID;
+            const mgmtSnap  = isAdmin ? null : await db.collection('management_users').doc(user.uid).get();
+            const isMgmt    = isAdmin || (mgmtSnap && mgmtSnap.exists && mgmtSnap.data().status === 'active');
+            if (isMgmt) {
                 const previewId = new URLSearchParams(window.location.search).get('preview');
                 if (previewId) loadPortalAsInstaller(previewId);
                 else           showAdminPreviewPicker();
@@ -1044,6 +1047,7 @@ async function loadPortal(user) {
 }
 
 function handleLogout() {
+    if (isPreviewMode) { window.close(); return; }
     auth.signOut().then(() => {
         currentInstaller = null;
         jobCache = {};
@@ -1130,10 +1134,17 @@ async function loadPortalAsInstaller(installerId) {
         await loadStatusOptions();
 
 
-        document.getElementById('nav-installer-name').textContent = currentInstaller.displayName || '';
+        document.getElementById('nav-installer-name').textContent = '👁 ' + (currentInstaller.displayName || 'Preview');
         document.getElementById('top-nav').style.display    = '';
         document.getElementById('bottom-nav').style.display = '';
         document.getElementById('page-loading').classList.remove('active');
+
+        // Swap logout button to a safe "Exit Preview" that just closes the tab
+        const logoutBtn = document.getElementById('nav-logout-btn');
+        if (logoutBtn) {
+            logoutBtn.textContent = '← Exit Preview';
+            logoutBtn.onclick = () => window.close();
+        }
 
         // In preview mode, skip signature onboarding — admin can't save to installer's doc
         showPage('schedule');
@@ -4417,17 +4428,21 @@ async function cfSaveAll() {
 function maybeStartTutorial() {
     if (isPreviewMode) return;
     if (currentInstaller && !currentInstaller.tutorialComplete) {
-        setTimeout(startTutorial, 800);
+        setTimeout(() => startTutorial(true), 800);
     }
 }
 
-function startTutorial() {
+function startTutorial(forced = false) {
     if (!window.driver || !window.driver.js) return;
     const { driver } = window.driver.js;
     const driverObj = driver({
         showProgress: true,
         progressText: '{{current}} of {{total}}',
-        allowClose:   true,
+        allowClose:   !forced,
+        showButtons:  forced ? ['next', 'previous'] : ['next', 'previous', 'close'],
+        nextBtnText:  'Next →',
+        prevBtnText:  '← Back',
+        doneBtnText:  'Got it ✓',
         onDestroyed:  () => markTutorialComplete(),
         steps: [
             {

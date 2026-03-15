@@ -664,6 +664,22 @@ async function resendLink(installerId) {
     }
 }
 
+async function resetInstallerTutorial(installerId) {
+    if (!confirm('Reset tutorial and signature for this installer? They will see the signature screen and full walkthrough on next login.')) return;
+    try {
+        await db.collection('installers').doc(installerId).update({
+            tutorialComplete: false,
+            signatureUrl: null
+        });
+        provisionedData = provisionedData.map(i =>
+            i.id === installerId ? { ...i, tutorialComplete: false, signatureUrl: null } : i
+        );
+        flash('ok', 'Tutorial reset. Installer will see the walkthrough on next login.');
+    } catch(err) {
+        flash('error', 'Reset failed: ' + err.message);
+    }
+}
+
 async function resetInstallerLogin(installerId) {
     if (!confirm('Clear this installer\'s stored login binding? They will need to use a fresh sign-in link next time.')) return;
     try {
@@ -810,9 +826,10 @@ function openEditModal(installerId) {
 
                     <!-- Details Tab -->
                     <div id="modal-tab-details" class="tab-panel active">
-                        <div class="flex gap-2 mb-4">
+                        <div class="flex gap-2 mb-4" style="flex-wrap:wrap">
                             <a class="btn btn-secondary btn-sm" href="https://installer-portal-6000.web.app/installer.html" target="_blank">↗ Open Installer Portal</a>
                             <button class="btn btn-ghost btn-sm" onclick="copyPortalLink()">⎘ Copy Link</button>
+                            <button class="btn btn-ghost btn-sm" onclick="resetInstallerTutorial('${installer.id}')">↺ Reset Tutorial</button>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Display Name</label>
@@ -970,16 +987,14 @@ async function renderSettings() {
                         <input class="form-input" id="set-calid" placeholder="e.g. ksapnewx3qkt3x2qpw">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Sync Interval (minutes)</label>
+                        <label class="form-label">Sync Interval</label>
                         <select class="form-input" id="set-interval">
                             <option value="off">Off</option>
-                            <option value="5">5 minutes</option>
-                            <option value="15">15 minutes</option>
-                            <option value="30">30 minutes</option>
-                            <option value="60">1 hour</option>
                             <option value="240">4 hours</option>
                             <option value="360">6 hours</option>
                             <option value="480">8 hours</option>
+                            <option value="720">12 hours</option>
+                            <option value="1440">24 hours</option>
                         </select>
                     </div>
                     <div class="form-group">
