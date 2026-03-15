@@ -3267,12 +3267,8 @@ function ppRenderCapture() {
             </div>`).join('')
         : '<p class="text-muted text-sm">No defects reported on this opening.</p>';
 
-    // Compute "Next Opening" label for the button
     const curType = op.type || 'window';
     const curNum  = parseInt(op.number) || 1;
-    const nextNum = curNum + 1;
-    const nextLabel = { window: 'Window', door: 'Door', sgd: 'SGD' }[curType] || 'Window';
-    const nextExists = ppOpenings.find(o => o.type === curType && (parseInt(o.number)||0) === nextNum);
 
     document.getElementById('pp-content').innerHTML = `
         <div class="pp-slot-grid">${slotsHtml}</div>
@@ -3281,8 +3277,8 @@ function ppRenderCapture() {
             <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Defects</div>
             ${defectsHtml}
         </div>
-        <button class="btn btn-primary w-full mt-4" onclick="ppNextOpening('${curType}',${nextNum})">
-            → Next Opening (${nextLabel} ${nextNum})${nextExists ? '' : ' +'}
+        <button class="btn btn-primary w-full mt-4" onclick="ppNextOpening('${curType}',${curNum})">
+            → Next Opening
         </button>`;
 }
 
@@ -3291,29 +3287,15 @@ function ppGoBack() {
     ppRenderList();
 }
 
-function ppNextOpening(type, number) {
-    // If this opening already exists, jump straight into it
-    const existing = ppOpenings.find(o => o.type === type && (parseInt(o.number)||0) === number);
-    if (existing) {
-        ppCurrentOpening = existing;
-        ppView = 'capture';
-        ppRenderCapture();
-        return;
-    }
-    // Otherwise open Add Opening modal pre-filled with this type+number, then auto-capture
+function ppNextOpening(curType, curNum) {
+    // Open Add Opening modal — suggest same type, next number, but fully editable
     window._addOpeningExisting = ppOpenings;
     window._ppAutoCapture = true;
-    const typeSel = document.getElementById('opening-type');
-    const numSel  = document.getElementById('opening-number');
-    if (typeSel) typeSel.value = type;
-    populateOpeningNumbers(type, ppOpenings, 'opening-number');
-    // Force the number select to the suggested next value
-    if (numSel) {
-        for (const opt of numSel.options) {
-            opt.selected = parseInt(opt.value) === number;
-        }
-    }
     currentJobIdForCapture = ppJobId;
+    const typeSel = document.getElementById('opening-type');
+    if (typeSel) typeSel.value = curType;
+    // Suggest next number for the current type (user can change type/number freely)
+    populateOpeningNumbers(curType, ppOpenings, 'opening-number');
     showModal('modal-add-opening');
 }
 
