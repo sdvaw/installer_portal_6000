@@ -514,18 +514,6 @@ async function renderInstallers() {
             <button class="btn btn-primary" onclick="runSync()">⟳ Sync TeamUp</button>
         </div>
 
-        <!-- Pending Provisioning -->
-        <div class="card mb-4" id="prov-section-pending">
-            <div class="rollup-header" onclick="toggleRollup('pending')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
-                <span id="rollup-chevron-pending" style="transition:transform .2s;display:inline-block">▶</span>
-                <h3 style="margin:0">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
-            </div>
-            <div id="rollup-body-pending" style="display:none">
-                <p class="text-muted text-sm mt-2 mb-4">Newly discovered TeamUp calendars awaiting portal access setup.</p>
-                <div id="pending-table-wrap"></div>
-            </div>
-        </div>
-
         <!-- Search/filter bar (shared across all provisioned sections) -->
         <div class="table-controls mb-4">
             <input class="form-input" type="search" placeholder="Search name, company, email…" oninput="filterProvisioned(this.value)" style="flex:2">
@@ -547,7 +535,19 @@ async function renderInstallers() {
                 <div id="prov-wrap-${t.key}" class="mt-4"></div>
                 <div id="prov-pg-${t.key}" class="pagination"></div>
             </div>
-        </div>`).join('')}`;
+        </div>`).join('')}
+
+        <!-- Pending Provisioning — low priority, at bottom -->
+        <div class="card mb-4" id="prov-section-pending">
+            <div class="rollup-header" onclick="toggleRollup('pending')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+                <span id="rollup-chevron-pending" style="transition:transform .2s;display:inline-block">▶</span>
+                <h3 style="margin:0">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
+            </div>
+            <div id="rollup-body-pending" style="display:none">
+                <p class="text-muted text-sm mt-2 mb-4">Newly discovered TeamUp calendars awaiting portal access setup.</p>
+                <div id="pending-table-wrap"></div>
+            </div>
+        </div>`;
 
     await loadInstallerData();
 }
