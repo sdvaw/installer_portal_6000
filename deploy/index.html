@@ -909,7 +909,7 @@ function openEditModal(installerId) {
                     <!-- Details Tab -->
                     <div id="modal-tab-details" class="tab-panel active">
                         <div class="flex gap-2 mb-4" style="flex-wrap:wrap">
-                            <a class="btn btn-secondary btn-sm" href="https://installer-portal-6000.web.app/installer.html" target="_blank">↗ Open Installer Portal</a>
+                            <a class="btn btn-secondary btn-sm" href="https://installer-portal-6000.web.app/installer.html?preview=${installer.id}" target="_blank">↗ Open Installer Portal</a>
                             <button class="btn btn-ghost btn-sm" onclick="copyPortalLink()">⎘ Copy Link</button>
                             <button class="btn btn-ghost btn-sm" onclick="resetInstallerTutorial('${installer.id}')">↺ Reset Tutorial</button>
                         </div>
