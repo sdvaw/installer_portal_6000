@@ -428,7 +428,8 @@ const TeamUp = {
         log('Syncing jobs…');
         const jobCount = await this._syncJobs(events, settings);
 
-        const installerSubCount = subcalendars.filter(s => this.classifySubcalendar(s.name) === 'installer').length;
+        const syncableTypes     = ['installer', 'fulltime', 'inspection'];
+        const installerSubCount = subcalendars.filter(s => syncableTypes.includes(this.classifySubcalendar(s.name))).length;
         await db.collection('settings').doc('teamup').update({
             lastSyncedAt:          admin.firestore.FieldValue.serverTimestamp(),
             cachedJobCount:        jobCount,
@@ -581,6 +582,12 @@ const TeamUp = {
             }
         }
 
-        return jobs.length;
+        // Re-query to get the accurate post-sync count (raw jobs.length includes
+        // events with no start_dt which won't appear in the range query on the client)
+        const finalSnap = await db.collection('jobs')
+            .where('startDt', '>=', windowStart)
+            .where('startDt', '<=', windowEnd)
+            .get();
+        return finalSnap.size;
     }
 };
