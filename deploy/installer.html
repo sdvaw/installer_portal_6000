@@ -1793,14 +1793,6 @@ function renderJobDetail(job, rec) {
             ${job.windowCount != null ? `<div class="detail-row"><span class="lbl">Windows</span><span>${job.windowCount}</span></div>` : ''}
             ${job.doorCount   != null ? `<div class="detail-row"><span class="lbl">Doors</span><span>${job.doorCount}</span></div>` : ''}
             ${job.sgdCount    != null ? `<div class="detail-row"><span class="lbl">SGDs</span><span>${job.sgdCount}</span></div>` : ''}
-            ${(() => {
-                const inv = rec?.inventoryReceived || {};
-                const items = [];
-                if (job.windowCount > 0) items.push(`Windows${inv.windows ? ' ✅' : ' ⬜'}`);
-                if (job.doorCount   > 0) items.push(`Doors${inv.doors     ? ' ✅' : ' ⬜'}`);
-                if (job.sgdCount    > 0) items.push(`SGDs${inv.sgds       ? ' ✅' : ' ⬜'}`);
-                return items.length ? `<div class="detail-row"><span class="lbl">Inventory</span><span style="font-size:.82rem">${items.join(' · ')}</span></div>` : '';
-            })()}
             ${job.financials?.balanceDue ? `<div class="detail-row"><span class="lbl">Balance Due</span><span>$${esc(job.financials.balanceDue)}</span></div>` : ''}
             ${job.financials?.paymentMethod ? `<div class="detail-row"><span class="lbl">Payment</span><span>${esc(job.financials.paymentMethod)}</span></div>` : ''}
             ${job.financials?.installerPay && parseFloat(job.financials.installerPay) > 0
