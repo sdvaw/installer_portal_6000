@@ -575,16 +575,8 @@ function renderPendingTable() {
     countEl.textContent = pendingData.length;
     if (pendingData.length === 0) {
         wrap.innerHTML = '<p class="text-muted text-sm p-2">No pending entries. Run a TeamUp sync to discover new ones.</p>';
-        // Keep pending collapsed when empty
-        const body = document.getElementById('rollup-body-pending');
-        const chev = document.getElementById('rollup-chevron-pending');
-        if (body) { body.style.display = 'none'; if(chev) chev.style.transform = ''; }
         return;
     }
-    // Auto-expand pending when there are items
-    const pendBody = document.getElementById('rollup-body-pending');
-    const pendChev = document.getElementById('rollup-chevron-pending');
-    if (pendBody) { pendBody.style.display = ''; if(pendChev) pendChev.style.transform = 'rotate(90deg)'; }
 
     // Group pending by type
     const groups = INST_TYPES.map(t => ({
