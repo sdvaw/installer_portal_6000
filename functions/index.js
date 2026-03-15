@@ -453,7 +453,9 @@ const TeamUp = {
         const jobCount = await this._syncJobs(events, settings);
 
         const syncableTypes     = ['installer', 'fulltime', 'inspection'];
-        const installerSubCount = subcalendars.filter(s => syncableTypes.includes(this.classifySubcalendar(s.name))).length;
+        const installerSubCount = subcalendars.filter(s =>
+            syncableTypes.includes(this.classifySubcalendar(s.name)) && s.active !== false
+        ).length;
         await db.collection('settings').doc('teamup').update({
             lastSyncedAt:          admin.firestore.FieldValue.serverTimestamp(),
             cachedJobCount:        jobCount,
@@ -481,8 +483,14 @@ const TeamUp = {
         const existingDocs = existing.docs.map(d => ({ _ref: d.ref, _id: d.id, ...d.data() }));
 
         // Sync installer, fulltime, and inspection subcalendars (exclude other/manager/operations)
+        // Also exclude inactive TeamUp calendars — they don't need portal access
         const syncableTypes = ['installer', 'fulltime', 'inspection'];
-        const targetSubs = subcalendars.filter(s => syncableTypes.includes(this.classifySubcalendar(s.name)));
+        const targetSubs    = subcalendars.filter(s =>
+            syncableTypes.includes(this.classifySubcalendar(s.name)) && s.active !== false
+        );
+        const inactiveSubs  = subcalendars.filter(s =>
+            syncableTypes.includes(this.classifySubcalendar(s.name)) && s.active === false
+        );
 
         const fixBatch  = db.batch();
         let fixedCount  = 0;
@@ -504,6 +512,27 @@ const TeamUp = {
                 if (Object.keys(updates).length > 0) { fixBatch.update(match._ref, updates); fixedCount++; }
             }
         }
+        // Mark existing docs whose TeamUp calendar is now inactive
+        for (const sub of inactiveSubs) {
+            const sidStr = String(sub.id);
+            const match  = existingDocs.find(d => String(d.teamupId) === sidStr)
+                        || existingDocs.find(d => d._id === 'teamup_' + sidStr);
+            if (match && match.teamupActive !== false) {
+                fixBatch.update(match._ref, { teamupActive: false });
+                fixedCount++;
+            }
+        }
+        // Ensure active subs are marked active (in case they were re-activated)
+        for (const sub of targetSubs) {
+            const sidStr = String(sub.id);
+            const match  = existingDocs.find(d => String(d.teamupId) === sidStr)
+                        || existingDocs.find(d => d._id === 'teamup_' + sidStr);
+            if (match && match.teamupActive === false) {
+                fixBatch.update(match._ref, { teamupActive: true });
+                fixedCount++;
+            }
+        }
+
         if (fixedCount > 0) await fixBatch.commit();
 
         const newOnes    = targetSubs.filter(s => !knownIds.has(String(s.id)));

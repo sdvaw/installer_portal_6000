@@ -483,12 +483,14 @@ const INST_TYPES = [
 ];
 
 function getInstallerType(i) {
-    if (i.type) return i.type;
+    // TeamupName is the authoritative source — always check it first.
+    // The stored type field may be stale (e.g. set before FT classification was added).
     const n = (i.teamupName || '').toLowerCase().trim();
-    if (!i.teamupName || /^installer[\s\-:]+/.test(n)) return 'installer';
-    if (n.startsWith('ft -') || n.startsWith('ft-'))   return 'fulltime';
-    if (n.includes('inspection'))                       return 'inspection';
-    return 'installer';
+    if (n.startsWith('ft -') || n.startsWith('ft-') || n.startsWith('ft ')) return 'fulltime';
+    if (n.includes('inspection')) return 'inspection';
+    if (/^installer[\s\-:]+/.test(n)) return 'installer';
+    // No name pattern match — fall back to stored type field
+    return i.type || 'installer';
 }
 
 async function renderInstallers() {
@@ -547,8 +549,11 @@ async function loadInstallerData() {
             db.collection('installers').where('status','in',['active','inactive']).get(),
             db.collection('installers').where('status','not-in',['active','inactive']).get()
         ]);
-        provisionedData = provSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        pendingData     = pendSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Filter out installers whose TeamUp calendar is inactive
+        provisionedData = provSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                       .filter(d => d.teamupActive !== false);
+        pendingData     = pendSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                       .filter(d => d.teamupActive !== false);
         renderPendingTable();
         renderProvisionedTables();
     } catch(err) { flash('error', 'Could not load installers: ' + err.message); }
