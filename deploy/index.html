@@ -62,8 +62,14 @@ let _dashboardActive = false;
 auth.onAuthStateChanged(user => {
     if (user && user.uid === ADMIN_UID) {
         _dashboardActive = true;
+        // Force-refresh token every 30 min so Firestore writes never hit stale-token errors
+        clearInterval(window._tokenRefreshInterval);
+        window._tokenRefreshInterval = setInterval(() => {
+            auth.currentUser?.getIdToken(true).catch(() => {});
+        }, 30 * 60 * 1000);
         showDashboard();
     } else if (!_dashboardActive) {
+        clearInterval(window._tokenRefreshInterval);
         if (user) {
             auth.signOut().then(() => showLogin('This account does not have admin access.'));
         } else {
@@ -839,6 +845,8 @@ async function submitProvisioning(installerId) {
     btn.innerHTML = '<span class="spinner"></span> Provisioning…';
 
     try {
+        await auth.currentUser.getIdToken(true);
+
         // Send magic link to installer
         const actionCodeSettings = {
             url: 'https://installer-portal-6000.web.app/installer.html',
@@ -866,7 +874,7 @@ async function submitProvisioning(installerId) {
 
         closeModal();
         renderPendingTable();
-        renderProvisionedTable();
+        renderProvisionedTables();
         flash('ok', `${name} provisioned. Sign-in link sent to ${email}.`);
     } catch(err) {
         errEl.textContent = err.message.includes('auth/email-already-in-use')
