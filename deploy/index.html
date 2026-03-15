@@ -504,10 +504,15 @@ async function renderInstallers() {
         </div>
 
         <!-- Pending Provisioning -->
-        <div class="card mb-6">
-            <h3 class="mb-1">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
-            <p class="text-muted text-sm mb-4">Newly discovered TeamUp calendars awaiting portal access setup.</p>
-            <div id="pending-table-wrap"><div class="text-center p-4"><span class="spinner"></span></div></div>
+        <div class="card mb-4" id="prov-section-pending">
+            <div class="rollup-header" onclick="toggleRollup('pending')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+                <span id="rollup-chevron-pending" style="transition:transform .2s;display:inline-block">▶</span>
+                <h3 style="margin:0">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
+            </div>
+            <div id="rollup-body-pending" style="display:none">
+                <p class="text-muted text-sm mt-2 mb-4">Newly discovered TeamUp calendars awaiting portal access setup.</p>
+                <div id="pending-table-wrap"></div>
+            </div>
         </div>
 
         <!-- Search/filter bar (shared across all provisioned sections) -->
@@ -523,9 +528,14 @@ async function renderInstallers() {
         <!-- Provisioned sections — one card per type -->
         ${INST_TYPES.map(t => `
         <div class="card mb-4" id="prov-section-${t.key}">
-            <h3 class="mb-4">${t.label} <span id="prov-count-${t.key}" class="${t.badge}" style="margin-left:.5rem;font-size:.75rem;padding:.15rem .5rem;border-radius:999px;font-weight:600"></span></h3>
-            <div id="prov-wrap-${t.key}"><div class="text-center p-4"><span class="spinner"></span></div></div>
-            <div id="prov-pg-${t.key}" class="pagination"></div>
+            <div class="rollup-header" onclick="toggleRollup('${t.key}')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+                <span id="rollup-chevron-${t.key}" style="transition:transform .2s;display:inline-block">▶</span>
+                <h3 style="margin:0">${t.label} <span id="prov-count-${t.key}" class="${t.badge}" style="margin-left:.5rem;font-size:.75rem;padding:.15rem .5rem;border-radius:999px;font-weight:600"></span></h3>
+            </div>
+            <div id="rollup-body-${t.key}" style="display:none">
+                <div id="prov-wrap-${t.key}" class="mt-4"></div>
+                <div id="prov-pg-${t.key}" class="pagination"></div>
+            </div>
         </div>`).join('')}`;
 
     await loadInstallerData();
@@ -551,8 +561,16 @@ function renderPendingTable() {
     countEl.textContent = pendingData.length;
     if (pendingData.length === 0) {
         wrap.innerHTML = '<p class="text-muted text-sm p-2">No pending entries. Run a TeamUp sync to discover new ones.</p>';
+        // Keep pending collapsed when empty
+        const body = document.getElementById('rollup-body-pending');
+        const chev = document.getElementById('rollup-chevron-pending');
+        if (body) { body.style.display = 'none'; if(chev) chev.style.transform = ''; }
         return;
     }
+    // Auto-expand pending when there are items
+    const pendBody = document.getElementById('rollup-body-pending');
+    const pendChev = document.getElementById('rollup-chevron-pending');
+    if (pendBody) { pendBody.style.display = ''; if(pendChev) pendChev.style.transform = 'rotate(90deg)'; }
 
     // Group pending by type
     const groups = INST_TYPES.map(t => ({
@@ -666,6 +684,15 @@ function renderTypeTable(typeKey) {
             <button class="btn btn-sm btn-secondary" onclick="typePageChange('${typeKey}',-1)" ${pg===0?'disabled':''}>← Prev</button>
             <button class="btn btn-sm btn-secondary" onclick="typePageChange('${typeKey}',1)"  ${pg>=pages-1?'disabled':''}>Next →</button>
         </div>`;
+}
+
+function toggleRollup(key) {
+    const body    = document.getElementById(`rollup-body-${key}`);
+    const chevron = document.getElementById(`rollup-chevron-${key}`);
+    if (!body) return;
+    const open = body.style.display === 'none';
+    body.style.display    = open ? '' : 'none';
+    chevron.style.transform = open ? 'rotate(90deg)' : '';
 }
 
 function typePageChange(typeKey, dir) { _provPages[typeKey] = (_provPages[typeKey]||0) + dir; renderTypeTable(typeKey); }
