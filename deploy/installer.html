@@ -1363,7 +1363,12 @@ async function renderSchedule() {
         </div>
         <div class="week-nav">
             <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Prev</button>
-            <h2>${fmtWeek(monday)} – ${fmtWeek(sunday)}${weekOffset === 0 ? ' <span style="color:var(--accent);font-size:.7rem">This Week</span>' : ''}</h2>
+            <div style="text-align:center">
+                <h2 style="margin:0">${fmtWeek(monday)} – ${fmtWeek(sunday)}</h2>
+                ${weekOffset === 0
+                    ? '<span style="color:var(--accent);font-size:.7rem;font-weight:600">This Week</span>'
+                    : '<button class="btn btn-sm" style="margin-top:.2rem;padding:.15rem .7rem;font-size:.75rem" onclick="goToCurrentWeek()">↩ Today</button>'}
+            </div>
             <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">Next →</button>
         </div>
         <div class="week-strip">${chipsHtml}</div>
@@ -1471,6 +1476,12 @@ function renderSelectedDay() {
 
 function changeWeek(dir) {
     weekOffset  += dir;
+    weekJobsData = null;
+    renderSchedule();
+}
+
+function goToCurrentWeek() {
+    weekOffset  = 0;
     weekJobsData = null;
     renderSchedule();
 }
