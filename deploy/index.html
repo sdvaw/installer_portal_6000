@@ -472,10 +472,24 @@ async function denyBlackout(id) {
 // ============================================================
 let provisionedData = [];
 let pendingData     = [];
-let provPage = 0, pendPage = 0;
 const PAGE = 15;
-let provSort = { col: 'displayName', dir: 1 };
+let provSort   = { col: 'displayName', dir: 1 };
 let provFilter = { search: '', status: 'all' };
+
+const INST_TYPES = [
+    { key: 'installer',  label: '🔧 Installers',     badge: 'badge-active'   },
+    { key: 'fulltime',   label: '⚙️ FT Field Techs',  badge: 'badge-active'   },
+    { key: 'inspection', label: '🔍 Inspection',       badge: 'badge-pending'  },
+];
+
+function getInstallerType(i) {
+    if (i.type) return i.type;
+    const n = (i.teamupName || '').toLowerCase().trim();
+    if (!i.teamupName || /^installer[\s\-:]+/.test(n)) return 'installer';
+    if (n.startsWith('ft -') || n.startsWith('ft-'))   return 'fulltime';
+    if (n.includes('inspection'))                       return 'inspection';
+    return 'installer';
+}
 
 async function renderInstallers() {
     const el = document.getElementById('section-installers');
@@ -491,30 +505,28 @@ async function renderInstallers() {
 
         <!-- Pending Provisioning -->
         <div class="card mb-6">
-            <h3 class="mb-4">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
-            <div id="pending-table-wrap">
-                <div class="text-center p-4"><span class="spinner"></span></div>
-            </div>
+            <h3 class="mb-1">⚠ Pending Provisioning <span id="pending-count" class="badge badge-pending" style="margin-left:.5rem"></span></h3>
+            <p class="text-muted text-sm mb-4">Newly discovered TeamUp calendars awaiting portal access setup.</p>
+            <div id="pending-table-wrap"><div class="text-center p-4"><span class="spinner"></span></div></div>
         </div>
 
-        <!-- Provisioned Installers -->
-        <div class="card">
-            <div class="flex justify-between items-center mb-4">
-                <h3>Provisioned Installers <span id="prov-count" class="badge badge-active" style="margin-left:.5rem"></span></h3>
-            </div>
-            <div class="table-controls">
-                <input class="form-input" type="search" placeholder="Search name, company, email…" oninput="filterProvisioned(this.value)" style="flex:2">
-                <select class="form-input" onchange="filterProvisionedStatus(this.value)" style="flex:1;max-width:180px">
-                    <option value="all">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-            </div>
-            <div id="prov-table-wrap">
-                <div class="text-center p-4"><span class="spinner"></span></div>
-            </div>
-            <div id="prov-pagination" class="pagination"></div>
-        </div>`;
+        <!-- Search/filter bar (shared across all provisioned sections) -->
+        <div class="table-controls mb-4">
+            <input class="form-input" type="search" placeholder="Search name, company, email…" oninput="filterProvisioned(this.value)" style="flex:2">
+            <select class="form-input" onchange="filterProvisionedStatus(this.value)" style="flex:1;max-width:180px">
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+            </select>
+        </div>
+
+        <!-- Provisioned sections — one card per type -->
+        ${INST_TYPES.map(t => `
+        <div class="card mb-4" id="prov-section-${t.key}">
+            <h3 class="mb-4">${t.label} <span id="prov-count-${t.key}" class="${t.badge}" style="margin-left:.5rem;font-size:.75rem;padding:.15rem .5rem;border-radius:999px;font-weight:600"></span></h3>
+            <div id="prov-wrap-${t.key}"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            <div id="prov-pg-${t.key}" class="pagination"></div>
+        </div>`).join('')}`;
 
     await loadInstallerData();
 }
@@ -526,44 +538,54 @@ async function loadInstallerData() {
             db.collection('installers').where('status','not-in',['active','inactive']).get()
         ]);
         provisionedData = provSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Pending table shows everything not yet active/inactive (pending, unknown statuses, etc.)
         pendingData     = pendSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderPendingTable();
-        renderProvisionedTable();
+        renderProvisionedTables();
     } catch(err) { flash('error', 'Could not load installers: ' + err.message); }
 }
 
 function renderPendingTable() {
-    const wrap = document.getElementById('pending-table-wrap');
+    const wrap    = document.getElementById('pending-table-wrap');
     const countEl = document.getElementById('pending-count');
     if (!wrap) return;
     countEl.textContent = pendingData.length;
     if (pendingData.length === 0) {
-        wrap.innerHTML = '<p class="text-muted text-sm p-4">No pending installers. Run a TeamUp sync to discover new ones.</p>';
+        wrap.innerHTML = '<p class="text-muted text-sm p-2">No pending entries. Run a TeamUp sync to discover new ones.</p>';
         return;
     }
-    wrap.innerHTML = `
+
+    // Group pending by type
+    const groups = INST_TYPES.map(t => ({
+        ...t,
+        items: pendingData.filter(i => getInstallerType(i) === t.key)
+    })).filter(g => g.items.length > 0);
+
+    const pendingTable = items => `
         <table class="data-table">
-            <thead><tr>
-                <th>TeamUp Name</th>
-                <th>Company</th>
-                <th>Discovered</th>
-                <th>Action</th>
-            </tr></thead>
+            <thead><tr><th>TeamUp Name</th><th>Company</th><th>Discovered</th><th>Action</th></tr></thead>
             <tbody>
-                ${pendingData.map(i => `
+                ${items.map(i => `
                     <tr>
-                        <td>${esc(i.teamupName)}</td>
+                        <td>${esc(i.teamupName || i.displayName)}</td>
                         <td>${esc(i.company) || '<span class="text-muted">—</span>'}</td>
-                        <td class="text-sm text-muted">${i.createdAt ? new Date(i.createdAt.toDate()).toLocaleDateString() : '—'}</td>
+                        <td class="text-sm text-muted">${i.createdAt?.toDate ? new Date(i.createdAt.toDate()).toLocaleDateString() : '—'}</td>
                         <td><button class="btn btn-primary btn-sm" onclick="openProvisionModal('${i.id}')">Provision</button></td>
                     </tr>`).join('')}
             </tbody>
         </table>`;
+
+    wrap.innerHTML = groups.map(g => `
+        <div style="margin-bottom:1rem">
+            <div style="font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;padding-bottom:.25rem;border-bottom:1px solid var(--border)">${g.label}</div>
+            ${pendingTable(g.items)}
+        </div>`).join('');
 }
 
-function getFilteredProvisioned() {
-    let data = [...provisionedData];
+// Per-type page state
+const _provPages = { installer: 0, fulltime: 0, inspection: 0 };
+
+function getFilteredByType(typeKey) {
+    let data = provisionedData.filter(i => getInstallerType(i) === typeKey);
     if (provFilter.search) {
         const q = provFilter.search.toLowerCase();
         data = data.filter(i =>
@@ -572,9 +594,7 @@ function getFilteredProvisioned() {
             (i.email||'').toLowerCase().includes(q)
         );
     }
-    if (provFilter.status !== 'all') {
-        data = data.filter(i => i.status === provFilter.status);
-    }
+    if (provFilter.status !== 'all') data = data.filter(i => i.status === provFilter.status);
     data.sort((a,b) => {
         const av = (a[provSort.col]||'').toString().toLowerCase();
         const bv = (b[provSort.col]||'').toString().toLowerCase();
@@ -583,28 +603,32 @@ function getFilteredProvisioned() {
     return data;
 }
 
-function renderProvisionedTable() {
-    const wrap  = document.getElementById('prov-table-wrap');
-    const pgEl  = document.getElementById('prov-pagination');
-    const cntEl = document.getElementById('prov-count');
+function renderProvisionedTables() {
+    INST_TYPES.forEach(t => renderTypeTable(t.key));
+}
+
+function renderTypeTable(typeKey) {
+    const wrap  = document.getElementById(`prov-wrap-${typeKey}`);
+    const pgEl  = document.getElementById(`prov-pg-${typeKey}`);
+    const cntEl = document.getElementById(`prov-count-${typeKey}`);
     if (!wrap) return;
 
-    const data  = getFilteredProvisioned();
+    const data  = getFilteredByType(typeKey);
     const total = data.length;
     const pages = Math.max(1, Math.ceil(total / PAGE));
-    provPage = Math.min(provPage, pages - 1);
-    const slice = data.slice(provPage * PAGE, (provPage + 1) * PAGE);
+    _provPages[typeKey] = Math.min(_provPages[typeKey] || 0, pages - 1);
+    const pg    = _provPages[typeKey];
+    const slice = data.slice(pg * PAGE, (pg + 1) * PAGE);
 
-    cntEl.textContent = total;
+    if (cntEl) cntEl.textContent = total;
 
     if (total === 0) {
-        wrap.innerHTML = '<p class="text-muted text-sm p-4">No installers match your filter.</p>';
-        pgEl.innerHTML = '';
+        wrap.innerHTML = `<p class="text-muted text-sm p-2">None found.</p>`;
+        if (pgEl) pgEl.innerHTML = '';
         return;
     }
 
     const sortArrow = col => provSort.col === col ? (provSort.dir === 1 ? ' ↑' : ' ↓') : '';
-
     wrap.innerHTML = `
         <table class="data-table">
             <thead><tr>
@@ -624,7 +648,7 @@ function renderProvisionedTable() {
                         <td class="text-sm">${esc(i.email) || '<span class="text-muted">—</span>'}</td>
                         <td class="text-sm text-muted">${i.teamupId || '<span style="color:var(--danger)">missing</span>'}</td>
                         <td><span class="badge badge-${i.status}">${i.status}</span></td>
-                        <td class="text-sm text-muted">${i.lastLogin ? new Date(i.lastLogin.toDate()).toLocaleDateString() : 'Never'}</td>
+                        <td class="text-sm text-muted">${i.lastLogin?.toDate ? new Date(i.lastLogin.toDate()).toLocaleDateString() : 'Never'}</td>
                         <td class="flex gap-2">
                             <button class="btn btn-sm btn-secondary" onclick="openEditModal('${i.id}')">Details</button>
                             <button class="btn btn-sm btn-secondary" onclick="resendLink('${i.id}')" title="Resend sign-in link">⟳ Link</button>
@@ -636,17 +660,18 @@ function renderProvisionedTable() {
             </tbody>
         </table>`;
 
-    pgEl.innerHTML = total <= PAGE ? '' : `
-        <span>${provPage*PAGE+1}–${Math.min((provPage+1)*PAGE,total)} of ${total}</span>
+    if (pgEl) pgEl.innerHTML = total <= PAGE ? '' : `
+        <span>${pg*PAGE+1}–${Math.min((pg+1)*PAGE,total)} of ${total}</span>
         <div class="flex gap-2">
-            <button class="btn btn-sm btn-secondary" onclick="provPageChange(-1)" ${provPage===0?'disabled':''}>← Prev</button>
-            <button class="btn btn-sm btn-secondary" onclick="provPageChange(1)"  ${provPage>=pages-1?'disabled':''}>Next →</button>
+            <button class="btn btn-sm btn-secondary" onclick="typePageChange('${typeKey}',-1)" ${pg===0?'disabled':''}>← Prev</button>
+            <button class="btn btn-sm btn-secondary" onclick="typePageChange('${typeKey}',1)"  ${pg>=pages-1?'disabled':''}>Next →</button>
         </div>`;
 }
 
-function filterProvisioned(val)       { provFilter.search = val; provPage = 0; renderProvisionedTable(); }
-function filterProvisionedStatus(val) { provFilter.status = val; provPage = 0; renderProvisionedTable(); }
-function sortProvisioned(col)         { provSort.dir = provSort.col===col ? -provSort.dir : 1; provSort.col = col; renderProvisionedTable(); }
+function typePageChange(typeKey, dir) { _provPages[typeKey] = (_provPages[typeKey]||0) + dir; renderTypeTable(typeKey); }
+function filterProvisioned(val)       { provFilter.search = val; Object.keys(_provPages).forEach(k => _provPages[k]=0); renderProvisionedTables(); }
+function filterProvisionedStatus(val) { provFilter.status = val; Object.keys(_provPages).forEach(k => _provPages[k]=0); renderProvisionedTables(); }
+function sortProvisioned(col)         { provSort.dir = provSort.col===col ? -provSort.dir : 1; provSort.col = col; renderProvisionedTables(); }
 function provPageChange(dir)          { provPage += dir; renderProvisionedTable(); }
 
 async function toggleStatus(id, current) {

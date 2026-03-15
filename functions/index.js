@@ -455,14 +455,17 @@ const TeamUp = {
         const existing     = await db.collection('installers').get();
         const existingDocs = existing.docs.map(d => ({ _ref: d.ref, _id: d.id, ...d.data() }));
 
-        const installerSubs = subcalendars.filter(s => this.classifySubcalendar(s.name) === 'installer');
+        // Sync installer, fulltime, and inspection subcalendars (exclude other/manager/operations)
+        const syncableTypes = ['installer', 'fulltime', 'inspection'];
+        const targetSubs = subcalendars.filter(s => syncableTypes.includes(this.classifySubcalendar(s.name)));
 
         const fixBatch  = db.batch();
         let fixedCount  = 0;
         const knownIds  = new Set();
 
-        for (const sub of installerSubs) {
+        for (const sub of targetSubs) {
             const sidStr = String(sub.id);
+            const type   = this.classifySubcalendar(sub.name);
             let match    = existingDocs.find(d => String(d.teamupId) === sidStr);
             if (!match)  match = existingDocs.find(d => d._id === 'teamup_' + sidStr);
             if (!match)  match = existingDocs.find(d =>
@@ -470,15 +473,15 @@ const TeamUp = {
             );
             if (match) {
                 knownIds.add(sidStr);
-                if (String(match.teamupId) !== sidStr) {
-                    fixBatch.update(match._ref, { teamupId: sub.id, teamupName: sub.name });
-                    fixedCount++;
-                }
+                const updates = {};
+                if (String(match.teamupId) !== sidStr) { updates.teamupId = sub.id; updates.teamupName = sub.name; }
+                if (match.type !== type) updates.type = type;
+                if (Object.keys(updates).length > 0) { fixBatch.update(match._ref, updates); fixedCount++; }
             }
         }
         if (fixedCount > 0) await fixBatch.commit();
 
-        const newOnes    = installerSubs.filter(s => !knownIds.has(String(s.id)));
+        const newOnes    = targetSubs.filter(s => !knownIds.has(String(s.id)));
         if (newOnes.length === 0) return { newCount: 0, fixedCount };
 
         const batchSize  = 400;
@@ -486,12 +489,14 @@ const TeamUp = {
             const batch = db.batch();
             newOnes.slice(i, i + batchSize).forEach(sub => {
                 const parsed = this.parseInstallerName(sub.name);
+                const type   = this.classifySubcalendar(sub.name);
                 const ref    = db.collection('installers').doc('teamup_' + sub.id);
                 batch.set(ref, {
                     teamupId:      sub.id,
                     teamupName:    sub.name,
                     displayName:   parsed.displayName,
                     company:       parsed.company,
+                    type,
                     email:         '',
                     phone:         '',
                     status:        'pending',
