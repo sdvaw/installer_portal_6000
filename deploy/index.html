@@ -209,9 +209,24 @@ async function runSync() {
         const { data: result } = await fn();
         let syncMsg = `Sync complete — ${result.newInstallers} new installer(s) discovered, ${result.jobCount} job(s) updated.`;
         if (result.fixedInstallers   > 0) syncMsg += ` Repaired ${result.fixedInstallers} ID mismatch(es).`;
-        if (result.installerSubsFound != null) syncMsg += ` (${result.installerSubsFound} installer calendar(s) found on TeamUp)`;
+        if (result.installerSubsFound != null) syncMsg += ` (${result.installerSubsFound} installer calendar(s) on TeamUp)`;
         flash('ok', syncMsg);
-        // Refresh current section (clear loaded flag so section re-renders)
+
+        // Populate sync log if on TeamUp Status page
+        const logEl = document.getElementById('tu-sync-log');
+        if (logEl && result.subcalendars) {
+            const rows = result.subcalendars.map(s => {
+                const color = s.type === 'installer' ? 'var(--ok)' : s.type === 'other' ? 'var(--muted)' : 'var(--accent)';
+                return `<div style="padding:.2rem 0;border-bottom:1px solid var(--border)">
+                    <span style="display:inline-block;width:80px;font-size:.75rem;color:${color};font-weight:600">${esc(s.type)}</span>
+                    <span>${esc(s.name)}</span>
+                    <span style="color:var(--muted);font-size:.75rem;margin-left:.5rem">(id: ${s.id})</span>
+                </div>`;
+            }).join('');
+            logEl.innerHTML = `<div style="font-size:.8rem;font-weight:600;margin-bottom:.5rem">All TeamUp calendars (${result.subcalendars.length} total):</div>${rows}`;
+        }
+
+        // Refresh current section
         const refreshEl = document.getElementById('section-' + currentSection);
         if (refreshEl) { refreshEl.innerHTML = ''; delete refreshEl.dataset.loaded; }
         if (currentSection === 'dashboard')  renderDashboard();
