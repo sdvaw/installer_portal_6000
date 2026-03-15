@@ -289,10 +289,6 @@ async function renderDashboard(retries = 1) {
             <h3 class="mb-3" style="color:var(--info)">📅 Blackout Requests — Pending Approval</h3>
             <div id="blackout-detail-body" class="text-sm"></div>
         </div>
-        <div class="card mb-6" id="card-fin-warning" style="display:none;border-color:var(--warn)">
-            <h3 class="mb-3" style="color:var(--warn)">⚠ Missing Payment Info</h3>
-            <div id="fin-warning-body" class="text-sm"></div>
-        </div>
         <div class="card mb-6" id="card-ew-warning" style="display:none;border-color:var(--info)">
             <h3 class="mb-3" style="color:var(--info)">🔧 Extra Work Requests — Need Review</h3>
             <div id="ew-warning-body" class="text-sm"></div>
@@ -301,14 +297,21 @@ async function renderDashboard(retries = 1) {
             <h3 class="mb-3" style="color:var(--warn)">⚠ Incomplete Walkthroughs</h3>
             <div id="wt-warning-body" class="text-sm"></div>
         </div>
-        <div class="card">
+        <div class="card mb-6">
             <h3 class="mb-4">Quick Actions</h3>
             <div class="flex gap-3 flex-wrap">
                 <button class="btn btn-primary" onclick="switchSection('installers')">Manage Installers</button>
                 <button class="btn btn-secondary" onclick="runSync()">Sync TeamUp Now</button>
                 <button class="btn btn-secondary" onclick="switchSection('settings')">Settings</button>
             </div>
-        </div>`;
+        </div>
+        <details class="card mb-6" id="card-fin-warning" style="display:none;border-color:var(--border)">
+            <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:.5rem">
+                <span id="fin-warning-chevron" style="transition:transform .2s;display:inline-block;font-size:.8rem">▶</span>
+                <h3 id="fin-warning-title" style="margin:0;font-size:1rem;color:var(--muted)">Missing Payment Info</h3>
+            </summary>
+            <div id="fin-warning-body" class="text-sm mt-3"></div>
+        </details>`;
     try {
         const now         = new Date();
         const twoDaysOut  = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
@@ -375,9 +378,15 @@ async function renderDashboard(retries = 1) {
             .filter(d => !d.data().financials?.balanceDue)
             .map(d => ({ id: d.id, ...d.data() }));
         if (missingFin.length > 0) {
-            const card = document.getElementById('card-fin-warning');
-            const body = document.getElementById('fin-warning-body');
+            const card  = document.getElementById('card-fin-warning');
+            const body  = document.getElementById('fin-warning-body');
+            const title = document.getElementById('fin-warning-title');
+            const chev  = document.getElementById('fin-warning-chevron');
             card.style.display = '';
+            title.textContent  = `Missing Payment Info (${missingFin.length})`;
+            card.addEventListener('toggle', () => {
+                chev.style.transform = card.open ? 'rotate(90deg)' : '';
+            }, { once: false });
             const todayStr    = new Date().toDateString();
             const tomorrowStr = new Date(now.getTime() + 86400000).toDateString();
             body.innerHTML = `<p class="text-muted mb-3">${missingFin.length} job${missingFin.length > 1 ? 's' : ''} starting within 2 days — Balance Due not set</p>` +
