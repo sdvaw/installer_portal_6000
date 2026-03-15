@@ -2642,7 +2642,20 @@ async function submitNewOpening() {
             document.getElementById('modal-add-opening').style.display = 'none';
             document.getElementById('modal-progress-photos').style.display = '';
             ppOpenings = updated.data()?.openings || [];
-            ppRenderList();
+            if (window._ppAutoCapture) {
+                window._ppAutoCapture = false;
+                // Jump directly into capture for the opening we just added
+                const newest = ppOpenings[ppOpenings.length - 1];
+                if (newest) {
+                    ppCurrentOpening = newest;
+                    ppView = 'capture';
+                    ppRenderCapture();
+                } else {
+                    ppRenderList();
+                }
+            } else {
+                ppRenderList();
+            }
         } else {
             closeModal();
             await renderOpenings(jobId, updated.data());
@@ -3254,18 +3267,54 @@ function ppRenderCapture() {
             </div>`).join('')
         : '<p class="text-muted text-sm">No defects reported on this opening.</p>';
 
+    // Compute "Next Opening" label for the button
+    const curType = op.type || 'window';
+    const curNum  = parseInt(op.number) || 1;
+    const nextNum = curNum + 1;
+    const nextLabel = { window: 'Window', door: 'Door', sgd: 'SGD' }[curType] || 'Window';
+    const nextExists = ppOpenings.find(o => o.type === curType && (parseInt(o.number)||0) === nextNum);
+
     document.getElementById('pp-content').innerHTML = `
         <div class="pp-slot-grid">${slotsHtml}</div>
         <button class="btn btn-secondary w-full mb-4" onclick="ppShowDefectModal('${op.id}','${esc(op.label).replace(/'/g,"\\'")}')">⚠ Report Defect</button>
         <div>
             <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Defects</div>
             ${defectsHtml}
-        </div>`;
+        </div>
+        <button class="btn btn-primary w-full mt-4" onclick="ppNextOpening('${curType}',${nextNum})">
+            → Next Opening (${nextLabel} ${nextNum})${nextExists ? '' : ' +'}
+        </button>`;
 }
 
 function ppGoBack() {
     showModal('modal-progress-photos'); // keep overlay open
     ppRenderList();
+}
+
+function ppNextOpening(type, number) {
+    // If this opening already exists, jump straight into it
+    const existing = ppOpenings.find(o => o.type === type && (parseInt(o.number)||0) === number);
+    if (existing) {
+        ppCurrentOpening = existing;
+        ppView = 'capture';
+        ppRenderCapture();
+        return;
+    }
+    // Otherwise open Add Opening modal pre-filled with this type+number, then auto-capture
+    window._addOpeningExisting = ppOpenings;
+    window._ppAutoCapture = true;
+    const typeSel = document.getElementById('opening-type');
+    const numSel  = document.getElementById('opening-number');
+    if (typeSel) typeSel.value = type;
+    populateOpeningNumbers(type, ppOpenings, 'opening-number');
+    // Force the number select to the suggested next value
+    if (numSel) {
+        for (const opt of numSel.options) {
+            opt.selected = parseInt(opt.value) === number;
+        }
+    }
+    currentJobIdForCapture = ppJobId;
+    showModal('modal-add-opening');
 }
 
 function ppTakeSlot(slotName, openingId) {
