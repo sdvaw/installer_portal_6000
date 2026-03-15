@@ -1797,7 +1797,7 @@ function renderJobDetail(job, rec) {
             ${rec.preExistingConditions.map(item => `
                 <div class="pec-item">
                     <div class="pec-item-note">${esc(item.note)}</div>
-                    ${item.photos?.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}
+                    ${item.photos?.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${esc(p.url)}" alt="">`).join('')}</div>` : ''}
                 </div>`).join('')}
         </div>` : ''}
 
@@ -2829,13 +2829,13 @@ function spRenderStep() {
     } else if (!req.allowMultiple) {
         centerHtml = `
             <div class="sp-thumb-wrap">
-                <img class="sp-thumb" src="${captured[0].url}" alt="captured">
+                <img class="sp-thumb" src="${esc(captured[0].url)}" alt="captured">
                 <div class="sp-thumb-count">✓ Photo taken</div>
             </div>`;
     } else {
         centerHtml = `
             <div class="sp-thumb-wrap">
-                <img class="sp-thumb" src="${captured[captured.length-1].url}" alt="captured">
+                <img class="sp-thumb" src="${esc(captured[captured.length-1].url)}" alt="captured">
                 <div class="sp-thumb-count">📷 ${captured.length} photo${captured.length !== 1 ? 's' : ''} taken</div>
             </div>
             <div class="flex gap-2" style="width:100%;max-width:280px">
@@ -2892,7 +2892,7 @@ function spRenderPecScreen() {
     const itemsHtml = spPecItems.map(item => `
         <div class="pec-item">
             <div class="pec-item-note">${esc(item.note)}</div>
-            ${item.photos.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${p.url}" alt="">`).join('')}</div>` : ''}
+            ${item.photos.length ? `<div class="pec-item-thumbs">${item.photos.map(p => `<img src="${esc(p.url)}" alt="">`).join('')}</div>` : ''}
         </div>`).join('');
 
     content.innerHTML = `
@@ -2922,8 +2922,10 @@ function spPecHandlePhoto(url) {
     spPecNewPhotos.push({ url, uploadedAt: new Date().toISOString() });
     const prev = document.getElementById('pec-photo-preview');
     if (prev) {
-        prev.insertAdjacentHTML('beforeend',
-            `<img src="${url}" style="width:56px;height:56px;border-radius:6px;object-fit:cover" alt="">`);
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.cssText = 'width:56px;height:56px;border-radius:6px;object-fit:cover';
+        prev.appendChild(img);
     }
 }
 
@@ -4078,7 +4080,7 @@ function ewRenderPhotos(el) {
         const photo = ewPhotos[i];
         if (photo) {
             return `<div class="ew-photo-slot" onclick="ewTriggerPhoto(${i})">
-                <img src="${photo.url}" alt="Photo ${i+1}">
+                <img src="${esc(photo.url)}" alt="Photo ${i+1}">
             </div>`;
         }
         return `<div class="ew-photo-slot" onclick="ewTriggerPhoto(${i})">
@@ -4191,7 +4193,7 @@ function ewRenderDetail(el, request) {
 
     const photos = (request.photos || []).length > 0 ? `
         <div class="ew-photo-row">
-            ${request.photos.map(p => `<div class="ew-photo-slot" onclick="window.open('${p.url}','_blank')"><img src="${p.url}" alt=""></div>`).join('')}
+            ${request.photos.map(p => `<div class="ew-photo-slot" onclick="window.open('${esc(p.url)}','_blank')"><img src="${esc(p.url)}" alt=""></div>`).join('')}
         </div>` : '';
 
     let actionHtml = '';

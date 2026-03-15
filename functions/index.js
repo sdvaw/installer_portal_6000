@@ -39,9 +39,16 @@ exports.inspectionWebhook = onRequest({ secrets: [webhookSecret] }, async (req, 
     }
 
     const { jobNumber, clientName, reason, inspector, fee, date } = req.body || {};
+
+    // Input validation
     if (!jobNumber || !reason) {
-        res.status(400).json({ error: 'Missing required fields: jobNumber, reason' });
-        return;
+        res.status(400).json({ error: 'Missing required fields: jobNumber, reason' }); return;
+    }
+    if (typeof reason    === 'string' && reason.length    > 2000) { res.status(400).json({ error: 'reason exceeds max length' });    return; }
+    if (typeof clientName === 'string' && clientName.length > 500)  { res.status(400).json({ error: 'clientName exceeds max length' }); return; }
+    if (typeof inspector  === 'string' && inspector.length  > 500)  { res.status(400).json({ error: 'inspector exceeds max length' });  return; }
+    if (fee != null && fee !== '' && isNaN(parseFloat(fee))) {
+        res.status(400).json({ error: 'fee must be a number' }); return;
     }
 
     // Look up jobId by jobNumber
@@ -291,7 +298,8 @@ const TeamUp = {
             `https://api.teamup.com/${settings.calendarId}/subcalendars`,
             settings.apiKey
         );
-        return data.subcalendars || [];
+        if (!Array.isArray(data.subcalendars)) { logger.warn('Unexpected TeamUp subcalendars response'); return []; }
+        return data.subcalendars;
     },
 
     async fetchEvents(settings) {
@@ -302,7 +310,8 @@ const TeamUp = {
             `https://api.teamup.com/${settings.calendarId}/events?startDate=${fmt(start)}&endDate=${fmt(end)}`,
             settings.apiKey
         );
-        return data.events || [];
+        if (!Array.isArray(data.events)) { logger.warn('Unexpected TeamUp events response'); return []; }
+        return data.events;
     },
 
     classifySubcalendar(name) {
