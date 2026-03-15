@@ -916,7 +916,10 @@ let ewCurrentPhotoSlot = 0;
 // AUTH
 // ============================================================
 if (auth.isSignInWithEmailLink(window.location.href)) {
-    completeMagicLink();
+    // Show a tap-to-sign-in screen instead of auto-consuming the link on page load.
+    // This prevents email security scanners that pre-fetch URLs from consuming the
+    // one-time oobCode before the real user arrives.
+    showSignInConfirmScreen();
 } else {
     auth.onAuthStateChanged(async user => {
         if (!user) { showNoAccess('Access your portal using the link sent to your email.'); return; }
@@ -939,9 +942,35 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
     });
 }
 
+function showSignInConfirmScreen() {
+    document.getElementById('page-loading').classList.remove('active');
+    const pg = document.getElementById('page-no-access');
+    pg.innerHTML = `
+        <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
+            <div class="login-logo mb-4">
+                <div class="brand">Armor Vue</div>
+                <div class="sub">Installer Portal</div>
+            </div>
+            <p class="text-sm text-muted mb-6">Your sign-in link is ready. Tap the button below to access your portal.</p>
+            <button class="btn btn-primary w-full" id="confirm-signin-btn" onclick="completeMagicLink()">
+                Sign In to Portal →
+            </button>
+        </div>`;
+    pg.style.display  = 'block';
+    pg.style.paddingTop = '0';
+    pg.classList.add('active');
+}
+
 async function completeMagicLink() {
+    const btn = document.getElementById('confirm-signin-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in…'; }
+
     let email = window.localStorage.getItem('installerEmail');
-    if (!email) { showEmailPrompt(); return; }
+    if (!email) {
+        if (btn) { btn.disabled = false; btn.textContent = 'Sign In to Portal →'; }
+        showEmailPrompt();
+        return;
+    }
 
     try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -950,6 +979,8 @@ async function completeMagicLink() {
         window.history.replaceState({}, document.title, window.location.pathname);
         loadPortal(result.user);
     } catch(err) {
+        // Clear stale oobCode from URL so a page refresh won't re-trigger this flow
+        window.history.replaceState({}, document.title, window.location.pathname);
         window.localStorage.removeItem('installerEmail');
         showLinkExpiredScreen(email);
     }
@@ -982,7 +1013,7 @@ function confirmEmail() {
         err.classList.remove('hidden');
         return;
     }
-    window.localStorage.setItem('installerEmail', email);
+    window.localStorage.setItem('installerEmail', email.toLowerCase());
     completeMagicLink();
 }
 
@@ -1222,8 +1253,8 @@ async function resendMagicLink() {
             url: 'https://installer-portal-6000.web.app/installer.html',
             handleCodeInApp: true
         };
-        window.localStorage.setItem('installerEmail', email);
-        await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        window.localStorage.setItem('installerEmail', email.toLowerCase());
+        await auth.sendSignInLinkToEmail(email.toLowerCase(), actionCodeSettings);
         okEl.textContent = 'Link sent! Check your email and tap the new link.';
         okEl.classList.remove('hidden');
         btn.textContent = 'Sent ✓';
