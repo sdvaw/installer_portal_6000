@@ -106,6 +106,126 @@ exports.inspectionWebhook = onRequest({ secrets: [webhookSecret] }, async (req, 
 });
 
 // ============================================================
+// INGEST EMAIL INSPECTION — called by Power Automate when a new
+// "Failed Inspection" email lands in the Outlook folder.
+// Accepts raw email subject + body, parses fields, matches installer
+// by name (case-insensitive), creates failed_inspections doc.
+// Secured via X-Webhook-Secret header (same secret as above).
+// ============================================================
+exports.ingestEmailInspection = onRequest({ secrets: [webhookSecret] }, async (req, res) => {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
+
+    const secret = webhookSecret.value();
+    if (!secret || req.headers['x-webhook-secret'] !== secret) {
+        res.status(401).json({ error: 'Unauthorized' }); return;
+    }
+
+    const { subject, body } = req.body || {};
+    if (!body) { res.status(400).json({ error: 'Missing body' }); return; }
+
+    // Strip HTML tags if Power Automate sends HTML body
+    const plainBody = body.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+    // Parse structured fields — format:
+    //   Client: Name JobNumber
+    //   Installer: Installer Name
+    //   Reason: reason text
+    //   Date: date
+    //   Fee: amount
+    function extractField(text, fieldName) {
+        const match = text.match(new RegExp(fieldName + ':\\s*([^\\n\\r]+)', 'i'));
+        return match ? match[1].trim() : '';
+    }
+
+    const clientRaw    = extractField(plainBody, 'Client');
+    const installerRaw = extractField(plainBody, 'Installer');
+    const reason       = extractField(plainBody, 'Reason');
+    const dateRaw      = extractField(plainBody, 'Date');
+    const feeRaw       = extractField(plainBody, 'Fee');
+
+    if (!reason) { res.status(400).json({ error: 'Could not parse Reason from email body' }); return; }
+
+    // Split clientRaw into name + job number
+    // Expects format like "John Smith 1234" or "John Smith #1234"
+    const jobNumMatch = clientRaw.match(/[#]?(\d{3,})\s*$/);
+    const jobNumber   = jobNumMatch ? jobNumMatch[1] : '';
+    const clientName  = jobNumMatch ? clientRaw.slice(0, jobNumMatch.index).trim() : clientRaw.trim();
+
+    // Parse fee — strip $ and commas
+    const fee = feeRaw ? (parseFloat(feeRaw.replace(/[$,\s]/g, '')) || null) : null;
+
+    // Look up job by jobNumber
+    let jobId = null;
+    if (jobNumber) {
+        try {
+            const jobSnap = await db.collection('jobs')
+                .where('jobNumber', '==', jobNumber).limit(1).get();
+            if (!jobSnap.empty) jobId = jobSnap.docs[0].id;
+        } catch(e) { logger.warn('Job lookup failed:', e.message); }
+    }
+
+    // Look up installer by displayName (case-insensitive)
+    let installerId   = null;
+    let installerName = installerRaw;
+    let matched       = false;
+    if (installerRaw) {
+        try {
+            const instSnap = await db.collection('installers')
+                .where('status', '==', 'active').get();
+            const normalised = installerRaw.toLowerCase().trim();
+            const found = instSnap.docs.find(d => {
+                const dn = (d.data().displayName || '').toLowerCase().trim();
+                return dn === normalised;
+            });
+            if (found) {
+                installerId   = found.id;
+                installerName = found.data().displayName;
+                matched       = true;
+            }
+        } catch(e) { logger.warn('Installer lookup failed:', e.message); }
+    }
+
+    // Duplicate check — same jobNumber + same inspectionDate
+    if (jobNumber && dateRaw) {
+        try {
+            const dupSnap = await db.collection('failed_inspections')
+                .where('jobNumber', '==', jobNumber)
+                .where('inspectionDate', '==', dateRaw)
+                .limit(1).get();
+            if (!dupSnap.empty) {
+                logger.info(`Duplicate inspection skipped: job #${jobNumber} on ${dateRaw}`);
+                res.status(200).json({ success: true, duplicate: true, id: dupSnap.docs[0].id });
+                return;
+            }
+        } catch(e) { logger.warn('Duplicate check failed:', e.message); }
+    }
+
+    const docRef = await db.collection('failed_inspections').add({
+        source:          'email',
+        jobId,
+        jobNumber,
+        clientName,
+        installerName,
+        installerId,
+        reason,
+        fee,
+        inspectionDate:  dateRaw,
+        status:          matched ? 'open' : 'unmatched',
+        installerStatus: null,   // 'fixed' | 'not_fixed'
+        installerNote:   '',
+        installerUpdatedAt: null,
+        notes:           '',
+        createdAt:       admin.firestore.FieldValue.serverTimestamp(),
+        resolvedAt:      null,
+        resolvedBy:      null,
+        resolvedByName:  null
+    });
+
+    logger.info(`Email inspection ingested: ${docRef.id} | installer: ${installerName} (${matched ? 'matched' : 'UNMATCHED'}) | job: #${jobNumber}`);
+    res.status(200).json({ success: true, id: docRef.id, matched, jobId });
+});
+
+// ============================================================
 // ARCHIVE OLD JOBS — callable from admin dashboard
 // Option C: exports job data as JSON + photo manifest ZIP.
 // ── Option A migration point is clearly marked below ──

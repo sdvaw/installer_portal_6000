@@ -2572,45 +2572,137 @@ async function handleDocFileSelected(input) {
 async function renderDefects() {
     const el = document.getElementById('page-defects');
     el.innerHTML = `
-        <h2 class="mb-4">My Defect History</h2>
-        <div id="defects-list"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
+        <h2 class="mb-4">Defects & Inspections</h2>
 
-    try {
-        // Load all job_records for this installer that have defects
-        const snap = await db.collection('job_records')
+        <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Failed Inspections</div>
+        <div id="failed-inspections-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
+
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Reported Opening Defects</div>
+        <div id="defects-list"><div class="text-center p-3"><span class="spinner"></span></div></div>`;
+
+    // Load both in parallel
+    const [inspSnap, recSnap] = await Promise.all([
+        db.collection('failed_inspections')
             .where('installerId', '==', currentInstaller.id)
-            .get();
+            .get().catch(() => ({ docs: [] })),
+        db.collection('job_records')
+            .where('installerId', '==', currentInstaller.id)
+            .get().catch(() => ({ docs: [] }))
+    ]);
 
-        const withDefects = snap.docs
+    // --- Failed Inspections ---
+    const inspEl = document.getElementById('failed-inspections-list');
+    if (inspEl) {
+        const inspections = inspSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+
+        if (!inspections.length) {
+            inspEl.innerHTML = '<p class="text-muted text-sm">No failed inspections.</p>';
+        } else {
+            inspEl.innerHTML = inspections.map(fi => {
+                const iStatus  = fi.installerStatus;
+                const statusColor = iStatus === 'fixed' ? 'var(--ok)' : iStatus === 'not_fixed' ? 'var(--bad)' : 'var(--warn, #f59e0b)';
+                const statusLabel = iStatus === 'fixed' ? 'Fixed' : iStatus === 'not_fixed' ? 'Not Fixed' : 'Pending';
+                return `
+                <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+                    <div class="flex justify-between items-start mb-1">
+                        <div style="font-weight:600;font-size:.95rem">Job #${esc(fi.jobNumber || '—')}</div>
+                        <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:${statusColor}">${statusLabel}</span>
+                    </div>
+                    <div style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">
+                        ${esc(fi.clientName || '')}${fi.inspectionDate ? ' · ' + esc(fi.inspectionDate) : ''}
+                        ${fi.fee ? ' · <strong style="color:var(--bad)">Fee: $' + fi.fee + '</strong>' : ''}
+                    </div>
+                    <div style="font-size:.85rem;margin-bottom:.65rem"><strong>Reason:</strong> ${esc(fi.reason || '—')}</div>
+                    ${fi.installerNote ? `<div style="font-size:.8rem;color:var(--muted);margin-bottom:.65rem;font-style:italic">"${esc(fi.installerNote)}"</div>` : ''}
+                    <button class="btn btn-secondary btn-sm w-full" onclick="showInspectionUpdateModal('${fi.id}','${esc(fi.installerStatus||'')}','${esc(fi.installerNote||'').replace(/'/g,"\\'")}')">
+                        ${iStatus ? 'Update Status' : 'Mark Status'}
+                    </button>
+                </div>`;
+            }).join('');
+        }
+    }
+
+    // --- Reported Opening Defects ---
+    const listEl = document.getElementById('defects-list');
+    if (listEl) {
+        const withDefects = recSnap.docs
             .map(d => d.data())
             .filter(r => r.openings && r.openings.some(o => o.defects && o.defects.length > 0));
 
-        const listEl = document.getElementById('defects-list');
-        if (!listEl) return;
-
-        if (withDefects.length === 0) {
-            listEl.innerHTML = '<p class="text-muted text-sm">No defects reported yet.</p>';
-            return;
+        if (!withDefects.length) {
+            listEl.innerHTML = '<p class="text-muted text-sm">No opening defects reported yet.</p>';
+        } else {
+            listEl.innerHTML = withDefects.map(r => {
+                const defects = r.openings.flatMap(o =>
+                    (o.defects || []).map(d => ({ ...d, openingLabel: o.label }))
+                );
+                return defects.map(d => `
+                    <div style="border:1px solid var(--border);border-radius:10px;padding:.75rem 1rem;margin-bottom:.65rem">
+                        <div class="flex justify-between mb-1">
+                            <span class="font-medium text-sm">${esc(d.openingLabel || 'Opening')}</span>
+                            <span class="badge badge-inactive" style="font-size:.65rem">${esc(d.typeName || d.type || 'defect')}</span>
+                        </div>
+                        <div class="text-sm text-muted">Job #${esc(r.jobNumber || r.jobId)}</div>
+                        ${d.description ? `<div class="text-sm mt-1">${esc(d.description)}</div>` : ''}
+                    </div>`).join('');
+            }).join('');
         }
-
-        listEl.innerHTML = withDefects.map(r => {
-            const defects = r.openings.flatMap(o =>
-                (o.defects || []).map(d => ({ ...d, openingLabel: o.label }))
-            );
-            return defects.map(d => `
-                <div class="detail-section" style="margin-bottom:.5rem">
-                    <div class="flex justify-between mb-1">
-                        <span class="font-medium text-sm">${esc(d.openingLabel || 'Opening')}</span>
-                        <span class="badge badge-inactive">${esc(d.type || 'defect')}</span>
-                    </div>
-                    <div class="text-sm text-muted">Job #${esc(r.jobNumber || r.jobId)}</div>
-                    ${d.description ? `<div class="text-sm mt-1">${esc(d.description)}</div>` : ''}
-                </div>`).join('');
-        }).join('');
-    } catch(err) {
-        document.getElementById('defects-list').innerHTML =
-            '<p class="text-muted text-sm">Could not load defects.</p>';
     }
+}
+
+function showInspectionUpdateModal(inspId, currentStatus, currentNote) {
+    const overlay = document.createElement('div');
+    overlay.id = 'insp-update-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end';
+    overlay.innerHTML = `
+        <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:1.25rem;width:100%;max-width:640px;margin:0 auto">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">Update Inspection Status</div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <div style="display:flex;gap:.65rem">
+                    <button id="insp-btn-fixed" class="btn flex-1 ${currentStatus==='fixed'?'btn-primary':'btn-secondary'}"
+                            onclick="selectInspStatus('fixed')">✅ Fixed</button>
+                    <button id="insp-btn-not_fixed" class="btn flex-1 ${currentStatus==='not_fixed'?'btn-primary':'btn-secondary'}"
+                            onclick="selectInspStatus('not_fixed')">⏳ Not Fixed</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Note</label>
+                <textarea class="form-input" id="insp-note-input" rows="3" placeholder="What was done, or why it's pending…">${esc(currentNote)}</textarea>
+            </div>
+            <div style="display:flex;gap:.65rem;margin-top:.75rem">
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('insp-update-overlay').remove()">Cancel</button>
+                <button class="btn btn-primary flex-1" onclick="submitInspectionUpdate('${inspId}')">Save</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    // Pre-select current status
+    if (currentStatus) selectInspStatus(currentStatus);
+}
+
+function selectInspStatus(val) {
+    document.getElementById('insp-btn-fixed')?.classList.toggle('btn-primary',    val === 'fixed');
+    document.getElementById('insp-btn-fixed')?.classList.toggle('btn-secondary',  val !== 'fixed');
+    document.getElementById('insp-btn-not_fixed')?.classList.toggle('btn-primary',   val === 'not_fixed');
+    document.getElementById('insp-btn-not_fixed')?.classList.toggle('btn-secondary', val !== 'not_fixed');
+    document.getElementById('insp-update-overlay').dataset.status = val;
+}
+
+async function submitInspectionUpdate(inspId) {
+    const overlay = document.getElementById('insp-update-overlay');
+    const status  = overlay?.dataset.status;
+    const note    = document.getElementById('insp-note-input')?.value.trim() || '';
+    if (!status) { alert('Please select a status.'); return; }
+    try {
+        await db.collection('failed_inspections').doc(inspId).update({
+            installerStatus:    status,
+            installerNote:      note,
+            installerUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        overlay?.remove();
+        renderDefects();
+    } catch(err) { alert('Could not save: ' + err.message); }
 }
 
 // ============================================================

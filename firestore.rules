@@ -173,6 +173,12 @@ service cloud.firestore {
       allow read:   if isAdmin() || isManagementUser() || isSignedIn();
       allow create: if false;
       allow update: if isAdmin() || isManagementUser();
+      // Installer can update only their own inspection's status + note fields
+      allow update: if isSignedIn()
+        && resource.data.installerId != null
+        && get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['installerStatus', 'installerNote', 'installerUpdatedAt']);
     }
 
     // --------------------------------------------------------
