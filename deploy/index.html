@@ -2315,9 +2315,9 @@ async function loadReviewsTab(installerId) {
     try {
         const snap = await db.collection('installer_reviews')
             .where('installerId', '==', installerId)
-            .orderBy('createdAt', 'desc')
             .get();
-        const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
         let html = '';
         if (reviews.length) {
