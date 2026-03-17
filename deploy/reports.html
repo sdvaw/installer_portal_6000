@@ -405,8 +405,9 @@ function showPortal() {
     const roleLabel = { manager: 'Manager', finance: 'Finance', service: 'Service' }[currentRole] || currentRole;
     const tabs = [];
     if (currentRole === 'manager') tabs.push({ id: 'daily', label: '📋 Daily Review' });
-    if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'finance', label: '💰 Finance' });
-    if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'service', label: '🔧 Service' });
+    if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'finance',   label: '💰 Finance' });
+    if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'analytics', label: '📊 Analytics' });
+    if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'service',   label: '🔧 Service' });
     if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'materials', label: '📦 Materials' });
 
     document.getElementById('app').innerHTML = `
@@ -434,6 +435,7 @@ function switchTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-' + tab));
     if (tab === 'daily')     loadDailyReview();
     if (tab === 'finance')   loadFinanceReport();
+    if (tab === 'analytics') loadAnalyticsReport();
     if (tab === 'service')   loadServiceReport();
     if (tab === 'materials') loadMaterialsTab();
 }
@@ -1778,6 +1780,296 @@ async function dismissReminder(remId) {
         const section = document.querySelector('[data-section="followup"]');
         if (section && !section.querySelector('.report-card')) section.remove();
     } catch(err) { flash('error', 'Could not dismiss reminder: ' + err.message); }
+}
+
+// ── ANALYTICS ────────────────────────────────────────────────
+
+function kpiCard(label, value, color) {
+    return `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">${label}</div>
+        <div style="font-size:1.2rem;font-weight:700;${color ? 'color:' + color : ''}">${value}</div>
+    </div>`;
+}
+
+async function loadAnalyticsReport() {
+    const content = document.getElementById('report-content');
+    const today      = new Date().toISOString().slice(0, 10);
+    const monthStart = today.slice(0, 7) + '-01';
+    content.innerHTML = `
+    <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.25rem">
+        <div>
+            <label style="font-size:.75rem;display:block;margin-bottom:.25rem;color:var(--muted)">From</label>
+            <input type="date" class="form-input" id="analytics-from" value="${monthStart}"
+                   style="font-size:.85rem;padding:.35rem .6rem" onchange="runAnalytics()">
+        </div>
+        <div>
+            <label style="font-size:.75rem;display:block;margin-bottom:.25rem;color:var(--muted)">To</label>
+            <input type="date" class="form-input" id="analytics-to" value="${today}"
+                   style="font-size:.85rem;padding:.35rem .6rem" onchange="runAnalytics()">
+        </div>
+    </div>
+    <div id="analytics-results"><div class="text-center p-6"><span class="spinner"></span></div></div>`;
+    await runAnalytics();
+}
+
+async function runAnalytics() {
+    const el = document.getElementById('analytics-results');
+    if (!el) return;
+    el.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    const fromStr = document.getElementById('analytics-from')?.value;
+    const toStr   = document.getElementById('analytics-to')?.value;
+    if (!fromStr || !toStr) return;
+
+    const from = new Date(fromStr + 'T00:00:00');
+    const to   = new Date(toStr   + 'T23:59:59');
+    const parseMoney = v => parseFloat(String(v || '').replace(/[,$\s]/g, '')) || 0;
+    const fmt  = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const pct  = n => n.toFixed(1) + '%';
+
+    try {
+        const [jobsSnap, installersSnap, ewSnap, inspSnap] = await Promise.all([
+            db.collection('jobs').where('startDt', '>=', from).where('startDt', '<=', to).get(),
+            db.collection('installers').where('status', '==', 'active').get(),
+            db.collection('extra_work_requests').where('status', '==', 'approved').get(),
+            db.collection('failed_inspections').get()
+        ]);
+
+        // Installer lookup maps
+        const installerByTeamupId = {};
+        const installerById       = {};
+        installersSnap.docs.forEach(d => {
+            const inst = { id: d.id, ...d.data() };
+            if (inst.teamupId) installerByTeamupId[String(inst.teamupId)] = inst;
+            installerById[inst.id] = inst;
+        });
+
+        // Deduplicate multi-day series — keep the one with financial data if possible
+        const seen = new Map();
+        jobsSnap.docs.forEach(d => {
+            const j   = { id: d.id, ...d.data() };
+            const key = j.seriesId ? String(j.seriesId) : j.id;
+            if (!seen.has(key)) {
+                seen.set(key, j);
+            } else {
+                // Prefer whichever copy has contractAmt set
+                const existing = seen.get(key);
+                if (!parseMoney(existing.financials?.contractAmt) && parseMoney(j.financials?.contractAmt)) {
+                    seen.set(key, j);
+                }
+            }
+        });
+        const jobs = [...seen.values()];
+
+        // Accumulators
+        let totalContract = 0, totalLabor = 0, totalUnits = 0;
+        const payTypes  = {};
+        const instStats = {}; // installerId → stats object
+        const highLabor = [];
+
+        jobs.forEach(j => {
+            const fin         = j.financials || {};
+            const contractAmt = parseMoney(fin.contractAmt);
+            const laborAmt    = parseMoney(fin.installerPay);
+            const payType     = (fin.paymentMethod || 'Unknown').trim() || 'Unknown';
+            const units       = (j.windowCount || 0) + (j.doorCount || 0) + (j.sgdCount || 0);
+            const laborPct    = contractAmt > 0 ? (laborAmt / contractAmt * 100) : null;
+
+            totalContract += contractAmt;
+            totalLabor    += laborAmt;
+            totalUnits    += units;
+
+            // Payment type breakdown
+            if (!payTypes[payType]) payTypes[payType] = { count: 0, total: 0 };
+            payTypes[payType].count++;
+            payTypes[payType].total += contractAmt;
+
+            // Flag high labor
+            if (laborPct !== null && laborPct >= 35) {
+                highLabor.push({ j, contractAmt, laborAmt, laborPct });
+            }
+
+            // Installer attribution via assignedIds → teamupId
+            (j.assignedIds || []).forEach(tid => {
+                const inst = installerByTeamupId[String(tid)];
+                if (!inst) return;
+                if (!instStats[inst.id]) {
+                    instStats[inst.id] = { name: inst.displayName || inst.email, jobs: 0,
+                        contractAmt: 0, basePay: 0, extraWork: 0, fees: 0, units: 0 };
+                }
+                instStats[inst.id].jobs++;
+                instStats[inst.id].contractAmt += contractAmt;
+                instStats[inst.id].basePay     += laborAmt;
+                instStats[inst.id].units       += units;
+            });
+        });
+
+        // Extra work — add to installer totals
+        ewSnap.docs.forEach(d => {
+            const r   = d.data();
+            const amt = parseMoney(r.amountApproved);
+            if (!amt || !instStats[r.installerId]) return;
+            instStats[r.installerId].extraWork += amt;
+            totalLabor += amt;
+        });
+
+        // Failed inspection fees — tally per installer
+        inspSnap.docs.forEach(d => {
+            const r = d.data();
+            if (r.fee && instStats[r.installerId]) {
+                instStats[r.installerId].fees += parseMoney(r.fee);
+            }
+        });
+
+        if (jobs.length === 0) {
+            el.innerHTML = '<div class="empty-state">No jobs with data in this date range.</div>';
+            return;
+        }
+
+        const overallLaborPct  = totalContract > 0 ? (totalLabor / totalContract * 100) : 0;
+        const avgMargin        = (totalContract - totalLabor) / jobs.length;
+        const avgContract      = totalContract / jobs.length;
+        const revenuePerUnit   = totalUnits > 0 ? totalContract / totalUnits : 0;
+        const laborPerUnit     = totalUnits > 0 ? totalLabor   / totalUnits : 0;
+        const laborColor       = overallLaborPct > 35 ? 'var(--danger)' : overallLaborPct > 28 ? 'var(--warn)' : 'var(--ok)';
+
+        // ── KPI Summary ──────────────────────────────────────
+        let html = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.75rem;margin-bottom:2rem">
+            ${kpiCard('Total Revenue',    fmt(totalContract), '')}
+            ${kpiCard('Total Labor Cost', fmt(totalLabor),    '')}
+            ${kpiCard('Labor %',          pct(overallLaborPct), laborColor)}
+            ${kpiCard('Gross Margin',     fmt(totalContract - totalLabor), '')}
+            ${kpiCard('Avg Margin / Job', fmt(avgMargin),  '')}
+            ${kpiCard('Avg Contract',     fmt(avgContract), '')}
+            ${kpiCard('Rev / Opening',    totalUnits > 0 ? fmt(revenuePerUnit) : '—', '')}
+            ${kpiCard('Labor / Opening',  totalUnits > 0 ? fmt(laborPerUnit)   : '—', '')}
+            ${kpiCard('Jobs Analyzed',    jobs.length, '')}
+        </div>`;
+
+        // ── Labor Cost by Installer ───────────────────────────
+        const instRows = Object.values(instStats).sort((a, b) => b.basePay + b.extraWork - (a.basePay + a.extraWork));
+        if (instRows.length) {
+            const lpColor = p => p > 35 ? 'var(--danger)' : p > 28 ? 'var(--warn)' : 'var(--ok)';
+            html += `
+            <div style="font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.5rem">
+                Labor Cost by Installer
+            </div>
+            <div style="overflow-x:auto;margin-bottom:2rem">
+            <table class="data-table">
+                <thead><tr>
+                    <th>Installer</th>
+                    <th style="text-align:right">Jobs</th>
+                    <th style="text-align:right">Contract Value</th>
+                    <th style="text-align:right">Base Pay</th>
+                    <th style="text-align:right">Extra Work</th>
+                    <th style="text-align:right">Total Labor</th>
+                    <th style="text-align:right">Labor %</th>
+                    <th style="text-align:right">Avg / Job</th>
+                    <th style="text-align:right">Insp. Fees</th>
+                </tr></thead>
+                <tbody>
+                ${instRows.map(r => {
+                    const totalPay = r.basePay + r.extraWork;
+                    const lp       = r.contractAmt > 0 ? (totalPay / r.contractAmt * 100) : null;
+                    return `<tr>
+                        <td><strong>${esc(r.name)}</strong></td>
+                        <td style="text-align:right">${r.jobs}</td>
+                        <td style="text-align:right">${fmt(r.contractAmt)}</td>
+                        <td style="text-align:right">${fmt(r.basePay)}</td>
+                        <td style="text-align:right">${r.extraWork > 0 ? fmt(r.extraWork) : '<span style="color:var(--muted)">—</span>'}</td>
+                        <td style="text-align:right;font-weight:700">${fmt(totalPay)}</td>
+                        <td style="text-align:right;font-weight:700;color:${lp !== null ? lpColor(lp) : 'var(--muted)'}">
+                            ${lp !== null ? pct(lp) : '—'}
+                        </td>
+                        <td style="text-align:right">${r.jobs > 0 ? fmt(totalPay / r.jobs) : '—'}</td>
+                        <td style="text-align:right;color:${r.fees > 0 ? 'var(--danger)' : 'var(--muted)'}">
+                            ${r.fees > 0 ? fmt(r.fees) : '—'}
+                        </td>
+                    </tr>`;
+                }).join('')}
+                <tr style="font-weight:700;border-top:2px solid var(--border)">
+                    <td>Total</td>
+                    <td style="text-align:right">${instRows.reduce((s,r)=>s+r.jobs,0)}</td>
+                    <td style="text-align:right">${fmt(instRows.reduce((s,r)=>s+r.contractAmt,0))}</td>
+                    <td style="text-align:right">${fmt(instRows.reduce((s,r)=>s+r.basePay,0))}</td>
+                    <td style="text-align:right">${fmt(instRows.reduce((s,r)=>s+r.extraWork,0))}</td>
+                    <td style="text-align:right">${fmt(instRows.reduce((s,r)=>s+r.basePay+r.extraWork,0))}</td>
+                    <td style="text-align:right;color:${laborColor}">${pct(overallLaborPct)}</td>
+                    <td></td>
+                    <td style="text-align:right;color:var(--danger)">${fmt(instRows.reduce((s,r)=>s+r.fees,0))}</td>
+                </tr>
+                </tbody>
+            </table></div>`;
+        }
+
+        // ── Payment Type Breakdown ────────────────────────────
+        const ptRows = Object.entries(payTypes).sort((a, b) => b[1].total - a[1].total);
+        if (ptRows.length) {
+            html += `
+            <div style="font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:.5rem">
+                Payment Type Breakdown
+            </div>
+            <div style="overflow-x:auto;margin-bottom:2rem">
+            <table class="data-table">
+                <thead><tr>
+                    <th>Payment Type</th>
+                    <th style="text-align:right">Jobs</th>
+                    <th style="text-align:right">Revenue</th>
+                    <th style="text-align:right">% of Revenue</th>
+                    <th style="text-align:right">Avg Contract</th>
+                </tr></thead>
+                <tbody>
+                ${ptRows.map(([type, d]) => `<tr>
+                    <td>${esc(type)}</td>
+                    <td style="text-align:right">${d.count}</td>
+                    <td style="text-align:right">${fmt(d.total)}</td>
+                    <td style="text-align:right">${totalContract > 0 ? pct(d.total / totalContract * 100) : '—'}</td>
+                    <td style="text-align:right">${d.count > 0 ? fmt(d.total / d.count) : '—'}</td>
+                </tr>`).join('')}
+                </tbody>
+            </table></div>`;
+        }
+
+        // ── High Labor % Jobs ─────────────────────────────────
+        if (highLabor.length) {
+            highLabor.sort((a, b) => b.laborPct - a.laborPct);
+            html += `
+            <div style="font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:var(--danger);margin-bottom:.5rem">
+                ⚠ High Labor % Jobs (≥ 35%)
+            </div>
+            <div style="overflow-x:auto;margin-bottom:2rem">
+            <table class="data-table">
+                <thead><tr>
+                    <th>Customer</th>
+                    <th>Job #</th>
+                    <th style="text-align:right">Contract</th>
+                    <th style="text-align:right">Installer Pay</th>
+                    <th style="text-align:right">Labor %</th>
+                    <th style="text-align:right">Openings</th>
+                </tr></thead>
+                <tbody>
+                ${highLabor.map(({ j, contractAmt, laborAmt, laborPct }) => {
+                    const units = (j.windowCount || 0) + (j.doorCount || 0) + (j.sgdCount || 0);
+                    return `<tr>
+                        <td>${esc(j.customerName || '—')}</td>
+                        <td class="text-muted">${esc(j.jobNumber || j.id)}</td>
+                        <td style="text-align:right">${fmt(contractAmt)}</td>
+                        <td style="text-align:right">${fmt(laborAmt)}</td>
+                        <td style="text-align:right;font-weight:700;color:var(--danger)">${pct(laborPct)}</td>
+                        <td style="text-align:right">${units || '—'}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table></div>`;
+        }
+
+        el.innerHTML = html;
+
+    } catch(err) {
+        el.innerHTML = `<div class="empty-state">Error loading analytics: ${esc(err.message)}</div>`;
+    }
 }
 </script>
 </body>
