@@ -182,6 +182,17 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------
+    // INSTALLER REVIEWS — complaints, compliments, ratings
+    //   admin + management: full access (create, read, delete)
+    //   installer: read only their own reviews
+    // --------------------------------------------------------
+    match /installer_reviews/{reviewId} {
+      allow read, write: if isAdmin() || isManagementUser();
+      allow read: if isSignedIn() &&
+        get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid;
+    }
+
+    // --------------------------------------------------------
     // DOCUMENT TYPES — admin configures required compliance docs
     //                  all signed-in users read (installer portal needs list)
     // --------------------------------------------------------

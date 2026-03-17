@@ -581,6 +581,7 @@ async function loadInstallerData() {
                                        .filter(d => d.teamupActive !== false);
         renderPendingTable();
         renderProvisionedTables();
+        loadInstallerRatings().catch(() => {});
     } catch(err) { flash('error', 'Could not load installers: ' + err.message); }
 }
 
@@ -677,6 +678,7 @@ function renderTypeTable(typeKey) {
                 <th onclick="sortProvisioned('email')">Email${sortArrow('email')}</th>
                 <th>TeamUp ID</th>
                 <th>Status</th>
+                <th>Rating</th>
                 <th>Last Login</th>
                 <th>Actions</th>
             </tr></thead>
@@ -688,6 +690,7 @@ function renderTypeTable(typeKey) {
                         <td class="text-sm">${esc(i.email) || '<span class="text-muted">—</span>'}</td>
                         <td class="text-sm text-muted">${i.teamupId || '<span style="color:var(--danger)">missing</span>'}</td>
                         <td><span class="badge badge-${i.status}">${i.status}</span></td>
+                        <td class="text-sm">${(() => { const r=installerRatingCache[i.id]; return r ? `<span title="${r.count} review${r.count!==1?'s':''}">${starsHtml(r.avg)} <span class="text-muted" style="font-size:.7rem">${r.avg}</span></span>` : '<span class="text-muted">—</span>'; })()}</td>
                         <td class="text-sm text-muted">${i.lastLogin?.toDate ? new Date(i.lastLogin.toDate()).toLocaleDateString() : 'Never'}</td>
                         <td class="flex gap-2">
                             <button class="btn btn-sm btn-secondary" onclick="openEditModal('${i.id}')">Details</button>
@@ -914,6 +917,7 @@ function openEditModal(installerId) {
                     <div class="tabs">
                         <button class="tab-btn active" onclick="switchModalTab('details',this)">Details</button>
                         <button class="tab-btn" onclick="switchModalTab('compliance',this)">Compliance</button>
+                        <button class="tab-btn" onclick="switchModalTab('reviews',this)">Reviews</button>
                         <button class="tab-btn" onclick="switchModalTab('history',this)">History</button>
                     </div>
 
@@ -960,6 +964,11 @@ function openEditModal(installerId) {
                         <div id="compliance-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
                     </div>
 
+                    <!-- Reviews Tab -->
+                    <div id="modal-tab-reviews" class="tab-panel">
+                        <div id="reviews-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
+                    </div>
+
                     <!-- History Tab -->
                     <div id="modal-tab-history" class="tab-panel">
                         <div id="history-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
@@ -982,6 +991,7 @@ function switchModalTab(name, btn) {
     const installerId = btn.closest('.modal').querySelector('[onclick*="submitEdit"]').getAttribute('onclick').match(/'([^']+)'/)[1];
     if (name === 'history')    loadHistory(installerId);
     if (name === 'compliance') loadComplianceTab(installerId);
+    if (name === 'reviews')    loadReviewsTab(installerId);
 }
 
 async function loadHistory(installerId) {
@@ -2255,6 +2265,205 @@ async function revokeComplianceOverride(installerId) {
         await loadComplianceTab(installerId);
         loadComplianceWarnings().catch(() => {});
     } catch(err) { flash('error', 'Failed: ' + err.message); }
+}
+
+// ============================================================
+// INSTALLER REVIEWS / RATINGS
+// ============================================================
+
+let installerRatingCache = {};
+
+function starsHtml(rating, max = 5) {
+    const full = Math.round(rating);
+    return Array.from({ length: max }, (_, i) =>
+        `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'}">★</span>`
+    ).join('');
+}
+
+async function loadInstallerRatings() {
+    try {
+        const snap = await db.collection('installer_reviews').get();
+        const grouped = {};
+        snap.docs.forEach(d => {
+            const r = d.data();
+            const id = r.installerId;
+            if (!id) return;
+            if (!grouped[id]) grouped[id] = [];
+            const stars = r.type === 'positive' ? (r.rating || 5) : (r.severity === 'major' ? 1 : 2);
+            grouped[id].push(stars);
+        });
+        installerRatingCache = {};
+        Object.entries(grouped).forEach(([id, ratings]) => {
+            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+            installerRatingCache[id] = { avg: Math.round(avg * 10) / 10, count: ratings.length };
+        });
+        renderProvisionedTables();
+    } catch(e) { /* non-blocking */ }
+}
+
+async function loadReviewsTab(installerId) {
+    const el = document.getElementById('reviews-content');
+    if (!el) return;
+    el.innerHTML = `<div class="text-center p-4"><span class="spinner"></span></div>`;
+    try {
+        const snap = await db.collection('installer_reviews')
+            .where('installerId', '==', installerId)
+            .orderBy('createdAt', 'desc')
+            .get();
+        const reviews = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        let html = '';
+        if (reviews.length) {
+            const ratings = reviews.map(r => r.type === 'positive' ? (r.rating || 5) : (r.severity === 'major' ? 1 : 2));
+            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+            const avgRounded = Math.round(avg * 10) / 10;
+            html += `
+                <div class="text-center mb-4" style="padding:1rem;background:var(--bg);border-radius:10px">
+                    <div style="font-size:2rem;line-height:1.2">${starsHtml(Math.round(avg))}</div>
+                    <div style="font-size:1.35rem;font-weight:700">${avgRounded} / 5</div>
+                    <div class="text-muted text-sm">${reviews.length} review${reviews.length !== 1 ? 's' : ''}</div>
+                </div>`;
+        } else {
+            html += `<p class="text-muted text-sm mb-3">No reviews yet.</p>`;
+        }
+
+        html += `<button class="btn btn-primary btn-sm mb-4" onclick="showAddReviewForm('${installerId}')">+ Add Review</button>`;
+        html += `<div id="add-review-form-area"></div>`;
+
+        if (reviews.length) {
+            html += reviews.map(r => {
+                const stars = r.type === 'positive' ? (r.rating || 5) : (r.severity === 'major' ? 1 : 2);
+                const typeColor = r.type === 'positive' ? 'var(--ok)' : 'var(--danger)';
+                const typeLabel = r.type === 'positive' ? '✅ Positive' : (r.severity === 'major' ? '🔴 Major Issue' : '🟡 Minor Issue');
+                const date = r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : '';
+                return `
+                <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem;margin-bottom:.65rem">
+                    <div class="flex justify-between items-start mb-1">
+                        <span style="font-size:.75rem;font-weight:700;color:${typeColor}">${typeLabel}</span>
+                        <span style="font-size:.75rem;color:var(--muted)">${date}</span>
+                    </div>
+                    <div style="margin-bottom:.35rem">${starsHtml(stars)} <span class="text-muted text-xs">${stars}/5</span></div>
+                    ${r.source ? `<div class="text-sm text-muted mb-1">Source: ${esc(r.source)}</div>` : ''}
+                    ${r.note ? `<div class="text-sm">${esc(r.note)}</div>` : ''}
+                    <div style="margin-top:.5rem;text-align:right">
+                        <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deleteReview('${r.id}','${installerId}')">Delete</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        el.innerHTML = html;
+    } catch(e) {
+        el.innerHTML = `<p class="text-muted text-sm">Could not load reviews: ${esc(e.message)}</p>`;
+    }
+}
+
+function showAddReviewForm(installerId) {
+    const area = document.getElementById('add-review-form-area');
+    if (!area) return;
+    window._reviewFormState = { type: 'positive', rating: 5, severity: null };
+    area.innerHTML = `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;background:var(--bg)">
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <select class="form-input" id="rev-type" onchange="reviewTypeChanged()">
+                    <option value="positive">✅ Positive</option>
+                    <option value="negative">⚠️ Negative / Issue</option>
+                </select>
+            </div>
+            <div class="form-group" id="rev-rating-group">
+                <label class="form-label">Rating</label>
+                <div class="flex gap-2">
+                    ${[1,2,3,4,5].map(n => `<button class="btn btn-sm ${n===5?'btn-primary':'btn-secondary'}" id="rev-star-${n}" onclick="selectReviewStar(${n})">${n}★</button>`).join('')}
+                </div>
+            </div>
+            <div class="form-group" id="rev-severity-group" style="display:none">
+                <label class="form-label">Severity</label>
+                <div class="flex gap-2">
+                    <button class="btn flex-1 btn-secondary" id="rev-minor-btn" onclick="selectReviewSeverity('minor')">Minor (2★)</button>
+                    <button class="btn flex-1 btn-secondary" id="rev-major-btn" onclick="selectReviewSeverity('major')">Major (1★)</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Source</label>
+                <input class="form-input" id="rev-source" placeholder="e.g. Google Review, Customer call, Supervisor…">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea class="form-input" id="rev-note" rows="3" placeholder="Details about the review or complaint…"></textarea>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('add-review-form-area').innerHTML=''">Cancel</button>
+                <button class="btn btn-primary flex-1" onclick="submitReview('${installerId}')">Save Review</button>
+            </div>
+        </div>`;
+}
+
+function reviewTypeChanged() {
+    const type = document.getElementById('rev-type')?.value;
+    document.getElementById('rev-rating-group').style.display   = type === 'positive' ? '' : 'none';
+    document.getElementById('rev-severity-group').style.display = type === 'negative' ? '' : 'none';
+    if (!window._reviewFormState) window._reviewFormState = {};
+    window._reviewFormState.type = type;
+}
+
+function selectReviewStar(n) {
+    [1,2,3,4,5].forEach(i => {
+        document.getElementById(`rev-star-${i}`)?.classList.toggle('btn-primary',   i === n);
+        document.getElementById(`rev-star-${i}`)?.classList.toggle('btn-secondary', i !== n);
+    });
+    if (!window._reviewFormState) window._reviewFormState = {};
+    window._reviewFormState.rating = n;
+}
+
+function selectReviewSeverity(val) {
+    document.getElementById('rev-minor-btn')?.classList.toggle('btn-primary',   val === 'minor');
+    document.getElementById('rev-minor-btn')?.classList.toggle('btn-secondary', val !== 'minor');
+    document.getElementById('rev-major-btn')?.classList.toggle('btn-primary',   val === 'major');
+    document.getElementById('rev-major-btn')?.classList.toggle('btn-secondary', val !== 'major');
+    if (!window._reviewFormState) window._reviewFormState = {};
+    window._reviewFormState.severity = val;
+}
+
+async function submitReview(installerId) {
+    const state  = window._reviewFormState || {};
+    const type   = document.getElementById('rev-type')?.value || 'positive';
+    const source = document.getElementById('rev-source')?.value.trim() || '';
+    const note   = document.getElementById('rev-note')?.value.trim() || '';
+    if (type === 'negative' && !state.severity) { flash('error', 'Please select a severity level.'); return; }
+    const data = {
+        installerId,
+        type,
+        source,
+        note,
+        createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy:    firebase.auth().currentUser?.uid    || '',
+        createdByName: firebase.auth().currentUser?.email || ''
+    };
+    if (type === 'positive') {
+        data.rating = state.rating || 5;
+    } else {
+        data.severity = state.severity;
+        data.rating   = state.severity === 'major' ? 1 : 2;
+    }
+    try {
+        await db.collection('installer_reviews').add(data);
+        document.getElementById('add-review-form-area').innerHTML = '';
+        window._reviewFormState = null;
+        flash('ok', 'Review saved.');
+        loadReviewsTab(installerId);
+        loadInstallerRatings();
+    } catch(e) { flash('error', 'Could not save review: ' + e.message); }
+}
+
+async function deleteReview(reviewId, installerId) {
+    if (!confirm('Delete this review?')) return;
+    try {
+        await db.collection('installer_reviews').doc(reviewId).delete();
+        flash('ok', 'Review deleted.');
+        loadReviewsTab(installerId);
+        loadInstallerRatings();
+    } catch(e) { flash('error', 'Could not delete: ' + e.message); }
 }
 
 // ============================================================
