@@ -292,8 +292,13 @@ async function renderDashboard(retries = 1) {
             </div>
         </div>
         <div class="card mb-6" id="card-compliance-warning" style="display:none;border-color:var(--bad)">
-            <h3 class="mb-3" style="color:var(--bad)">🚨 Installer Compliance Issues</h3>
-            <div id="compliance-warning-body" class="text-sm"></div>
+            <div class="rollup-header" onclick="toggleRollup('compliance')" style="cursor:pointer;display:flex;align-items:center;gap:.5rem;user-select:none">
+                <span id="rollup-chevron-compliance" style="transition:transform .2s;display:inline-block">▶</span>
+                <h3 style="margin:0;color:var(--bad)">🚨 Installer Compliance Issues <span id="compliance-warning-count" style="margin-left:.5rem;font-size:.75rem;padding:.15rem .5rem;border-radius:999px;font-weight:600;background:var(--bad);color:#fff"></span></h3>
+            </div>
+            <div id="rollup-body-compliance" style="display:none">
+                <div id="compliance-warning-body" class="text-sm mt-3"></div>
+            </div>
         </div>
         <div class="card mb-6" id="card-unmatched-inspections" style="display:none;border-color:var(--warn)">
             <h3 class="mb-3" style="color:var(--warn)">⚠ Unmatched Failed Inspections</h3>
@@ -2052,11 +2057,12 @@ async function loadComplianceWarnings() {
 
         if (!issues.length) return;
 
-        const card = document.getElementById('card-compliance-warning');
-        const body = document.getElementById('compliance-warning-body');
+        const card  = document.getElementById('card-compliance-warning');
+        const body  = document.getElementById('compliance-warning-body');
+        const badge = document.getElementById('compliance-warning-count');
         card.style.display = '';
-        body.innerHTML = `<p class="text-muted mb-3">${issues.length} active installer${issues.length !== 1 ? 's' : ''} with compliance issues</p>` +
-            issues.map(({ inst, badTypes, myDocs }) => `
+        if (badge) badge.textContent = issues.length;
+        body.innerHTML = issues.map(({ inst, badTypes, myDocs }) => `
                 <div style="border:1px solid var(--border);border-radius:6px;padding:.65rem .75rem;margin-bottom:.6rem;display:flex;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
                     <div style="flex:1;min-width:0">
                         <div style="font-weight:600">${esc(inst.displayName || inst.email)}</div>
