@@ -1047,7 +1047,9 @@ function financeCard(r, actions, isArchive) {
     // Archive action
     let archiveSection = '';
     if (!isArchive) {
-        const needsAmount = r.status === 'completed_partial' && (r.amountCollected == null || r.amountCollected === '');
+        const needsAmount = (r.status === 'completed_partial' || r.status === 'completed_collected')
+            && (r.amountCollected == null || r.amountCollected === '')
+            && !balanceDue;
         archiveSection = needsAmount
             ? `<div style="font-size:.75rem;color:var(--warn);margin-top:.5rem">⏳ Enter amount collected above before archiving.</div>`
             : `<div class="rc-actions">
