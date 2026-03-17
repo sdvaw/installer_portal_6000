@@ -1476,7 +1476,7 @@ async function renderSchedule() {
         // Weekly pay tally — deduplicate recurring series so multi-day jobs count once.
         // Parse series from job ID directly (format: {seriesId}-rid-{ts}) — no sync needed.
         const seenSeries = new Set();
-        const weekTotal = jobs.reduce((sum, j) => {
+        let weekTotal = jobs.reduce((sum, j) => {
             const m = j.id.match(/^(\d+)-rid-\d+$/);
             const key = m ? m[1] : j.id;
             if (seenSeries.has(key)) return sum;
@@ -1484,6 +1484,30 @@ async function renderSchedule() {
             const pay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, ''));
             return sum + (isNaN(pay) ? 0 : pay);
         }, 0);
+
+        // Add approved extra work for jobs in this week
+        const weekJobIds = [...new Set(jobs.map(j => j.id))];
+        if (weekJobIds.length) {
+            db.collection('extra_work_requests')
+                .where('installerId', '==', currentInstaller.id)
+                .where('status', '==', 'approved')
+                .get()
+                .then(ewSnap => {
+                    let ewTotal = 0;
+                    ewSnap.docs.forEach(d => {
+                        const r = d.data();
+                        if (weekJobIds.includes(r.jobId)) ewTotal += parseFloat(r.amountApproved) || 0;
+                    });
+                    if (ewTotal > 0) {
+                        const combined = weekTotal + ewTotal;
+                        const payEl = document.getElementById('week-pay-total');
+                        if (payEl && combined > 0) {
+                            payEl.innerHTML = `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Week Pay</div>
+                               <div style="font-size:1.1rem;font-weight:700;color:var(--ok)">$${combined.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
+                        }
+                    }
+                }).catch(() => {});
+        }
         const payEl = document.getElementById('week-pay-total');
         if (payEl) {
             payEl.innerHTML = weekTotal > 0
@@ -2889,10 +2913,25 @@ async function loadEarningsReport() {
         }
         const dedupedJobs = [...seen.values()];
 
+        // Fetch approved extra work for this installer, group by jobId
+        const ewSnap = await db.collection('extra_work_requests')
+            .where('installerId', '==', currentInstaller.id)
+            .where('status', '==', 'approved')
+            .get().catch(() => ({ docs: [] }));
+        const ewByJob = {};
+        ewSnap.docs.forEach(d => {
+            const r = d.data();
+            if (!ewByJob[r.jobId]) ewByJob[r.jobId] = [];
+            ewByJob[r.jobId].push(r);
+        });
+
         let total = 0;
         const rows = dedupedJobs.map(j => {
-            const pay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
-            total += pay;
+            const basePay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
+            const ewItems = ewByJob[j.id] || [];
+            const ewTotal = ewItems.reduce((s, r) => s + (parseFloat(r.amountApproved) || 0), 0);
+            const rowTotal = basePay + ewTotal;
+            total += rowTotal;
             const d1 = toDate(j.startDt);
             const d2 = toDate(j._lastDt);
             const fmt = d => d?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -2900,21 +2939,27 @@ async function loadEarningsReport() {
                 ? fmt(d1) + ' – ' + fmt(d2)
                 : fmt(d1) || '—';
             const daysNote = j._days > 1 ? ` · ${j._days} days` : '';
+            const ewLines = ewItems.map(r =>
+                `<div style="font-size:.75rem;color:var(--muted)">+ Extra work: ${esc(r.description || '')} <span style="color:var(--ok);font-weight:600">$${parseFloat(r.amountApproved).toFixed(2)}</span></div>`
+            ).join('');
             return `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:.55rem 0;border-bottom:1px solid var(--hairline)">
-                <div>
-                    <div style="font-weight:600;font-size:.875rem">${esc(j.customerName || j.title || 'Unknown')}</div>
-                    <div style="font-size:.75rem;color:var(--muted)">Job #${esc(j.jobNumber || j.id)} · ${dateStr}${daysNote}</div>
-                </div>
-                <div style="font-weight:700;min-width:60px;text-align:right;color:${pay > 0 ? 'var(--ok)' : 'var(--muted)'}">
-                    ${pay > 0 ? '$' + pay.toFixed(2) : '—'}
+            <div style="padding:.55rem 0;border-bottom:1px solid var(--hairline)">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between">
+                    <div>
+                        <div style="font-weight:600;font-size:.875rem">${esc(j.customerName || j.title || 'Unknown')}</div>
+                        <div style="font-size:.75rem;color:var(--muted)">Job #${esc(j.jobNumber || j.id)} · ${dateStr}${daysNote}</div>
+                        ${ewLines}
+                    </div>
+                    <div style="font-weight:700;min-width:60px;text-align:right;color:${rowTotal > 0 ? 'var(--ok)' : 'var(--muted)'}">
+                        ${rowTotal > 0 ? '$' + rowTotal.toFixed(2) : '—'}
+                    </div>
                 </div>
             </div>`;
         }).join('');
 
         resultsEl.innerHTML = rows + `
         <div style="display:flex;justify-content:space-between;padding:.75rem 0;font-weight:700;font-size:1rem;border-top:2px solid var(--hairline);margin-top:.25rem">
-            <span>${jobs.length} job${jobs.length !== 1 ? 's' : ''}</span>
+            <span>${dedupedJobs.length} job${dedupedJobs.length !== 1 ? 's' : ''}</span>
             <span style="color:var(--ok)">$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>`;
 
