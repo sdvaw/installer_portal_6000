@@ -2044,6 +2044,7 @@ async function loadComplianceWarnings() {
         const issues = [];
         installersSnap.docs.forEach(d => {
             const inst = { id: d.id, ...d.data() };
+            if (getInstallerType(inst) !== 'installer') return; // only applies to installers
             if (inst.complianceOverride?.active) return; // override in place, skip
             const myDocs = docsByInstaller[inst.id] || {};
             const badTypes = requiredTypes.filter(t => {
