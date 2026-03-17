@@ -1569,6 +1569,20 @@ function showJobActions(jobId) {
     const invBtn = document.querySelector('#modal-job-actions .btn-inventory');
     if (invBtn) invBtn.style.display = showInvBtn ? '' : 'none';
 
+    // Block Start Job if product hasn't been received yet
+    const hasItemsToReceive = (job.windowCount > 0) || (job.doorCount > 0) || (job.sgdCount > 0);
+    if (startBtn && status === 'not_started' && hasItemsToReceive && showInvBtn) {
+        startBtn.disabled = true;
+        startBtn.style.opacity = '0.45';
+        startBtn.title = 'Receive product before starting the job';
+        startBtn.textContent = '🔒 Receive Product First';
+    } else if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.style.opacity = '';
+        startBtn.title = '';
+        startBtn.textContent = '📷 Start Job';
+    }
+
     showModal('modal-job-actions');
 }
 
