@@ -1159,6 +1159,22 @@ async function renderSettings() {
                     <input class="form-input" id="set-monthly-goal" type="number" min="0" step="100" placeholder="e.g. 30000" style="max-width:200px">
                     <p class="text-muted text-sm mt-1">Displayed as a progress bar on the Finance dashboard.</p>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Labor % — Warning Threshold</label>
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <input class="form-input" id="set-labor-warn" type="number" min="1" max="99" step="1" placeholder="28" style="max-width:100px">
+                        <span class="text-muted text-sm">%</span>
+                    </div>
+                    <p class="text-muted text-sm mt-1">Jobs at or above this % show in yellow on the Analytics report.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Labor % — High Threshold</label>
+                    <div style="display:flex;align-items:center;gap:.5rem">
+                        <input class="form-input" id="set-labor-high" type="number" min="1" max="99" step="1" placeholder="35" style="max-width:100px">
+                        <span class="text-muted text-sm">%</span>
+                    </div>
+                    <p class="text-muted text-sm mt-1">Jobs at or above this % show in red and appear in the High Labor flagged list.</p>
+                </div>
                 <div id="portal-settings-msg" class="hidden alert mb-3"></div>
                 <button class="btn btn-primary" onclick="savePortalSettings()">Save Portal Settings</button>
             </div>
@@ -1291,19 +1307,28 @@ async function loadSettings() {
                 ? portalDoc.data().cocAgreementText
                 : DEFAULT_COC_AGREEMENT_ADMIN;
         }
-        const goalEl = document.getElementById('set-monthly-goal');
-        if (goalEl && portalDoc.exists && portalDoc.data().monthlyGoal != null) {
-            goalEl.value = portalDoc.data().monthlyGoal;
+        if (portalDoc.exists) {
+            const pd = portalDoc.data();
+            const goalEl     = document.getElementById('set-monthly-goal');
+            const laborWarnEl = document.getElementById('set-labor-warn');
+            const laborHighEl = document.getElementById('set-labor-high');
+            if (goalEl     && pd.monthlyGoal  != null) goalEl.value     = pd.monthlyGoal;
+            if (laborWarnEl && pd.laborWarnPct != null) laborWarnEl.value = pd.laborWarnPct;
+            if (laborHighEl && pd.laborHighPct != null) laborHighEl.value = pd.laborHighPct;
         }
     } catch(err) { flash('error', 'Could not load settings: ' + err.message); }
 }
 
 async function savePortalSettings() {
-    const goalEl  = document.getElementById('set-monthly-goal');
-    const msgEl   = document.getElementById('portal-settings-msg');
-    const goal    = goalEl ? parseFloat(goalEl.value) || 0 : 0;
+    const goalEl      = document.getElementById('set-monthly-goal');
+    const laborWarnEl = document.getElementById('set-labor-warn');
+    const laborHighEl = document.getElementById('set-labor-high');
+    const msgEl       = document.getElementById('portal-settings-msg');
+    const goal        = parseFloat(goalEl?.value)      || 0;
+    const laborWarnPct = parseFloat(laborWarnEl?.value) || 28;
+    const laborHighPct = parseFloat(laborHighEl?.value) || 35;
     try {
-        await db.collection('settings').doc('portal').set({ monthlyGoal: goal }, { merge: true });
+        await db.collection('settings').doc('portal').set({ monthlyGoal: goal, laborWarnPct, laborHighPct }, { merge: true });
         msgEl.className = 'alert alert-ok';
         msgEl.textContent = 'Portal settings saved.';
         msgEl.classList.remove('hidden');
