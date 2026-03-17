@@ -291,6 +291,10 @@ async function renderDashboard(retries = 1) {
                 </div>
             </div>
         </div>
+        <div class="card mb-6" id="card-compliance-warning" style="display:none;border-color:var(--bad)">
+            <h3 class="mb-3" style="color:var(--bad)">🚨 Installer Compliance Issues</h3>
+            <div id="compliance-warning-body" class="text-sm"></div>
+        </div>
         <div class="card mb-6" id="card-blackout-detail" style="display:none;border-color:var(--info)">
             <h3 class="mb-3" style="color:var(--info)">📅 Blackout Requests — Pending Approval</h3>
             <div id="blackout-detail-body" class="text-sm"></div>
@@ -336,6 +340,7 @@ async function renderDashboard(retries = 1) {
             db.collection('extra_work_requests').where('status','in',['pending','counter_pending']).get().catch(() => ({ size: 0, docs: [] })),
             db.collection('job_records').where('walkthroughIncomplete','==',true).get().catch(() => ({ size: 0, docs: [] }))
         ]);
+        loadComplianceWarnings().catch(() => {});
         document.getElementById('stat-pending').textContent  = pending.size;
         document.getElementById('stat-blackout').textContent = blackouts.size;
         document.getElementById('stat-active').textContent   = active.size;
@@ -903,6 +908,7 @@ function openEditModal(installerId) {
                 <div class="modal-body">
                     <div class="tabs">
                         <button class="tab-btn active" onclick="switchModalTab('details',this)">Details</button>
+                        <button class="tab-btn" onclick="switchModalTab('compliance',this)">Compliance</button>
                         <button class="tab-btn" onclick="switchModalTab('history',this)">History</button>
                     </div>
 
@@ -944,6 +950,11 @@ function openEditModal(installerId) {
                         <div id="edit-error" class="hidden alert alert-error"></div>
                     </div>
 
+                    <!-- Compliance Tab -->
+                    <div id="modal-tab-compliance" class="tab-panel">
+                        <div id="compliance-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
+                    </div>
+
                     <!-- History Tab -->
                     <div id="modal-tab-history" class="tab-panel">
                         <div id="history-content"><div class="text-center p-4"><span class="spinner"></span></div></div>
@@ -963,7 +974,9 @@ function switchModalTab(name, btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('modal-tab-' + name).classList.add('active');
     btn.classList.add('active');
-    if (name === 'history') loadHistory(btn.closest('.modal').querySelector('[onclick*="submitEdit"]').getAttribute('onclick').match(/'([^']+)'/)[1]);
+    const installerId = btn.closest('.modal').querySelector('[onclick*="submitEdit"]').getAttribute('onclick').match(/'([^']+)'/)[1];
+    if (name === 'history')    loadHistory(installerId);
+    if (name === 'compliance') loadComplianceTab(installerId);
 }
 
 async function loadHistory(installerId) {
@@ -1167,6 +1180,17 @@ async function renderSettings() {
             </div>
         </details>
 
+        <!-- Document Requirements -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Document Requirements</h3><p>Insurance certificates and certifications installers must keep current.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div style="display:flex;justify-content:flex-end;margin-bottom:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="addDocType()">+ Add Document Type</button>
+                </div>
+                <div id="doc-types-list"><div class="text-center p-4"><span class="spinner"></span></div></div>
+            </div>
+        </details>
+
         <!-- Staff -->
         <details class="card mb-4">
             <summary><div class="card-summary-text"><h3>Staff Accounts</h3><p>Finance, service, and manager accounts for the dashboard portal.</p></div><span class="card-chevron">▶</span></summary>
@@ -1204,6 +1228,7 @@ async function renderSettings() {
     await loadStatusList();
     await loadPhotoReqs();
     await loadDefectTypes();
+    await loadDocTypes();
     loadStaffList();
     loadMgmtStats();
 
@@ -1845,6 +1870,324 @@ async function deleteDefectType(id) {
         await loadDefectTypes();
         flash('ok', 'Defect type deleted.');
     } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// DOCUMENT TYPES (admin configurable)
+// ============================================================
+
+function computeDocStatus(doc) {
+    if (!doc || !doc.fileUrl) return 'missing';
+    if (!doc.verifiedAt) return 'pending_review';
+    const exp = doc.expiresAt?.toDate ? doc.expiresAt.toDate() : (doc.expiresAt ? new Date(doc.expiresAt) : null);
+    if (!exp || isNaN(exp)) return 'valid';
+    const daysUntil = (exp - new Date()) / (1000 * 60 * 60 * 24);
+    if (daysUntil < 0)   return 'expired';
+    if (daysUntil <= 2)  return 'expiring_urgent';
+    if (daysUntil <= 14) return 'expiring_soon';
+    return 'valid';
+}
+
+function docStatusBadge(status) {
+    const map = {
+        missing:          ['badge-inactive', 'Missing'],
+        pending_review:   ['badge-info',     'Pending Review'],
+        valid:            ['badge-active',   'Valid'],
+        expiring_soon:    ['badge-pending',  'Expiring Soon'],
+        expiring_urgent:  ['badge-inactive', 'Expiring ≤2 days'],
+        expired:          ['badge-inactive', 'Expired'],
+    };
+    const [cls, label] = map[status] || ['badge-inactive', status];
+    return `<span class="badge ${cls}">${label}</span>`;
+}
+
+async function loadDocTypes() {
+    const el = document.getElementById('doc-types-list');
+    if (!el) return;
+    try {
+        let snap;
+        try { snap = await db.collection('document_types').orderBy('order').get(); }
+        catch(e) { snap = await db.collection('document_types').get(); }
+        const types = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                               .sort((a, b) => (a.order || 0) - (b.order || 0));
+        renderDocTypeList(types);
+    } catch(err) {
+        if (el) el.innerHTML = '<p class="text-muted text-sm">Could not load document types.</p>';
+    }
+}
+
+function renderDocTypeList(types) {
+    const el = document.getElementById('doc-types-list');
+    if (!el) return;
+    if (!types.length) {
+        el.innerHTML = '<p class="text-muted text-sm">No document types configured yet.</p>';
+        return;
+    }
+    el.innerHTML = types.map(t => `
+        <div class="card card-sm mb-2 flex justify-between items-center">
+            <div>
+                <div class="font-medium text-sm">${esc(t.name)}</div>
+                <div class="text-xs text-muted mt-1">${t.required ? '⚠ Required' : 'Optional'}</div>
+            </div>
+            <div class="flex gap-2">
+                <button class="btn btn-sm btn-secondary" onclick="editDocType('${t.id}','${esc(t.name).replace(/'/g,"\\'")}',${!!t.required})">Edit</button>
+                <button class="btn btn-sm btn-danger"    onclick="deleteDocType('${t.id}')">Delete</button>
+            </div>
+        </div>`).join('');
+}
+
+function addDocType()                       { openDocTypeModal('', '', true); }
+function editDocType(id, name, required)    { openDocTypeModal(id, name, required); }
+
+function openDocTypeModal(id, name, required) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>${id ? 'Edit' : 'Add'} Document Type</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Document Name *</label>
+                        <input class="form-input" id="doctype-name" value="${esc(name)}" placeholder="e.g. General Liability Insurance">
+                    </div>
+                    <div class="form-group">
+                        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                            <input type="checkbox" id="doctype-required" ${required ? 'checked' : ''}>
+                            <span class="form-label" style="margin:0">Required — blocks portal if expired or missing</span>
+                        </label>
+                    </div>
+                    <div id="doctype-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveDocType('${esc(id)}')">Save</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveDocType(id) {
+    const name     = (document.getElementById('doctype-name')?.value || '').trim();
+    const required = document.getElementById('doctype-required')?.checked ?? true;
+    const errEl    = document.getElementById('doctype-error');
+    if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('hidden'); return; }
+    try {
+        if (id) {
+            await db.collection('document_types').doc(id).update({ name, required });
+        } else {
+            const snap = await db.collection('document_types').get();
+            await db.collection('document_types').add({ name, required, order: snap.size });
+        }
+        closeModal();
+        await loadDocTypes();
+        flash('ok', 'Document type saved.');
+    } catch(err) {
+        errEl.textContent = 'Save failed: ' + err.message;
+        errEl.classList.remove('hidden');
+    }
+}
+
+async function deleteDocType(id) {
+    if (!confirm('Delete this document type? Existing installer documents of this type will remain but will no longer be checked.')) return;
+    try {
+        await db.collection('document_types').doc(id).delete();
+        await loadDocTypes();
+        flash('ok', 'Document type deleted.');
+    } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// COMPLIANCE — Dashboard card
+// ============================================================
+
+async function loadComplianceWarnings() {
+    try {
+        const [typesSnap, docsSnap, installersSnap] = await Promise.all([
+            db.collection('document_types').where('required', '==', true).get(),
+            db.collection('installer_documents').get(),
+            db.collection('installers').where('status', '==', 'active').get()
+        ]);
+
+        const requiredTypes  = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!requiredTypes.length) return;
+
+        // Map installerId → documentTypeId → doc
+        const docsByInstaller = {};
+        docsSnap.docs.forEach(d => {
+            const data = d.data();
+            if (!docsByInstaller[data.installerId]) docsByInstaller[data.installerId] = {};
+            docsByInstaller[data.installerId][data.documentTypeId] = { id: d.id, ...data };
+        });
+
+        const issues = [];
+        installersSnap.docs.forEach(d => {
+            const inst = { id: d.id, ...d.data() };
+            if (inst.complianceOverride?.active) return; // override in place, skip
+            const myDocs = docsByInstaller[inst.id] || {};
+            const badTypes = requiredTypes.filter(t => {
+                const status = computeDocStatus(myDocs[t.id]);
+                return ['missing','expired','expiring_urgent','expiring_soon'].includes(status);
+            });
+            if (badTypes.length) {
+                issues.push({ inst, badTypes, myDocs });
+            }
+        });
+
+        if (!issues.length) return;
+
+        const card = document.getElementById('card-compliance-warning');
+        const body = document.getElementById('compliance-warning-body');
+        card.style.display = '';
+        body.innerHTML = `<p class="text-muted mb-3">${issues.length} active installer${issues.length !== 1 ? 's' : ''} with compliance issues</p>` +
+            issues.map(({ inst, badTypes, myDocs }) => `
+                <div style="border:1px solid var(--border);border-radius:6px;padding:.65rem .75rem;margin-bottom:.6rem;display:flex;align-items:flex-start;gap:.75rem;flex-wrap:wrap">
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:600">${esc(inst.displayName || inst.email)}</div>
+                        <div style="margin-top:.3rem;display:flex;flex-wrap:wrap;gap:.3rem">
+                            ${badTypes.map(t => {
+                                const s = computeDocStatus(myDocs[t.id]);
+                                return `<span>${esc(t.name)}: ${docStatusBadge(s)}</span>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary" onclick="openEditModal('${inst.id}')">View</button>
+                </div>`).join('');
+    } catch(err) { /* silent — non-critical */ }
+}
+
+// ============================================================
+// COMPLIANCE — Installer modal tab
+// ============================================================
+
+async function loadComplianceTab(installerId) {
+    const el = document.getElementById('compliance-content');
+    if (!el) return;
+    const inst = provisionedData.find(i => i.id === installerId);
+
+    try {
+        const [typesSnap, docsSnap] = await Promise.all([
+            db.collection('document_types').get(),
+            db.collection('installer_documents').where('installerId', '==', installerId).get()
+        ]);
+
+        const types = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+        const docMap = {};
+        docsSnap.docs.forEach(d => { docMap[d.data().documentTypeId] = { id: d.id, ...d.data() }; });
+
+        const override = inst?.complianceOverride;
+        const overrideHtml = override?.active
+            ? `<div class="alert" style="background:var(--warn-bg,#fffbe6);border:1px solid var(--warn);border-radius:6px;padding:.65rem .75rem;margin-bottom:1rem;font-size:.85rem">
+                <strong>⚠ Override Active</strong> — granted by ${esc(override.grantedByName || override.grantedBy || 'admin')}<br>
+                <span class="text-muted">${esc(override.reason || '')}</span>
+                <button class="btn btn-sm btn-danger" style="margin-top:.5rem;display:block" onclick="revokeComplianceOverride('${installerId}')">Revoke Override</button>
+               </div>`
+            : `<button class="btn btn-sm btn-secondary mb-4" onclick="grantComplianceOverride('${installerId}')">Grant Temporary Override</button>`;
+
+        if (!types.length) {
+            el.innerHTML = overrideHtml + '<p class="text-muted text-sm">No document types configured. Add them in Settings → Document Requirements.</p>';
+            return;
+        }
+
+        el.innerHTML = overrideHtml + types.map(t => {
+            const doc    = docMap[t.id];
+            const status = computeDocStatus(doc);
+            const expStr = doc?.expiresAt
+                ? (doc.expiresAt?.toDate ? doc.expiresAt.toDate() : new Date(doc.expiresAt)).toLocaleDateString()
+                : '—';
+            const verStr = doc?.verifiedAt
+                ? (doc.verifiedAt?.toDate ? doc.verifiedAt.toDate() : new Date(doc.verifiedAt)).toLocaleDateString()
+                : null;
+            const verifiedBy = doc?.verifiedByName || doc?.verifiedBy || '';
+
+            return `<div style="border:1px solid var(--border);border-radius:6px;padding:.75rem;margin-bottom:.65rem">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <div class="font-medium text-sm">${esc(t.name)}</div>
+                        <div class="text-xs text-muted">${t.required ? 'Required' : 'Optional'}</div>
+                    </div>
+                    ${docStatusBadge(status)}
+                </div>
+                ${doc?.fileUrl ? `
+                <div class="text-xs text-muted mb-2">
+                    Expires: <strong>${expStr}</strong>
+                    ${verStr ? ` · Verified ${verStr} by ${esc(verifiedBy)}` : ' · Not yet verified'}
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <a href="${esc(doc.fileUrl)}" target="_blank" class="btn btn-sm btn-secondary">View Document</a>
+                    ${!doc.verifiedAt ? `<button class="btn btn-sm btn-primary" onclick="verifyInstallerDoc('${doc.id}','${installerId}')">✓ Verify</button>` : ''}
+                    ${doc.verifiedAt  ? `<button class="btn btn-sm btn-secondary" onclick="unverifyInstallerDoc('${doc.id}','${installerId}')">Unverify</button>` : ''}
+                </div>` : '<div class="text-xs text-muted">No document uploaded yet.</div>'}
+            </div>`;
+        }).join('');
+    } catch(err) {
+        if (el) el.innerHTML = '<p class="text-muted text-sm">Could not load compliance data.</p>';
+    }
+}
+
+async function verifyInstallerDoc(docId, installerId) {
+    try {
+        const user     = firebase.auth().currentUser;
+        const userData = await db.collection('management_users').doc(user.uid).get().catch(() => null);
+        const name     = userData?.exists ? (userData.data().displayName || user.email) : user.email;
+        await db.collection('installer_documents').doc(docId).update({
+            verifiedAt:     firebase.firestore.FieldValue.serverTimestamp(),
+            verifiedBy:     user.uid,
+            verifiedByName: name
+        });
+        flash('ok', 'Document verified.');
+        await loadComplianceTab(installerId);
+    } catch(err) { flash('error', 'Verify failed: ' + err.message); }
+}
+
+async function unverifyInstallerDoc(docId, installerId) {
+    if (!confirm('Remove verification from this document?')) return;
+    try {
+        await db.collection('installer_documents').doc(docId).update({
+            verifiedAt: null, verifiedBy: null, verifiedByName: null
+        });
+        flash('ok', 'Verification removed.');
+        await loadComplianceTab(installerId);
+    } catch(err) { flash('error', 'Failed: ' + err.message); }
+}
+
+async function grantComplianceOverride(installerId) {
+    const reason = prompt('Reason for override (e.g. "Cert pending renewal — expires 2026-04-01"):');
+    if (reason === null) return;
+    try {
+        const user = firebase.auth().currentUser;
+        await db.collection('installers').doc(installerId).update({
+            complianceOverride: {
+                active:         true,
+                grantedBy:      user.uid,
+                grantedByName:  user.email,
+                grantedAt:      new Date().toISOString(),
+                reason:         reason.trim()
+            }
+        });
+        // Refresh local cache
+        const idx = provisionedData.findIndex(i => i.id === installerId);
+        if (idx !== -1) provisionedData[idx].complianceOverride = { active: true, grantedBy: user.uid, grantedByName: user.email, reason: reason.trim() };
+        flash('ok', 'Override granted. Installer can access their portal.');
+        await loadComplianceTab(installerId);
+        loadComplianceWarnings().catch(() => {});
+    } catch(err) { flash('error', 'Failed: ' + err.message); }
+}
+
+async function revokeComplianceOverride(installerId) {
+    if (!confirm('Revoke override? Installer will be blocked again if they have expired/missing required documents.')) return;
+    try {
+        await db.collection('installers').doc(installerId).update({
+            'complianceOverride.active': false
+        });
+        const idx = provisionedData.findIndex(i => i.id === installerId);
+        if (idx !== -1 && provisionedData[idx].complianceOverride) provisionedData[idx].complianceOverride.active = false;
+        flash('ok', 'Override revoked.');
+        await loadComplianceTab(installerId);
+        loadComplianceWarnings().catch(() => {});
+    } catch(err) { flash('error', 'Failed: ' + err.message); }
 }
 
 // ============================================================

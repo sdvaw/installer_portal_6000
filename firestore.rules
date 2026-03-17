@@ -175,5 +175,33 @@ service cloud.firestore {
       allow update: if isAdmin() || isManagementUser();
     }
 
+    // --------------------------------------------------------
+    // DOCUMENT TYPES — admin configures required compliance docs
+    //                  all signed-in users read (installer portal needs list)
+    // --------------------------------------------------------
+    match /document_types/{typeId} {
+      allow read:  if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // INSTALLER DOCUMENTS — compliance docs uploaded by installers
+    //   admin + management: full access (verify, view all)
+    //   installer: read/create/update own docs; cannot set verifiedAt/verifiedBy
+    // --------------------------------------------------------
+    match /installer_documents/{docId} {
+      allow read, write: if isAdmin() || isManagementUser();
+      allow read: if isSignedIn() &&
+        get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid;
+      allow create: if isSignedIn() &&
+        get(/databases/$(database)/documents/installers/$(request.resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid &&
+        !('verifiedAt' in request.resource.data) &&
+        !('verifiedBy' in request.resource.data);
+      allow update: if isSignedIn() &&
+        get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid &&
+        resource.data.installerId == request.resource.data.installerId &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verifiedAt', 'verifiedBy']);
+    }
+
   }
 }

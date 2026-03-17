@@ -640,9 +640,15 @@
 <div id="page-defects" class="installer-page"></div>
 <div id="page-earnings" class="installer-page"></div>
 
+<div id="page-documents" class="installer-page"></div>
+
 <!-- Hidden file input for camera capture -->
 <input type="file" id="photo-input" accept="image/*" capture="environment"
        style="display:none" onchange="handlePhotoFile(this)">
+
+<!-- Hidden file input for document uploads (PDF or image) -->
+<input type="file" id="doc-file-input" accept="image/*,application/pdf"
+       style="display:none" onchange="handleDocFileSelected(this)">
 
 <!-- Modal Overlay -->
 <div id="modal-overlay" class="modal-overlay" style="display:none" onclick="overlayBgClick(event)">
@@ -869,6 +875,9 @@
   <button class="bottom-nav-btn" id="nav-earnings" onclick="showPage('earnings')">
     <span class="icon">💰</span>Earnings
   </button>
+  <button class="bottom-nav-btn" id="nav-documents" onclick="showPage('documents')">
+    <span class="icon">📋</span>Docs
+  </button>
 </nav>
 
 <script src="js/firebase-config.js?v=1773015005"></script>
@@ -1083,8 +1092,11 @@ async function loadPortal(user) {
         if (!currentInstaller.signatureUrl) {
             showSignatureOnboarding();
         } else {
-            showPage('schedule');
-            maybeStartTutorial();
+            const blocked = await checkComplianceBlock();
+            if (!blocked) {
+                showPage('schedule');
+                maybeStartTutorial();
+            }
         }
     } catch(err) {
         showNoAccess('Could not load your portal. Please try again.');
@@ -1118,10 +1130,11 @@ function showPage(name) {
     const bar = document.getElementById('status-bar');
     if (bar && name !== 'job-detail') bar.style.display = 'none';
 
-    if (name === 'schedule') renderSchedule();
-    if (name === 'blackout') renderBlackout();
-    if (name === 'defects')  renderDefects();
-    if (name === 'earnings') renderEarnings();
+    if (name === 'schedule')  renderSchedule();
+    if (name === 'blackout')  renderBlackout();
+    if (name === 'defects')   renderDefects();
+    if (name === 'earnings')  renderEarnings();
+    if (name === 'documents') renderDocuments();
 }
 
 async function showAdminPreviewPicker() {
@@ -1369,7 +1382,25 @@ async function renderSchedule() {
             </button>`;
     }).join('');
 
-    el.innerHTML = `
+    // Compliance banner — check cached docs for expiring/expired
+    const complianceBanner = (() => {
+        if (isPreviewMode || !_docTypes.length) return '';
+        const issues = _docTypes.filter(t => {
+            const s = computeDocStatus(_installerDocs[t.id]);
+            return ['expiring_soon','expiring_urgent','expired','missing'].includes(s) && t.required;
+        });
+        if (!issues.length) return '';
+        const isBlocking = issues.some(t => {
+            const s = computeDocStatus(_installerDocs[t.id]);
+            return s === 'expired' || s === 'missing';
+        });
+        const color = isBlocking ? 'var(--bad)' : 'var(--warn, #f59e0b)';
+        return `<div onclick="showPage('documents')" style="background:${color};color:#fff;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">
+            ${isBlocking ? '🚫' : '⚠️'} ${issues.length} document${issues.length > 1 ? 's' : ''} need${issues.length === 1 ? 's' : ''} attention — tap to view
+        </div>`;
+    })();
+
+    el.innerHTML = `${complianceBanner}
         <div style="padding:.6rem 1rem .25rem;border-bottom:1px solid var(--hairline);display:flex;align-items:center;justify-content:space-between">
             <div>
                 <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Logged in as</div>
@@ -2275,6 +2306,250 @@ async function submitBlackout() {
         document.getElementById('blackout-reason').value = '';
         await loadBlackoutList();
     } catch(err) { alert('Could not submit request: ' + err.message); }
+}
+
+// ============================================================
+// COMPLIANCE / DOCUMENTS PAGE
+// ============================================================
+
+let _docTypes      = [];
+let _installerDocs = {};  // documentTypeId → doc record
+let _pendingDocTypeId = null; // which doc type we're uploading for
+
+function computeDocStatus(doc) {
+    if (!doc || !doc.fileUrl) return 'missing';
+    if (!doc.verifiedAt) return 'pending_review';
+    const exp = doc.expiresAt?.toDate ? doc.expiresAt.toDate() : (doc.expiresAt ? new Date(doc.expiresAt) : null);
+    if (!exp || isNaN(exp)) return 'valid';
+    const daysUntil = (exp - new Date()) / (1000 * 60 * 60 * 24);
+    if (daysUntil < 0)   return 'expired';
+    if (daysUntil <= 2)  return 'expiring_urgent';
+    if (daysUntil <= 14) return 'expiring_soon';
+    return 'valid';
+}
+
+function docStatusLabel(status) {
+    return { missing: 'Missing', pending_review: 'Pending Review', valid: 'Valid',
+             expiring_soon: 'Expiring Soon', expiring_urgent: 'Expiring Soon', expired: 'Expired' }[status] || status;
+}
+
+function docStatusColor(status) {
+    if (status === 'valid')          return 'var(--ok)';
+    if (status === 'pending_review') return 'var(--accent)';
+    if (status === 'expiring_soon' || status === 'expiring_urgent') return 'var(--warn, #f59e0b)';
+    return 'var(--bad)'; // missing, expired
+}
+
+async function checkComplianceBlock() {
+    if (isPreviewMode) return false;
+    try {
+        const [typesSnap, docsSnap, instSnap] = await Promise.all([
+            db.collection('document_types').where('required', '==', true).get(),
+            db.collection('installer_documents').where('installerId', '==', currentInstaller.id).get(),
+            db.collection('installers').doc(currentInstaller.id).get()
+        ]);
+
+        const instData = instSnap.data() || {};
+        if (instData.complianceOverride?.active) return false;
+
+        _docTypes = [];
+        const allTypesSnap = await db.collection('document_types').get();
+        _docTypes = allTypesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                     .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        _installerDocs = {};
+        docsSnap.docs.forEach(d => { _installerDocs[d.data().documentTypeId] = { id: d.id, ...d.data() }; });
+
+        const requiredTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const blocking = requiredTypes.filter(t => {
+            const s = computeDocStatus(_installerDocs[t.id]);
+            return s === 'expired' || s === 'missing';
+        });
+
+        if (blocking.length) {
+            showPage('documents');
+            renderDocumentsPage(true);
+            return true;
+        }
+
+        // Cache loaded data for Documents page
+        return false;
+    } catch(err) {
+        console.error('Compliance check error:', err);
+        return false; // fail open
+    }
+}
+
+async function renderDocuments() {
+    if (!_docTypes.length) {
+        // Load if not already cached from compliance check
+        const [typesSnap, docsSnap] = await Promise.all([
+            db.collection('document_types').get(),
+            db.collection('installer_documents').where('installerId', '==', currentInstaller.id).get()
+        ]);
+        _docTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
+        _installerDocs = {};
+        docsSnap.docs.forEach(d => { _installerDocs[d.data().documentTypeId] = { id: d.id, ...d.data() }; });
+    }
+    renderDocumentsPage(false);
+}
+
+function renderDocumentsPage(blockingMode) {
+    const el = document.getElementById('page-documents');
+    if (!el) return;
+
+    const blockBanner = blockingMode ? `
+        <div style="background:var(--bad);color:#fff;border-radius:8px;padding:.85rem 1rem;margin-bottom:1.25rem;font-size:.9rem;font-weight:600">
+            🚫 Your portal is currently locked. Please upload your expired or missing required documents below.
+            <div style="font-weight:400;font-size:.8rem;margin-top:.3rem">Contact management if you need temporary access.</div>
+        </div>` : '';
+
+    if (!_docTypes.length) {
+        el.innerHTML = `<h2 class="mb-4">My Documents</h2>${blockBanner}<p class="text-muted text-sm">No document requirements have been configured yet.</p>`;
+        return;
+    }
+
+    const rows = _docTypes.map(t => {
+        const doc    = _installerDocs[t.id];
+        const status = computeDocStatus(doc);
+        const color  = docStatusColor(status);
+        const label  = docStatusLabel(status);
+        const expStr = doc?.expiresAt
+            ? (doc.expiresAt?.toDate ? doc.expiresAt.toDate() : new Date(doc.expiresAt)).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+            : null;
+
+        return `
+        <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <div style="font-weight:600;font-size:.95rem">${esc(t.name)}</div>
+                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${t.required ? 'Required' : 'Optional'}</div>
+                </div>
+                <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${color};white-space:nowrap">${label}</span>
+            </div>
+            ${doc?.fileUrl ? `
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:.65rem">
+                ${expStr ? `Expires: <strong>${expStr}</strong>` : ''}
+                ${doc.verifiedAt ? ' · ✓ Verified' : ' · Awaiting verification'}
+            </div>
+            <div class="flex gap-2">
+                <a href="${esc(doc.fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">View</a>
+                <button class="btn btn-secondary btn-sm" onclick="startDocUpload('${t.id}')">Replace</button>
+            </div>` : `
+            <button class="btn btn-primary btn-sm w-full" onclick="startDocUpload('${t.id}')">Upload Document</button>`}
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `<h2 class="mb-4">My Documents</h2>${blockBanner}${rows}`;
+}
+
+function startDocUpload(documentTypeId) {
+    _pendingDocTypeId = documentTypeId;
+    // Show expiry date prompt then file picker
+    showDocExpiryModal(documentTypeId);
+}
+
+let _pendingDocExpiry = null;
+
+function showDocExpiryModal(documentTypeId) {
+    const type = _docTypes.find(t => t.id === documentTypeId);
+    const existing = _installerDocs[documentTypeId];
+    const existingExpiry = existing?.expiresAt
+        ? (existing.expiresAt?.toDate ? existing.expiresAt.toDate() : new Date(existing.expiresAt)).toISOString().slice(0,10)
+        : '';
+
+    // Inline modal using existing modal infrastructure
+    const overlay = document.createElement('div');
+    overlay.id = 'doc-upload-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end';
+    overlay.innerHTML = `
+        <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:1.25rem;width:100%;max-width:640px;margin:0 auto">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:.25rem">${esc(type?.name || 'Document')}</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Enter the expiration date on this document.</div>
+            <div class="form-group">
+                <label class="form-label">Expiration Date</label>
+                <input type="date" class="form-input" id="doc-expiry-input" value="${existingExpiry}">
+            </div>
+            <div style="display:flex;gap:.65rem;margin-top:.75rem">
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('doc-upload-overlay').remove()">Cancel</button>
+                <button class="btn btn-primary flex-1" onclick="confirmDocExpiry()">Choose File →</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function confirmDocExpiry() {
+    const val = document.getElementById('doc-expiry-input')?.value;
+    if (!val) { alert('Please enter the expiration date.'); return; }
+    _pendingDocExpiry = val;
+    document.getElementById('doc-upload-overlay')?.remove();
+    document.getElementById('doc-file-input').value = '';
+    document.getElementById('doc-file-input').click();
+}
+
+async function handleDocFileSelected(input) {
+    const file = input.files[0];
+    if (!file || !_pendingDocTypeId) return;
+
+    const typeId   = _pendingDocTypeId;
+    const expiry   = _pendingDocExpiry;
+    const type     = _docTypes.find(t => t.id === typeId);
+    const typeName = type?.name || 'Document';
+
+    // Show upload progress overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'doc-uploading-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:1.5rem 2rem;text-align:center"><span class="spinner"></span><div style="margin-top:.75rem;font-size:.9rem">Uploading…</div></div>`;
+    document.body.appendChild(overlay);
+
+    try {
+        const ext  = file.name.split('.').pop().toLowerCase();
+        const path = `installers/${currentInstaller.id}/documents/${typeId}_${Date.now()}.${ext}`;
+        const ref  = firebase.storage().ref(path);
+        await ref.put(file);
+        const url  = await ref.getDownloadURL();
+
+        const existing = _installerDocs[typeId];
+        const docData  = {
+            installerId:      currentInstaller.id,
+            documentTypeId:   typeId,
+            documentTypeName: typeName,
+            fileUrl:          url,
+            fileName:         file.name,
+            fileType:         file.type,
+            expiresAt:        firebase.firestore.Timestamp.fromDate(new Date(expiry + 'T12:00:00')),
+            uploadedAt:       firebase.firestore.FieldValue.serverTimestamp(),
+            uploadedBy:       firebase.auth().currentUser?.uid || '',
+            // Reset verification on new upload
+            verifiedAt:       null,
+            verifiedBy:       null,
+            verifiedByName:   null
+        };
+
+        if (existing?.id) {
+            await db.collection('installer_documents').doc(existing.id).update(docData);
+            _installerDocs[typeId] = { id: existing.id, ...docData };
+        } else {
+            const ref2 = await db.collection('installer_documents').add(docData);
+            _installerDocs[typeId] = { id: ref2.id, ...docData };
+        }
+
+        overlay.remove();
+        renderDocumentsPage(false); // Re-render — no longer blocking after upload
+
+        // Re-check block status after upload
+        if (document.getElementById('page-documents').classList.contains('active')) {
+            const newBlock = await checkComplianceBlock();
+            if (!newBlock) {
+                showPage('schedule');
+            }
+        }
+    } catch(err) {
+        overlay.remove();
+        alert('Upload failed: ' + err.message);
+    }
 }
 
 // ============================================================
