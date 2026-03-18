@@ -1085,15 +1085,16 @@ async function loadPortal(user) {
         // Load configurable statuses before showing portal
         await loadStatusOptions();
 
-        // Show chrome
         document.getElementById('nav-installer-name').textContent = currentInstaller.displayName || '';
-        document.getElementById('top-nav').style.display    = '';
-        document.getElementById('bottom-nav').style.display = '';
 
         weekOffset = 0;
         if (!currentInstaller.signatureUrl) {
+            // Don't show nav until signature is complete
             showSignatureOnboarding();
         } else {
+            // Show chrome only after we know the installer is ready
+            document.getElementById('top-nav').style.display    = '';
+            document.getElementById('bottom-nav').style.display = '';
             const blocked = await checkComplianceBlock();
             if (!blocked) {
                 showPage('schedule');
@@ -1221,6 +1222,9 @@ function showNoAccess(msg) {
 
 function showAccessError(msg) {
     document.getElementById('page-loading').classList.remove('active');
+    document.getElementById('top-nav').style.display    = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
         <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
@@ -4046,7 +4050,13 @@ function closeModal() {
 }
 
 function overlayBgClick(e) {
-    // Close if clicking backdrop (not the sheet itself)
+    // Don't allow dismissing onboarding modals by tapping the backdrop
+    const onboardingModals = ['modal-installer-sig', 'modal-walkthrough'];
+    const activeOnboarding = onboardingModals.some(id => {
+        const el = document.getElementById(id);
+        return el && el.style.display !== 'none';
+    });
+    if (activeOnboarding) return;
     if (e.target === document.getElementById('modal-overlay')) closeModal();
 }
 
@@ -4174,6 +4184,8 @@ async function saveInstallerSignature() {
         await db.collection('installers').doc(currentInstaller.id).update({ signatureUrl: url });
         currentInstaller.signatureUrl = url;
         closeModal();
+        document.getElementById('top-nav').style.display    = '';
+        document.getElementById('bottom-nav').style.display = '';
         showPage('schedule');
         maybeStartTutorial();
     } catch(err) {
