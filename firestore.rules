@@ -66,9 +66,12 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /job_records/{recordId} {
       allow read, write: if isAdmin() || isManagementUser();
-      // Installer read/update: installerId on the record must map back to their UID
-      allow read:   if isSignedIn() &&
-        get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid;
+      // Installer read: allow non-existent doc reads (resource==null means doc doesn't exist yet,
+      // which is how the app checks whether a record needs to be created).
+      allow read:   if isSignedIn() && (
+        resource == null ||
+        get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid
+      );
       allow create: if isSignedIn() &&
         get(/databases/$(database)/documents/installers/$(request.resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid;
       allow update: if isSignedIn() &&
