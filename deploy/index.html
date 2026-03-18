@@ -3127,6 +3127,7 @@ async function loadStaffList() {
                             <td><span class="badge badge-${u.status === 'active' ? 'active' : 'inactive'}">${u.status}</span></td>
                             <td class="flex gap-2">
                                 <button class="btn btn-sm btn-secondary" onclick="openEditStaffModal('${u.id}')">Edit Role</button>
+                                <button class="btn btn-sm btn-secondary" onclick="resendStaffWelcomeEmail('${u.id}')" title="Send password reset / login email">Send Login Email</button>
                                 <button class="btn btn-sm btn-${u.status === 'active' ? 'danger' : 'primary'}" onclick="toggleStaffStatus('${u.id}','${u.status}')">
                                     ${u.status === 'active' ? 'Deactivate' : 'Activate'}
                                 </button>
@@ -3147,7 +3148,7 @@ function openAddStaffModal() {
                     <button class="modal-close" onclick="closeModal()">✕</button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info mb-4" style="font-size:.85rem">Creates a Firebase Auth account. Staff log in at management.html with email + password.</div>
+                    <div class="alert alert-info mb-4" style="font-size:.85rem">Creates a Firebase Auth account. A password setup email will be sent automatically. Staff log in at <strong>reports.html</strong> with email + password.</div>
                     <div class="form-group">
                         <label class="form-label">Display Name *</label>
                         <input class="form-input" id="stf-name" placeholder="e.g. Sarah Finance">
@@ -3231,13 +3232,52 @@ async function saveNewStaff() {
             uid: data.localId, email, displayName: name, role, status: 'active',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        closeModal();
-        flash('ok', `${name} created as ${role}.`);
+        // Send password setup email
+        try { await auth.sendPasswordResetEmail(email); } catch(e) { /* non-fatal */ }
         await loadStaffList();
+        showStaffWelcomeModal(name, email, role);
     } catch(err) {
         errEl.textContent = err.message || 'Could not create account.';
         errEl.classList.remove('hidden');
         btn.disabled = false; btn.textContent = 'Create Account';
+    }
+}
+
+function showStaffWelcomeModal(name, email, role) {
+    const loginUrl = 'https://installer-portal-6000.web.app/reports.html';
+    const roleLabel = { manager: 'Manager', finance: 'Finance', service: 'Service' }[role] || role;
+    const msg = `Hi ${name},\n\nYour account has been set up for the ${roleLabel} dashboard.\n\nLogin page: ${loginUrl}\nEmail: ${email}\n\nYou should receive a separate email shortly to set your password. Once set, use the login page above to access your dashboard.\n\nLet me know if you have any questions.`;
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:480px">
+                <div class="modal-header">
+                    <h3>Account Created</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success mb-4" style="font-size:.85rem">Account created and password setup email sent to <strong>${esc(email)}</strong>.</div>
+                    <p class="text-sm text-muted mb-2">Copy this message to send to ${esc(name)}:</p>
+                    <textarea id="welcome-msg" class="form-input" rows="9" style="font-size:.82rem;font-family:monospace;resize:vertical" readonly>${esc(msg)}</textarea>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Done</button>
+                    <button class="btn btn-primary" onclick="
+                        navigator.clipboard.writeText(document.getElementById('welcome-msg').value);
+                        this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Message',1500)
+                    ">Copy Message</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function resendStaffWelcomeEmail(uid) {
+    const u = _staffList.find(s => s.id === uid);
+    if (!u) return;
+    try {
+        await auth.sendPasswordResetEmail(u.email);
+        flash('ok', `Password reset email sent to ${u.email}.`);
+    } catch(err) {
+        flash('error', 'Could not send email: ' + err.message);
     }
 }
 
