@@ -11,11 +11,14 @@ service firebase.storage {
 
     // Installer files (signatures) — any authenticated user can read
     // Write restricted: only the owning installer or admin
+    // Email fallback handles first-login race: firebaseUid may not be visible to
+    // Storage rules immediately after the Firestore write that sets it.
     match /installers/{installerId}/{allPaths=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (
         request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2' ||
-        firestore.get(/databases/(default)/documents/installers/$(installerId)).data.firebaseUid == request.auth.uid
+        firestore.get(/databases/(default)/documents/installers/$(installerId)).data.get('firebaseUid', null) == request.auth.uid ||
+        firestore.get(/databases/(default)/documents/installers/$(installerId)).data.get('email', null) == request.auth.token.email
       );
     }
 
