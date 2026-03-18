@@ -2595,7 +2595,8 @@ async function handleDocFileSelected(input) {
 
     try {
         const ext  = file.name.split('.').pop().toLowerCase();
-        const path = `installers/${currentInstaller.id}/documents/${typeId}_${Date.now()}.${ext}`;
+        const uid  = firebase.auth().currentUser.uid;
+        const path = `installer_documents/${uid}/${typeId}_${Date.now()}.${ext}`;
         const ref  = firebase.storage().ref(path);
         await ref.put(file);
         const url  = await ref.getDownloadURL();
