@@ -220,7 +220,8 @@ service cloud.firestore {
       allow update: if isSignedIn() &&
         get(/databases/$(database)/documents/installers/$(resource.data.installerId)).data.get('firebaseUid', null) == request.auth.uid &&
         resource.data.installerId == request.resource.data.installerId &&
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['verifiedAt', 'verifiedBy']);
+        !('verifiedAt' in request.resource.data) &&
+        !('verifiedBy' in request.resource.data);
     }
 
   }

@@ -2611,15 +2611,16 @@ async function handleDocFileSelected(input) {
             fileType:         file.type,
             expiresAt:        firebase.firestore.Timestamp.fromDate(new Date(expiry + 'T12:00:00')),
             uploadedAt:       firebase.firestore.FieldValue.serverTimestamp(),
-            uploadedBy:       firebase.auth().currentUser?.uid || '',
-            // Reset verification on new upload
-            verifiedAt:       null,
-            verifiedBy:       null,
-            verifiedByName:   null
+            uploadedBy:       firebase.auth().currentUser?.uid || ''
         };
 
         if (existing?.id) {
-            await db.collection('installer_documents').doc(existing.id).update(docData);
+            const updateData = { ...docData,
+                verifiedAt:     firebase.firestore.FieldValue.delete(),
+                verifiedBy:     firebase.firestore.FieldValue.delete(),
+                verifiedByName: firebase.firestore.FieldValue.delete()
+            };
+            await db.collection('installer_documents').doc(existing.id).update(updateData);
             _installerDocs[typeId] = { id: existing.id, ...docData };
         } else {
             const ref2 = await db.collection('installer_documents').add(docData);
