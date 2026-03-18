@@ -3126,7 +3126,7 @@ async function loadStaffList() {
                             <td><span class="badge badge-info">${roleLabel(u.role)}</span></td>
                             <td><span class="badge badge-${u.status === 'active' ? 'active' : 'inactive'}">${u.status}</span></td>
                             <td class="flex gap-2">
-                                <button class="btn btn-sm btn-secondary" onclick="openEditStaffModal('${u.id}')">Edit Role</button>
+                                <button class="btn btn-sm btn-secondary" onclick="openEditStaffModal('${u.id}')">Edit</button>
                                 <button class="btn btn-sm btn-secondary" onclick="resendStaffWelcomeEmail('${u.id}')" title="Send password reset / login email">Send Login Email</button>
                                 <button class="btn btn-sm btn-${u.status === 'active' ? 'danger' : 'primary'}" onclick="toggleStaffStatus('${u.id}','${u.status}')">
                                     ${u.status === 'active' ? 'Deactivate' : 'Activate'}
@@ -3286,14 +3286,23 @@ function openEditStaffModal(uid) {
     if (!u) return;
     modalRoot.innerHTML = `
         <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
-            <div class="modal" style="max-width:380px">
+            <div class="modal" style="max-width:420px">
                 <div class="modal-header">
-                    <h3>Edit Role — ${esc(u.displayName)}</h3>
+                    <h3>Edit Staff — ${esc(u.displayName)}</h3>
                     <button class="modal-close" onclick="closeModal()">✕</button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label class="form-label">Role</label>
+                        <label class="form-label">Display Name *</label>
+                        <input class="form-input" id="stf-edit-name" value="${esc(u.displayName)}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input class="form-input" id="stf-edit-email" type="email" value="${esc(u.email)}">
+                        <p class="text-xs text-muted mt-1">Updates login email. Staff will need to use the new address to sign in.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role *</label>
                         <select class="form-input" id="stf-edit-role">
                             <option value="finance" ${u.role==='finance'?'selected':''}>Finance</option>
                             <option value="service" ${u.role==='service'?'selected':''}>Service</option>
@@ -3304,19 +3313,26 @@ function openEditStaffModal(uid) {
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveStaffRole('${uid}')">Save</button>
+                    <button class="btn btn-primary" onclick="saveStaffEdit('${uid}')">Save</button>
                 </div>
             </div>
         </div>`;
 }
 
-async function saveStaffRole(uid) {
+async function saveStaffEdit(uid) {
+    const name  = document.getElementById('stf-edit-name').value.trim();
+    const email = document.getElementById('stf-edit-email').value.trim();
     const role  = document.getElementById('stf-edit-role').value;
     const errEl = document.getElementById('stf-edit-error');
+    if (!name || !email) {
+        errEl.textContent = 'Name and email are required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
     try {
-        await db.collection('management_users').doc(uid).update({ role });
+        await db.collection('management_users').doc(uid).update({ displayName: name, email, role });
         closeModal();
-        flash('ok', 'Role updated.');
+        flash('ok', 'Staff account updated.');
         await loadStaffList();
     } catch(err) {
         errEl.textContent = 'Could not save: ' + err.message;
