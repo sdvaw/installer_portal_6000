@@ -4166,7 +4166,8 @@ async function saveInstallerSignature() {
     btn.innerHTML = '<span class="spinner"></span> Saving…';
     try {
         const blob = await canvasToBlob('ob-sig-canvas');
-        const path = `installers/${currentInstaller.id}/signature.png`;
+        const uid  = firebase.auth().currentUser.uid;
+        const path = `installer_signatures/${uid}/signature.png`;
         const ref  = storage.ref(path);
         const snap = await ref.put(blob, { contentType: 'image/png' });
         const url  = await snap.ref.getDownloadURL();
