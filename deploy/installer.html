@@ -966,8 +966,15 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
     });
 }
 
+function resetToUnauthState() {
+    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('top-nav').style.display    = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    closeModal();
+}
+
 function showSignInConfirmScreen() {
-    document.getElementById('page-loading').classList.remove('active');
+    resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
         <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
@@ -1011,7 +1018,7 @@ async function completeMagicLink() {
 }
 
 function showEmailPrompt() {
-    document.getElementById('page-loading').classList.remove('active');
+    resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.classList.add('active');
     pg.innerHTML = `
@@ -1221,10 +1228,7 @@ function showNoAccess(msg) {
 }
 
 function showAccessError(msg) {
-    document.getElementById('page-loading').classList.remove('active');
-    document.getElementById('top-nav').style.display    = 'none';
-    document.getElementById('bottom-nav').style.display = 'none';
-    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
         <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
@@ -1240,7 +1244,7 @@ function showAccessError(msg) {
 }
 
 function showLinkExpiredScreen(knownEmail) {
-    document.getElementById('page-loading').classList.remove('active');
+    resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
         <div style="max-width:360px;margin:20vh auto 0;padding:1rem">
