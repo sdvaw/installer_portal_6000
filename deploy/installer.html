@@ -1428,11 +1428,7 @@ async function renderSchedule() {
                 }
                 const badge = document.getElementById('sched-rating-badge');
                 if (badge && _installerRating.count > 0) {
-                    const full = Math.round(_installerRating.avg);
-                    const stars = Array.from({ length: 5 }, (_, i) =>
-                        `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'};font-size:.85rem">★</span>`
-                    ).join('');
-                    badge.innerHTML = `${stars} <span style="font-size:.75rem;font-weight:700;color:var(--accent)">${_installerRating.avg}</span>`;
+                    badge.innerHTML = windowRatingHtml(_installerRating.avg, 5, '.85rem');
                     badge.style.display = '';
                 }
             }).catch(() => { _installerRating = { avg: 0, count: 0 }; });
@@ -1440,11 +1436,7 @@ async function renderSchedule() {
 
     const ratingBadge = (() => {
         if (!_installerRating || _installerRating.count === 0) return '';
-        const full = Math.round(_installerRating.avg);
-        const stars = Array.from({ length: 5 }, (_, i) =>
-            `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'};font-size:.85rem">★</span>`
-        ).join('');
-        return `<div style="margin-top:.15rem">${stars} <span style="font-size:.75rem;font-weight:700;color:var(--accent)">${_installerRating.avg}</span></div>`;
+        return `<div style="margin-top:.15rem">${windowRatingHtml(_installerRating.avg, 5, '.85rem')}</div>`;
     })();
 
     el.innerHTML = `${complianceBanner}
@@ -2653,16 +2645,19 @@ async function handleDocFileSelected(input) {
 async function renderDefects() {
     const el = document.getElementById('page-defects');
     el.innerHTML = `
-        <h2 class="mb-4">Defects & Inspections</h2>
+        <h2 class="mb-4">My Performance</h2>
 
-        <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Failed Inspections</div>
+        <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Kudos & Positive Feedback</div>
+        <div id="kudos-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
+
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Complaints & Issues</div>
+        <div id="complaints-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
+
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Failed Inspections</div>
         <div id="failed-inspections-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
 
-        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Reported Opening Defects</div>
-        <div id="defects-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
-
-        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Reviews & Feedback</div>
-        <div id="reviews-list"><div class="text-center p-3"><span class="spinner"></span></div></div>`;
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Reported Job Defects</div>
+        <div id="defects-list"><div class="text-center p-3"><span class="spinner"></span></div></div>`;
 
     // Load all in parallel
     const [inspSnap, recSnap, revSnap] = await Promise.all([
@@ -2678,6 +2673,64 @@ async function renderDefects() {
             .get().catch(() => ({ docs: [] }))
     ]);
 
+    const reviews = revSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const kudos      = reviews.filter(r => r.type === 'positive');
+    const complaints = reviews.filter(r => r.type !== 'positive');
+
+    // --- Kudos & Positive Feedback ---
+    const kudosEl = document.getElementById('kudos-list');
+    if (kudosEl) {
+        if (!kudos.length) {
+            kudosEl.innerHTML = '<p class="text-muted text-sm">No kudos on record yet. Keep up the great work!</p>';
+        } else {
+            const avgRating = kudos.reduce((s, r) => s + (r.rating || 5), 0) / kudos.length;
+            const avgRounded = Math.round(avgRating * 10) / 10;
+            kudosEl.innerHTML = `
+                <div style="padding:.85rem 1rem;background:var(--card-bg,var(--surface));border:2px solid var(--ok,#22c55e);border-radius:10px;margin-bottom:.85rem;display:flex;align-items:center;gap:1rem">
+                    <div>${windowRatingHtml(avgRating, 5, '1.3rem')}</div>
+                    <div>
+                        <div style="font-weight:700;font-size:1rem;color:var(--ok,#22c55e)">${avgRounded} / 5</div>
+                        <div class="text-muted text-xs">${kudos.length} kudos received</div>
+                    </div>
+                </div>` +
+                kudos.map(r => {
+                    const date = r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : '';
+                    return `
+                    <div style="border:1px solid var(--ok,#22c55e);border-radius:10px;padding:.85rem 1rem;margin-bottom:.65rem">
+                        <div class="flex justify-between items-start mb-1">
+                            <span style="font-size:.75rem;font-weight:700;color:var(--ok,#22c55e)">Kudos</span>
+                            <span style="font-size:.75rem;color:var(--muted)">${date}</span>
+                        </div>
+                        <div style="margin-bottom:.4rem">${windowRatingHtml(r.rating || 5, 5, '1rem')}</div>
+                        ${r.source ? `<div class="text-xs text-muted mb-1">${esc(r.source)}</div>` : ''}
+                        ${r.note ? `<div class="text-sm">${esc(r.note)}</div>` : ''}
+                    </div>`;
+                }).join('');
+        }
+    }
+
+    // --- Complaints & Issues ---
+    const compEl = document.getElementById('complaints-list');
+    if (compEl) {
+        if (!complaints.length) {
+            compEl.innerHTML = '<p class="text-muted text-sm">No complaints on record.</p>';
+        } else {
+            compEl.innerHTML = complaints.map(r => {
+                const severity  = r.severity === 'major' ? '🔴 Major Issue' : '🟡 Minor Issue';
+                const date = r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : '';
+                return `
+                <div style="border:1px solid var(--bad,#ef4444);border-radius:10px;padding:.85rem 1rem;margin-bottom:.65rem">
+                    <div class="flex justify-between items-start mb-1">
+                        <span style="font-size:.75rem;font-weight:700;color:var(--bad,#ef4444)">${severity}</span>
+                        <span style="font-size:.75rem;color:var(--muted)">${date}</span>
+                    </div>
+                    ${r.source ? `<div class="text-xs text-muted mb-1">${esc(r.source)}</div>` : ''}
+                    ${r.note ? `<div class="text-sm">${esc(r.note)}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+    }
+
     // --- Failed Inspections ---
     const inspEl = document.getElementById('failed-inspections-list');
     if (inspEl) {
@@ -2689,7 +2742,7 @@ async function renderDefects() {
         } else {
             inspEl.innerHTML = inspections.map(fi => {
                 const iStatus  = fi.installerStatus;
-                const statusColor = iStatus === 'fixed' ? 'var(--ok)' : iStatus === 'not_fixed' ? 'var(--bad)' : 'var(--warn, #f59e0b)';
+                const statusColor = iStatus === 'fixed' ? 'var(--ok)' : iStatus === 'not_fixed' ? 'var(--bad)' : 'var(--warn,#f59e0b)';
                 const statusLabel = iStatus === 'fixed' ? 'Fixed' : iStatus === 'not_fixed' ? 'Not Fixed' : 'Pending';
                 return `
                 <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
@@ -2711,7 +2764,7 @@ async function renderDefects() {
         }
     }
 
-    // --- Reported Opening Defects ---
+    // --- Reported Job Defects ---
     const listEl = document.getElementById('defects-list');
     if (listEl) {
         const withDefects = recSnap.docs
@@ -2719,7 +2772,7 @@ async function renderDefects() {
             .filter(r => r.openings && r.openings.some(o => o.defects && o.defects.length > 0));
 
         if (!withDefects.length) {
-            listEl.innerHTML = '<p class="text-muted text-sm">No opening defects reported yet.</p>';
+            listEl.innerHTML = '<p class="text-muted text-sm">No job defects reported yet.</p>';
         } else {
             listEl.innerHTML = withDefects.map(r => {
                 const defects = r.openings.flatMap(o =>
@@ -2735,51 +2788,6 @@ async function renderDefects() {
                         ${d.description ? `<div class="text-sm mt-1">${esc(d.description)}</div>` : ''}
                     </div>`).join('');
             }).join('');
-        }
-    }
-
-    // --- Reviews & Feedback ---
-    const revEl = document.getElementById('reviews-list');
-    if (revEl) {
-        const reviews = revSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        if (!reviews.length) {
-            revEl.innerHTML = '<p class="text-muted text-sm">No reviews on record.</p>';
-        } else {
-            // Rating summary
-            const ratings = reviews.map(r => r.type === 'positive' ? (r.rating || 5) : (r.severity === 'major' ? 1 : 2));
-            const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-            const avgRounded = Math.round(avg * 10) / 10;
-            const starsHtmlInst = (rating, max = 5) => {
-                const full = Math.round(rating);
-                return Array.from({ length: max }, (_, i) =>
-                    `<span style="color:${i < full ? '#f59e0b' : '#d1d5db'}">★</span>`
-                ).join('');
-            };
-            revEl.innerHTML = `
-                <div style="padding:.75rem 1rem;background:var(--card-bg,var(--surface));border:1px solid var(--border);border-radius:10px;margin-bottom:.85rem;display:flex;align-items:center;gap:.75rem">
-                    <div style="font-size:1.5rem;line-height:1">${starsHtmlInst(Math.round(avg))}</div>
-                    <div>
-                        <div style="font-weight:700;font-size:1rem">${avgRounded} / 5</div>
-                        <div class="text-muted text-xs">${reviews.length} review${reviews.length !== 1 ? 's' : ''}</div>
-                    </div>
-                </div>` +
-                reviews.map(r => {
-                    const stars = r.type === 'positive' ? (r.rating || 5) : (r.severity === 'major' ? 1 : 2);
-                    const typeColor = r.type === 'positive' ? 'var(--ok)' : 'var(--bad,#ef4444)';
-                    const typeLabel = r.type === 'positive' ? '✅ Positive' : (r.severity === 'major' ? '🔴 Major Issue' : '🟡 Minor Issue');
-                    const date = r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : '';
-                    return `
-                    <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.65rem">
-                        <div class="flex justify-between items-start mb-1">
-                            <span style="font-size:.75rem;font-weight:700;color:${typeColor}">${typeLabel}</span>
-                            <span style="font-size:.75rem;color:var(--muted)">${date}</span>
-                        </div>
-                        <div style="margin-bottom:.35rem">${starsHtmlInst(stars)} <span class="text-muted" style="font-size:.75rem">${stars}/5</span></div>
-                        ${r.source ? `<div class="text-sm text-muted mb-1">Source: ${esc(r.source)}</div>` : ''}
-                        ${r.note ? `<div class="text-sm">${esc(r.note)}</div>` : ''}
-                    </div>`;
-                }).join('');
         }
     }
 }
@@ -3009,6 +3017,21 @@ function statusDotColor(status) {
     if (opt) return opt.color;
     const legacy = { not_started: '#94A3B8', completed: '#22C55E', needs_return: '#EF4444', on_hold: '#60A5FA' };
     return legacy[status] || '#94A3B8';
+}
+
+function windowRatingHtml(rating, max = 5, size = '1rem') {
+    const filled = Math.round(rating);
+    const win = (active) => {
+        const c = active ? 'var(--accent,#f59e0b)' : 'var(--hairline,#d1d5db)';
+        const bg = active ? 'var(--accent,#f59e0b)' : 'none';
+        return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" style="display:inline-block;vertical-align:middle;margin-right:1px" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="16" height="16" rx="2" fill="${bg}" stroke="${c}" stroke-width="2"/>
+            <line x1="10" y1="2" x2="10" y2="18" stroke="${active ? '#fff' : c}" stroke-width="1.5"/>
+            <line x1="2" y1="10" x2="18" y2="10" stroke="${active ? '#fff' : c}" stroke-width="1.5"/>
+        </svg>`;
+    };
+    return Array.from({ length: max }, (_, i) => win(i < filled)).join('') +
+        ` <span style="font-size:.75rem;font-weight:700;color:var(--accent)">${Math.round(rating * 10) / 10}</span>`;
 }
 
 function esc(str) {
