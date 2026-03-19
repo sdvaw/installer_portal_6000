@@ -605,8 +605,7 @@ function jobRow(item) {
     const hasWarn = !hasBad && flags.length > 0;
     const noRec   = !rec;
 
-    const lineColor = noRec ? '#94a3b8' : hasBad ? 'var(--bad)' : hasWarn ? 'var(--warn)' : 'var(--ok)';
-    const statusOpt = rec ? _statusOptions.find(s => s.val === rec.status) : null;
+const statusOpt = rec ? _statusOptions.find(s => s.val === rec.status) : null;
     const statusCol = statusOpt?.color || (noRec ? '#94a3b8' : '#94a3b8');
     const statusTxt = rec ? statusLabel(rec.status) : 'No Activity';
 
@@ -619,10 +618,19 @@ function jobRow(item) {
                     background:${f.sev >= 2 ? 'rgba(239,68,68,.1)' : 'rgba(234,179,8,.1)'};color:${col}">${esc(f.label)}</span>`;
     }).join('');
 
+    const rowBg = noRec   ? 'rgba(148,163,184,.14)'
+                : hasBad  ? 'rgba(239,68,68,.14)'
+                : hasWarn ? 'rgba(234,179,8,.16)'
+                :           'rgba(34,197,94,.13)';
+    const borderCol = noRec   ? '#94a3b8'
+                    : hasBad  ? '#ef4444'
+                    : hasWarn ? '#eab308'
+                    :           '#22c55e';
+
     return `
     <div style="display:flex;align-items:center;gap:.6rem;padding:.4rem .6rem;
-                background:var(--surface);border:1px solid var(--hairline);
-                border-left:4px solid ${lineColor};border-radius:6px;margin-bottom:.3rem">
+                background:${rowBg};border:1px solid ${borderCol}40;
+                border-left:4px solid ${borderCol};border-radius:6px;margin-bottom:.3rem">
         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
             <span style="font-weight:600;font-size:.85rem">${esc(job.customerName||'—')}</span>
             <span style="color:var(--muted);font-size:.73rem">Job #${esc(job.jobNumber||job.id)}</span>
@@ -756,7 +764,6 @@ async function loadDailyReview() {
         });
 
         // Build week grid — Mon to Sun
-        const mon = getWeekMonday(_weekOffset);
         let jobRows = '';
         for (let d = 0; d < 7; d++) {
             const day = new Date(mon); day.setDate(day.getDate() + d);

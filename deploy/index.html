@@ -752,7 +752,7 @@ async function resendLink(installerId) {
     if (!confirm(`Resend sign-in link to ${installer.email}?`)) return;
     try {
         const actionCodeSettings = {
-            url: 'https://installer-portal-6000.web.app/installer.html',
+            url: `https://installer-portal-6000.web.app/installer.html?hint=${encodeURIComponent(installer.email.toLowerCase())}`,
             handleCodeInApp: true
         };
         await auth.sendSignInLinkToEmail(installer.email, actionCodeSettings);
@@ -867,7 +867,7 @@ async function submitProvisioning(installerId) {
 
         // Send magic link to installer
         const actionCodeSettings = {
-            url: 'https://installer-portal-6000.web.app/installer.html',
+            url: `https://installer-portal-6000.web.app/installer.html?hint=${encodeURIComponent(email.toLowerCase())}`,
             handleCodeInApp: true
         };
         await auth.sendSignInLinkToEmail(email, actionCodeSettings);

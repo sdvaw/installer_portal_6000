@@ -53,6 +53,13 @@
 
     .installer-page { display: none; padding: 1rem; padding-bottom: 80px; max-width: 640px; margin: 0 auto; }
     .installer-page.active { display: block; }
+    /* Auth/loading screens always cover the full viewport so portal content can never bleed through */
+    #page-loading.active, #page-no-access.active {
+      position: fixed; inset: 0; z-index: 150;
+      background: var(--bg, #fff);
+      max-width: 100%; margin: 0;
+      padding: 0; overflow-y: auto;
+    }
 
     /* Job card on schedule */
     .schedule-job-card {
@@ -997,6 +1004,13 @@ async function completeMagicLink() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Signing in…'; }
 
     let email = window.localStorage.getItem('installerEmail');
+    if (!email) {
+        const hint = new URLSearchParams(window.location.search).get('hint');
+        if (hint) {
+            email = hint.toLowerCase();
+            window.localStorage.setItem('installerEmail', email);
+        }
+    }
     if (!email) {
         if (btn) { btn.disabled = false; btn.textContent = 'Sign In to Portal →'; }
         showEmailPrompt();
