@@ -1,7 +1,7 @@
 # Armor Vue — Installer Portal
 ## System Design Document
 
-**Version:** 2.0
+**Version:** 2.3
 **Date:** March 2026
 **Status:** Production
 **Live URL:** https://installer-portal-6000.web.app
@@ -12,10 +12,10 @@
 
 The Armor Vue Installer Portal is a web-based field operations platform for a window and door installation company. It serves two distinct user groups through separate interfaces:
 
-1. **Installers** — Field technicians who use the portal on-site to document job completions, collect signatures, report defects, and update job status.
-2. **Management Staff** — Office personnel (Finance, Service, Managers) who use the dashboard to monitor jobs, track collections, manage defects, and review daily operations.
+1. **Installers** — Field technicians who use the portal on-site to document job completions, collect signatures, report defects, upload compliance documents, and update job status.
+2. **Management Staff** — Office personnel (Finance, Service, Managers) who use the dashboard to monitor jobs, track collections, manage defects, review analytics, and manage daily operations.
 
-The system integrates with **TeamUp** (a calendar/scheduling SaaS) as the source of truth for job scheduling, and uses **Firebase** as the backend for authentication, data storage, and file hosting.
+The system integrates with **TeamUp** (a calendar/scheduling SaaS) as the source of truth for job scheduling, and uses **Firebase** as the backend for authentication, data storage, and file hosting. Failed inspection emails are ingested via a **Power Automate** webhook.
 
 ---
 
@@ -29,6 +29,7 @@ The system integrates with **TeamUp** (a calendar/scheduling SaaS) as the source
 | File Storage | Firebase Storage |
 | Backend Functions | Firebase Cloud Functions (Node.js) |
 | Scheduling Source | TeamUp Calendar API |
+| Email Ingestion | Power Automate → Cloud Function webhook |
 | Frontend | Vanilla HTML/CSS/JavaScript (no framework) |
 | Firebase SDK | Firebase Compat v10 |
 
@@ -60,19 +61,23 @@ No third-party frontend frameworks or npm dependencies are used in the client. A
               │                         │
               │  ┌─────────────────┐    │
               │  │ Firebase Storage │    │
-              │  │ (photos, sigs)   │    │
+              │  │ (photos, docs,  │    │
+              │  │  signatures)     │    │
               │  └─────────────────┘    │
               │                         │
               │  ┌─────────────────┐    │
               │  │ Cloud Functions  │    │
-              │  │  (TeamUp sync)   │    │
+              │  │  (TeamUp sync +  │    │
+              │  │   webhooks)      │    │
               │  └────────┬────────┘    │
               └───────────┼─────────────┘
-                          │ REST API
-              ┌───────────▼─────────────┐
-              │     TeamUp Calendar      │
-              │  (job scheduling source) │
-              └─────────────────────────┘
+                          │
+              ┌───────────┼─────────────┐
+              │           │  REST API   │
+              ▼           ▼             │
+     TeamUp Calendar   Power Automate   │
+  (job scheduling)  (failed inspection  │
+                     email ingestion)   │
 ```
 
 ### Data Flow — Job Lifecycle
@@ -81,9 +86,20 @@ No third-party frontend frameworks or npm dependencies are used in the client. A
 TeamUp (schedule)
     → Cloud Function syncs → Firestore /jobs
     → Installer opens job in installer.html
+    → Installer confirms inventory, documents openings, captures signatures
     → Installer submits job record → Firestore /job_records
-    → Management reviews in reports.html (Finance / Service tabs)
+    → Management reviews in reports.html (Finance / Service / Analytics tabs)
     → Management archives completed records
+```
+
+### Data Flow — Failed Inspection
+
+```
+Inspection software sends result email
+    → Power Automate parses email → POST to Cloud Function webhook
+    → Cloud Function writes to Firestore /failed_inspections
+    → Installer sees alert on next portal load
+    → Manager sees count in Daily Review
 ```
 
 ---
@@ -94,16 +110,19 @@ TeamUp (schedule)
 
 Accessed by field installers via a magic link (passwordless email sign-in). Features:
 
-- **Schedule** — Weekly calendar view of assigned jobs
+- **Schedule** — Weekly calendar view of assigned jobs; Today quick-link
 - **Job Detail** — Job info, financial balance due, opening counts
-- **Job Start Flow** — Inventory confirmation, start photos
-- **Opening Documentation** — Per-window/door photos, defect reporting
+- **Job Start Flow** — Inventory confirmation gate (Start Job blocked until product received), start photos
+- **Opening Documentation** — Per-opening type/number selection, photos, defect reporting with Next Opening quick-flow
 - **Walkthrough Checklist** — Pre-completion checklist with customer signature
 - **Certificate of Completion (COC)** — Customer + installer signature capture
-- **Status Update** — Mark job as collected, partial, not collected, need service, etc.
+- **Status Update** — Mark job collected / partial / not collected / need service etc.; `amountCollected` input required for collected/partial
 - **Extra Work Requests** — Submit requests for additional scope
 - **Blackout Requests** — Request days off
-- **Earnings View** — Installer pay summary by date range
+- **Earnings View** — Installer pay summary by date range; includes approved extra work
+- **Performance Page** — Windows rating, kudos/complaints split view
+- **Compliance Documents** — Upload and manage required compliance documents (insurance, certifications)
+- **Failed Inspection Alerts** — Notification shown on load if a failed inspection is on record
 
 ### 4.2 Management Dashboard (`reports.html`)
 
@@ -111,19 +130,20 @@ Accessed by management staff with role-based tab visibility.
 
 | Tab | Visible To | Purpose |
 |-----|-----------|---------|
-| 📋 Daily Review | Manager | Snapshot of all jobs on a selected date |
+| 📋 Daily Review | Manager | Week view of all jobs with colour-coded status rows; inspection section |
 | 💰 Finance | Manager, Finance | Collections tracking, running totals, archiving |
-| 🔧 Service | Manager, Service | Defect workflow — clear, track, re-order |
+| 🔧 Service | Manager, Service | Defect workflow — clear, track, re-order; inspection scheduling |
 | 📦 Materials | Manager, Service | Material re-order lifecycle |
+| 📊 Analytics | Manager | Installer performance — windows rating, labor %, earnings |
 
 ### 4.3 Admin Portal (`index.html`)
 
 Accessed by the system administrator only. Features:
 
-- **Dashboard** — Sync status, installer count, job count
-- **Installers** — Manage installer accounts, send portal links
-- **System Settings** — TeamUp API config, job statuses, COC text, photo requirements, defect types, portal settings (monthly goal)
-- **Staff Accounts** — Manage management user accounts (finance, service, manager roles)
+- **Dashboard** — Sync status, installer count, job count; compliance warnings rollup
+- **Installers** — Manage installer accounts by type (Installers / FT Field Techs / Inspection); send portal links; collapsible sections
+- **System Settings** — TeamUp API config, job statuses, COC text, photo requirements, defect types, portal settings (monthly goal, analytics thresholds)
+- **Staff Accounts** — Manage management user accounts (finance, service, manager roles); welcome email on provisioning
 - **Database Tools** — Archive old jobs, clear collections
 
 ---
@@ -137,7 +157,7 @@ Administrator (1 account)
     └── Full system access, manages all users and settings
 
 Manager
-    └── All dashboard tabs: Daily Review, Finance, Service, Materials
+    └── All dashboard tabs: Daily Review, Finance, Service, Materials, Analytics
 
 Finance
     └── Finance tab only
@@ -151,10 +171,12 @@ Service
 Installers authenticate via **passwordless email magic link**. No password is required or stored. The flow:
 
 1. Admin sends a sign-in link from the admin portal
-2. Installer taps the link on their device
-3. Firebase Auth verifies the link and signs them in
-4. The portal looks up their installer record by `firebaseUid` field
-5. Session persists locally on the device
+2. Firebase sends the email; the continue URL includes `?hint=email` for seamless sign-in
+3. Installer taps the link → sees a "Sign In to Portal" confirm screen (prevents email scanner consumption)
+4. Installer taps the button → `completeMagicLink()` reads email from hint or localStorage
+5. Firebase Auth verifies the link and signs them in
+6. Portal looks up installer record by `firebaseUid`, binds UID on first login
+7. Session persists locally on the device; auth token auto-refreshes every 30 min
 
 ### 5.3 Management Authentication
 
@@ -179,20 +201,18 @@ Cached from TeamUp. Read-only from the app's perspective (sync function writes).
   assignedIds:    string[],     // TeamUp subcalendar IDs
   windowCount:    number,
   doorCount:      number,
-  sgdCount:       number,
+  sliderCount:    number,
   isServiceCall:  boolean,
   financials: {
     balanceDue:    string,       // Amount installer needs to collect
     paymentMethod: string,
     installerPay:  string,       // Installer compensation
-    contractAmt:   string        // Total contract value (management reports only)
+    contractAmt:   string        // Total contract value (management reports only — never shown to installers)
   },
   customerPhone:  string,
   lastSyncedAt:   timestamp
 }
 ```
-
-> **Note:** `contractAmt` is available for management reporting but is never displayed in the installer portal.
 
 ### 6.2 Collection: `job_records`
 
@@ -201,19 +221,19 @@ Written by installers during job execution. Document ID: `{jobId}_{installerId}`
 ```
 {
   jobId:           string,
-  installerId:     string,       // Installer Firestore document ID
-  status:          string,       // See Status Values below
+  installerId:     string,
+  status:          string,
   statusNote:      string,
-  amountCollected: number,       // Actual amount collected (set by installer or finance)
+  amountCollected: number,       // Required for collected/partial statuses
   openings:        Opening[],
   signatures: {
     walkthrough: { customerAt, installerAt, customerName, installerName, customerSigUrl, installerSigUrl },
     completion:  { customerAt, installerAt, customerName, installerName, customerSigUrl, installerSigUrl }
   },
-  financials:      object,       // Copied from job at time of completion
-  statusHistory:   HistoryEntry[],
-  inventoryReceived: { windows, doors, sgds },
-  inventoryIssues: object[],
+  financials:        object,     // Copied from job at time of completion
+  statusHistory:     HistoryEntry[],
+  inventoryReceived: { windows, doors, sliders },
+  inventoryIssues:   object[],
   walkthroughIncomplete: boolean,
   startedAt:       timestamp,
   completedAt:     timestamp,
@@ -225,10 +245,11 @@ Written by installers during job execution. Document ID: `{jobId}_{installerId}`
 **Opening object:**
 ```
 {
-  id:       string,
-  type:     'window' | 'door' | 'sgd',
-  label:    string,
-  defects:  Defect[]
+  id:     string,
+  type:   'window' | 'door' | 'slider',
+  number: string,
+  label:  string,
+  defects: Defect[]
 }
 ```
 
@@ -241,7 +262,7 @@ Written by installers during job execution. Document ID: `{jobId}_{installerId}`
   photos:        { url: string }[],
   reportedAt:    string,
   needsOrdering: boolean,
-  // Set by service team actions:
+  reorderedAt:   timestamp | null,   // Set when material_order created (prevents duplicates)
   clearedAt:     string,
   clearedBy:     string,
   clearedByName: string,
@@ -259,19 +280,22 @@ Managed by admin. One document per installer.
 
 ```
 {
-  displayName:  string,
-  email:        string,
-  phone:        string,
-  firebaseUid:  string,      // Set on first sign-in
-  signatureUrl: string,
-  status:       'active' | 'inactive',
-  lastLogin:    timestamp
+  displayName:      string,
+  email:            string,
+  phone:            string,
+  type:             'installer' | 'ft' | 'inspection',
+  firebaseUid:      string,    // Set on first sign-in
+  signatureUrl:     string,
+  status:           'active' | 'inactive',
+  tutorialComplete: boolean,
+  lastLogin:        timestamp,
+  provisionedAt:    timestamp
 }
 ```
 
 ### 6.4 Collection: `management_users`
 
-Managed by admin. One document per staff member, document ID = Firebase Auth UID.
+Managed by admin. Document ID = Firebase Auth UID.
 
 ```
 {
@@ -289,13 +313,15 @@ Two documents: `portal` and `teamup`.
 **`settings/portal`:**
 ```
 {
-  statuses:          StatusOption[],    // Configurable job status list
-  cocAgreementText:  string,
-  monthlyGoal:       number             // Monthly collection goal ($)
+  statuses:               StatusOption[],
+  cocAgreementText:       string,
+  monthlyGoal:            number,    // Monthly collection goal ($)
+  analyticsLaborWarnPct:  number,    // Labor % yellow threshold
+  analyticsLaborBadPct:   number     // Labor % red threshold
 }
 ```
 
-**`settings/teamup`:** (admin-only, not readable by management)
+**`settings/teamup`:** (admin-only)
 ```
 {
   apiKey:               string,
@@ -330,14 +356,59 @@ Created by service team when a defect requires parts ordering.
 }
 ```
 
-### 6.7 Other Collections
+### 6.7 Collection: `installer_documents`
+
+Compliance documents uploaded by installers or admin.
+
+```
+{
+  installerId:  string,
+  type:         string,       // e.g. 'insurance', 'certification'
+  fileUrl:      string,       // Firebase Storage download URL
+  storagePath:  string,       // UID-based storage path
+  uploadedAt:   timestamp,
+  expiresAt:    timestamp | null
+}
+```
+
+### 6.8 Collection: `reviews`
+
+Installer reviews submitted by management.
+
+```
+{
+  installerId:   string,
+  rating:        number,      // 1–5
+  note:          string,
+  createdBy:     string,
+  createdByName: string,
+  createdAt:     timestamp
+}
+```
+
+### 6.9 Collection: `failed_inspections`
+
+Written by Cloud Function when Power Automate webhook delivers a failed inspection.
+
+```
+{
+  jobId:          string,
+  jobNumber:      string,
+  installerId:    string,
+  inspectionDate: timestamp,
+  reason:         string,
+  createdAt:      timestamp
+}
+```
+
+### 6.10 Other Collections
 
 | Collection | Purpose |
 |-----------|---------|
 | `management_actions` | Archive log — records when a finance/service item was archived |
 | `reminders` | Service follow-up reminders keyed to a job record |
 | `blackout_requests` | Installer time-off requests |
-| `extra_work_requests` | Installer requests for out-of-scope work |
+| `extra_work_requests` | Installer requests for out-of-scope work; approved amounts included in earnings |
 | `photo_requirements` | Admin-configured required photo list |
 | `defect_types` | Admin-configured defect type options |
 | `installer_history` | Audit log (admin only) |
@@ -346,18 +417,18 @@ Created by service team when a defect requires parts ordering.
 
 ## 7. Job Status System
 
-Statuses are configurable by the admin and stored in `settings/portal.statuses`. Each status has flags that control behavior:
+Statuses are configurable by the admin and stored in `settings/portal.statuses`.
 
 | Flag | Purpose |
 |------|---------|
 | `showInFinance` | Appears in Finance tab |
 | `showInService` | Appears in Service tab |
 | `countsAsComplete` | Marks job as done |
-| `requiresSignatures` | Walkthrough + COC must be signed before selecting |
+| `requiresSignatures` | Walkthrough + COC must be signed |
 | `requiresNote` | Note field required |
 | `collected` | Gates the Archive button in Finance |
 
-**Default built-in statuses:**
+**Default statuses:**
 
 | Status Value | Label | Finance | Service |
 |-------------|-------|---------|---------|
@@ -373,30 +444,24 @@ Statuses are configurable by the admin and stored in `settings/portal.statuses`.
 
 ## 8. Finance Tab — Running Totals Logic
 
-The Finance dashboard computes running totals from all `job_records` with finance statuses.
-
 **Amount Collected derivation:**
-- `completed_collected` → `amountCollected` field, or falls back to `financials.balanceDue`
-- `completed_partial` → `amountCollected` field (set by installer or finance staff)
+- `completed_collected` → `amountCollected` field (required), falls back to `financials.balanceDue`
+- `completed_partial` → `amountCollected` field (required, set by installer or finance staff)
 - `completed_not_collected` → $0
 
 **Time buckets:**
-- **TODAY** — records where job `startDt` falls on today's date
-- **WTD** — records where `startDt` falls in the current week (Mon–Sun)
-- **MTD** — records where `startDt` falls in the current calendar month
-- **YTD** — records where `startDt` falls in the current calendar year
+- **TODAY** — job `startDt` on today's date
+- **WTD** — `startDt` in current week (Mon–Sun)
+- **MTD** — `startDt` in current calendar month
+- **YTD** — `startDt` in current calendar year
 
-**UPCOMING:**
-All jobs scheduled this month (`startDt` within current month) that do NOT yet have a finance-status job record. Sum of their `financials.balanceDue` values.
+**UPCOMING:** All jobs this month without a finance-status job record — sum of their `financials.balanceDue`.
 
-**Monthly Goal:**
-Set by admin in Settings → Portal Settings → Monthly Collection Goal. Stored as `settings/portal.monthlyGoal`. Displayed as a progress bar on the Finance tab. A secondary projected bar shows MTD + UPCOMING vs. goal.
+**Monthly Goal:** `settings/portal.monthlyGoal`. Shown as a progress bar on Finance tab with a projected bar (MTD + UPCOMING vs. goal).
 
 ---
 
 ## 9. Defect Workflow
-
-Defects are reported by installers per-opening during job documentation. The service team processes them through three actions:
 
 ```
 Reported (installer)
@@ -408,93 +473,121 @@ Reported (installer)
     │       └── ✓ Clear ──────► Resolved
     │
     └── 📦 Re-order ──────────► Creates material_orders document
-                                 (Pending → Ordered → Complete)
+             │                   (defect.reorderedAt set to prevent duplicates)
+             └──────────────────► Pending → Ordered → Complete
 ```
 
-**Implementation note:** Defects are nested inside `job_records.openings[].defects[]`. Firestore does not support updating nested array elements directly. All defect updates read the full `openings` array, mutate the target defect object, and write back the complete array.
+**Implementation note:** Defects are nested inside `job_records.openings[].defects[]`. All defect updates read the full `openings` array, mutate the target defect, and write back the complete array.
 
 ---
 
-## 10. TeamUp Sync
+## 10. Compliance & Document Tracking
+
+Installers are required to maintain up-to-date compliance documents (insurance certificates, trade certifications, etc.). Document requirements are configurable per installer type — FT Field Techs and Inspection types are exempt from window/door installer requirements.
+
+- Documents uploaded via installer portal or admin → stored in Firebase Storage under `installers/{uid}/documents/`
+- Expiry dates tracked; compliance warnings surface in admin dashboard as a collapsible rollup
+- Start Job is gated until required inventory is received (separate from compliance, but enforced in the same pre-start check)
+
+---
+
+## 11. Analytics Tab
+
+Visible to managers only. Pulls from `job_records` and `extra_work_requests`.
+
+- **Windows Rating** — installer performance score based on defect rate
+- **Labor %** — installer labor as a percentage of contract value; thresholds (`analyticsLaborWarnPct`, `analyticsLaborBadPct`) configurable in admin settings; colour-coded yellow/red
+- **Earnings** — installer pay totals including approved extra work
+
+---
+
+## 12. Failed Inspection Ingestion Pipeline
+
+Inspection software sends result emails → Power Automate parses and POSTs to a Cloud Function HTTP webhook → Cloud Function writes to `failed_inspections` collection.
+
+Setup guide: `docs/power-automate-setup.md`
+
+---
+
+## 13. TeamUp Sync
 
 A scheduled Cloud Function polls the TeamUp Calendar API and writes jobs to Firestore.
 
-- Sync runs on a configurable interval (5 min – 8 hours), set in admin settings
-- Jobs are stored in `/jobs/{teamUpEventId}`
-- Financial fields are extracted from TeamUp custom fields (configurable field mapping in admin settings)
-- Installer assignments are matched by TeamUp subcalendar IDs to installer records
-- `contractAmt` (total contract value) is stored in `jobs.financials` for management reporting but is never surfaced in the installer portal UI
+- Sync runs on a configurable interval (5 min – 8 hours)
+- Jobs stored in `/jobs/{teamUpEventId}`
+- Financial fields extracted from TeamUp custom fields
+- Installer assignments matched by subcalendar ID to installer records
+- Inactive TeamUp calendars are filtered from sync
+- Manual sync available via callable Cloud Function (admin portal)
+- `contractAmt` stored in `jobs.financials` for management reporting; never surfaced in installer portal
 
 ---
 
-## 11. Security Model
+## 14. Security Model
 
-### 11.1 Authentication
+### 14.1 Authentication
 
-- Installers: passwordless magic link (Firebase Email Link Auth)
-- Management: email + password (Firebase Email/Password Auth)
-- Admin: email + password; account is identified by a fixed Firebase Auth UID enforced in Firestore rules
+- Installers: passwordless magic link with `?hint=email` in continue URL; confirm-screen gate prevents scanner consumption
+- Management: email + password; verified against `management_users` collection
+- Admin: email + password; identified by fixed Firebase Auth UID in Firestore rules
 
-### 11.2 Firestore Security Rules Summary
+### 14.2 Firestore Security Rules Summary
 
 | Collection | Installer | Management | Admin |
 |-----------|-----------|-----------|-------|
 | `jobs` | Read only | Read only | Read + Write |
-| `job_records` | Own records only (read/write) | Read + Write all | Read + Write |
-| `extra_work_requests` | Own records only | Read + Write all | Read + Write |
-| `installers` | Read own + update 3 fields | Read all | Full |
-| `settings/portal` | None | Read only | Full |
+| `job_records` | Own records only | Read + Write all | Full |
+| `extra_work_requests` | Own records only | Read + Write all | Full |
+| `installers` | Read own + update limited fields | Read all | Full |
+| `installer_documents` | Own only (read/write) | Read all | Full |
+| `reviews` | None | Read + Create | Full |
+| `failed_inspections` | Read own | Read all | Full |
+| `settings/portal` | Read only | Read only | Full |
 | `settings/teamup` | None | None | Full |
 | `management_users` | None | Read own | Full |
 | `management_actions` | None | Read + Create (own) | Full |
-| `reminders` | None | Read + Create/Update status | Full |
+| `reminders` | None | Read + Create/Update | Full |
 | `material_orders` | None | Read + Create + Update (restricted) | Full |
 | `blackout_requests` | Own only | None | Full |
 
-**Installer record ownership** is verified via a Firestore cross-reference: rules look up the installer document and confirm `firebaseUid == request.auth.uid`. This prevents installers from accessing records owned by other installers even if they know the document ID format.
+**Installer record ownership** verified via Firestore cross-reference: rules look up the installer document and confirm `firebaseUid == request.auth.uid`.
 
-### 11.3 Storage Security Rules
+### 14.3 Storage Security Rules
 
-Storage paths follow the structure:
 - `jobs/{jobId}/installers/{installerId}/...` — job photos and signatures
-- `installers/{installerId}/...` — installer profile files
+- `installers/{installerId}/...` — installer profile files and compliance documents
 
-Rules use Firestore cross-reference (`ownsInstaller()`) to verify the `installerId` in the path belongs to the authenticated user. Management users can read all paths for reporting. Only the owning installer or admin can write.
+Rules use `ownsInstaller()` Firestore cross-reference to verify path ownership. Management can read all; only owning installer or admin can write.
 
-### 11.4 HTTP Security Headers
-
-All responses include:
+### 14.4 HTTP Security Headers
 
 | Header | Value | Purpose |
 |--------|-------|---------|
-| `X-Frame-Options` | `DENY` | Prevents clickjacking via iframes |
-| `X-Content-Type-Options` | `nosniff` | Prevents MIME-type sniffing |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer data leakage |
+| `X-Frame-Options` | `DENY` | Prevents clickjacking |
+| `X-Content-Type-Options` | `nosniff` | Prevents MIME sniffing |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Limits referrer leakage |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=()` | Restricts browser APIs |
-| `Content-Security-Policy` | See below | Restricts resource loading |
+| `Content-Security-Policy` | Firebase/Google CDN only; `frame-ancestors 'none'` | Restricts resource loading |
 
-**CSP:** Allows scripts from `self` and Firebase/Google CDN only. Restricts connections to Firebase endpoints. Blocks iframes (`frame-ancestors 'none'`), objects, and external base URIs. `'unsafe-inline'` is required for scripts because all JavaScript is inline — refactoring to external files would eliminate this.
+### 14.5 Firebase API Key
 
-### 11.5 Firebase API Key
-
-The Firebase web API key is public in the client-side configuration. This is the standard and documented Firebase architecture — the key is a project identifier, not a credential. Access control is enforced entirely by Firestore and Storage security rules, not the API key.
+The Firebase web API key is public by design — it is a project identifier, not a credential. All access control is enforced by Firestore and Storage security rules.
 
 ---
 
-## 12. Known Limitations & Future Considerations
+## 15. Known Limitations & Future Considerations
 
 | Item | Notes |
 |------|-------|
-| `'unsafe-inline'` in CSP | Would require refactoring all JS to external files to eliminate. Low priority given no user-supplied HTML is rendered without escaping. |
-| Admin identified by hardcoded UID | Works reliably. Long-term: replace with Firebase Custom Claims for easier admin rotation. |
-| Firestore rules use cross-reference `get()` calls | Adds one Firestore read per security evaluation for installer-owned collections. At current scale this is negligible. |
-| No rate limiting on write operations | Firebase quota limits apply. Custom rate limiting could be added via Cloud Functions if abuse becomes a concern. |
-| Installer portal JS is inline | All portal JS is embedded in HTML files. Works well at this scale; moving to external `.js` files would improve CSP posture and cacheability. |
-| Defects stored as nested arrays | Updating requires read-modify-write of the full `openings` array. Works reliably; at scale, a subcollection would be more efficient. |
+| `'unsafe-inline'` in CSP | All JS is inline in HTML files. Refactoring to external `.js` files would eliminate this and improve cacheability. |
+| Admin identified by hardcoded UID | Works reliably. Long-term: replace with Firebase Custom Claims. |
+| Firestore rules use cross-reference `get()` calls | One extra read per security evaluation for installer-owned collections. Negligible at current scale. |
+| Defects stored as nested arrays | Read-modify-write required for all defect updates. At scale, a subcollection would be more efficient. |
+| No rate limiting on writes | Firebase quota limits apply. Cloud Function rate limiting could be added if needed. |
 
 ---
 
-## 13. Deployment
+## 16. Deployment
 
 ### Prerequisites
 - Firebase CLI installed (`npm install -g firebase-tools`)
@@ -504,34 +597,52 @@ The Firebase web API key is public in the client-side configuration. This is the
 ### Deploy Commands
 
 ```bash
-# Deploy everything (hosting + rules + functions)
-firebase deploy
+# Most common — hosting + Firestore rules
+firebase deploy --only hosting,firestore:rules
 
-# Deploy hosting + rules only (most common)
+# Include storage rules
 firebase deploy --only hosting,firestore:rules,storage
 
-# Deploy functions only
+# Functions only
 firebase deploy --only functions
+
+# Everything
+firebase deploy
 ```
+
+### Git & Versioning
+
+```bash
+# Commit changes
+git add <files>
+git commit -m "Description of change"
+
+# Tag a release
+git tag v2.x.x
+git push origin master:main --tags
+```
+
+GitHub: https://github.com/sdvaw/installer_portal_6000
 
 ### Repository Structure
 
 ```
 Installer_Portal/
-├── deploy/                  # Static hosting files
-│   ├── index.html           # Admin portal
-│   ├── installer.html       # Installer portal
-│   ├── reports.html         # Management dashboard
-│   ├── management.html      # (legacy/supplemental)
+├── deploy/                    # Static hosting files
+│   ├── index.html             # Admin portal
+│   ├── installer.html         # Installer portal
+│   ├── reports.html           # Management dashboard
+│   ├── print-job.html         # COC/Walkthrough print view
 │   ├── js/
 │   │   └── firebase-config.js
 │   └── css/
 │       └── styles.css
-├── functions/               # Cloud Functions
-│   └── index.js             # TeamUp sync function
-├── docs/                    # Documentation
-│   ├── DESIGN.md            # This document
-│   └── RELEASE_NOTES.md
+├── functions/                 # Cloud Functions
+│   └── index.js               # TeamUp sync + webhook handlers
+├── docs/                      # Documentation
+│   ├── DESIGN.md              # This document
+│   ├── RELEASE_NOTES.md       # Version history
+│   └── power-automate-setup.md
 ├── firestore.rules
 ├── firestore.indexes.json
 ├── storage.rules
