@@ -2,6 +2,218 @@
 
 ---
 
+## v2.3.0 — Compliance, Reviews, Analytics & Operations
+**Released:** 2026-03-19 (unreleased tag — tag after deploy)
+
+### Overview
+Major feature release spanning compliance document tracking, installer reviews and ratings, a full Analytics tab, failed inspection email ingestion pipeline, staff management improvements, and significant UI/UX polish across all portals. Also includes a critical magic link login fix for admin-sent sign-in links.
+
+---
+
+### New Features
+
+#### Installer Compliance & Document Tracking (installer.html + index.html)
+- Installers can upload and manage compliance documents (insurance, certifications, etc.)
+- Admin can define required document types per installer type
+- Compliance warnings card on admin dashboard shows installers with missing or expiring documents — collapsible rollup
+- Start Job blocked until required product is received (inventory gate)
+- Document checks restricted to installer type only — FT Field Techs and Inspection types exempt from window/door installer requirements
+
+#### Installer Reviews & Ratings (installer.html + reports.html)
+- Management can submit reviews on installers with star rating and free-text notes
+- Reviews visible in installer management section
+- Reviews query sorted client-side to avoid composite Firestore index requirement
+
+#### Analytics Tab (reports.html) — New
+- New tab visible to `manager` role
+- Windows rating breakdown by installer
+- Labor percentage metrics with configurable warning/critical thresholds (set in admin settings)
+- Approved extra work included in installer earnings totals
+
+#### Failed Inspection Email Ingestion Pipeline (functions/index.js)
+- Power Automate webhook receives failed inspection emails from inspection software
+- Cloud Function parses and stores to `failed_inspections` Firestore collection
+- Installer alerted on next portal load; daily stats surfaced in Daily Review
+- See `docs/power-automate-setup.md` for full setup guide
+
+#### Staff Management Improvements (index.html)
+- Staff welcome email flow — new staff members receive a sign-in link on provisioning
+- Staff edit modal expanded: name, email, and role all editable
+- Staff login URL fixed to point to correct portal
+
+#### Daily Review Redesign (reports.html)
+- Week view with compact job rows replacing the previous stat-box layout
+- Colour-coded rows: green (collected), yellow (warn), red (bad), grey (no activity)
+- Inspection section added to daily summary
+- `mon` variable scoping fix
+
+#### Inspection Scheduling Workflow (reports.html)
+- Service tab now supports scheduling follow-up inspections
+- Inspection records linked to jobs and defects
+
+#### Performance Page Redesign (installer.html)
+- Windows rating displayed prominently
+- Kudos and complaints split into separate sections
+- Cleaner layout replacing previous single-column view
+
+---
+
+### Bug Fixes
+
+#### Magic Link Login — Critical Fix
+- Admin-sent sign-in links now embed `?hint=email` in the continue URL
+- `completeMagicLink()` reads the hint before prompting for manual email entry
+- Previously: any email mismatch (including case differences) silently consumed the one-time link and showed "link has expired" — leaving the installer locked out
+- Self-serve resend flow unaffected (already stored email in localStorage)
+
+#### Auth & Session
+- Stale page state no longer bleeds through login/loading screens (fixed z-index and positioning)
+- Nav hidden until auth complete and signature collected
+- Auth token auto-refreshes every 30 min + on provision to prevent stale token errors
+- `weekOffset` resets correctly on login
+- Preview auth fixed; tutorial forced walkthrough on first login restored
+- Sync interval corrected
+
+#### Storage & Firestore Rules
+- Installer document uploads moved to UID-based storage path
+- `installers/{id}` write access restored for installers
+- `job_records` read rule fixed for non-existent documents
+- Storage rule corrected to allow installer signature upload on first login (before UID binding)
+- `installer_documents` create/update permission errors resolved
+
+#### Admin & Sync
+- TeamUp sync: broader name matching, FT classification fixed, inactive calendars filtered
+- Sync accuracy counts fixed: all installer types included, uses post-sync job count
+- Sync diagnostic improved with full calendar breakdown
+- Settings save moved to Cloud Function to bypass Firestore client-side rules
+- Dashboard stat cards no longer spin indefinitely on query failure
+
+#### Finance
+- Multi-day job double-counting in finance totals fixed
+- Approved extra work now included in installer earnings totals
+- `amountCollected` required when setting collected or partial status
+
+#### Installer Portal UX
+- Next Opening button always shows type/number selection modal
+- Next Opening quick-flow added to progress photo capture view
+- Type and Number dropdowns added to opening and defect modals
+- Return to job actions sheet after closing inventory modal
+- Start Job no longer disappears after receiving inventory
+- Preview mode no longer crashes when installer has no signature
+- Redundant Inventory row removed from job detail (counts sufficient)
+- SGD renamed to Sliders throughout
+
+#### Admin UX
+- Installer management divided by type: Installers / FT Field Techs / Inspection
+- Installer management sections made collapsible roll-ups; provisioned types first
+- Pending Provisioning always starts collapsed
+- Missing Payment Info moved to bottom of dashboard, collapsed by default
+- All collapsible sections default to collapsed
+- Today quick-link added to schedule page
+- Installer preview link `?preview=` parameter fix
+
+---
+
+### New Firestore Collections / Fields
+
+#### `failed_inspections`
+| Field | Type | Description |
+|---|---|---|
+| `jobId` | string | Linked job ID |
+| `jobNumber` | string | Human-readable job number |
+| `installerId` | string | Installer Firestore doc ID |
+| `inspectionDate` | timestamp | Date of failed inspection |
+| `reason` | string | Failure reason from email |
+| `createdAt` | timestamp | Ingestion timestamp |
+
+#### `installer_documents`
+| Field | Type | Description |
+|---|---|---|
+| `installerId` | string | Installer Firestore doc ID |
+| `type` | string | Document type (insurance, certification, etc.) |
+| `fileUrl` | string | Storage download URL |
+| `uploadedAt` | timestamp | Upload timestamp |
+| `expiresAt` | timestamp\|null | Expiry date if applicable |
+
+#### `reviews`
+| Field | Type | Description |
+|---|---|---|
+| `installerId` | string | Installer Firestore doc ID |
+| `rating` | number | 1–5 star rating |
+| `note` | string | Free-text review |
+| `createdBy` | string | Reviewer UID |
+| `createdByName` | string | Reviewer display name |
+| `createdAt` | timestamp | Review timestamp |
+
+#### `settings/portal` — New Fields
+| Field | Type | Description |
+|---|---|---|
+| `analyticsLaborWarnPct` | number | Labor % yellow threshold for Analytics |
+| `analyticsLaborBadPct` | number | Labor % red threshold for Analytics |
+
+---
+
+### Deployment Checklist
+
+```
+[ ] firebase deploy --only hosting,firestore:rules
+[ ] Verify magic link works for admin-sent links (test with a real email change)
+[ ] Verify compliance document uploads and warnings display
+[ ] Verify Analytics tab loads and labor thresholds apply
+[ ] Verify failed inspection webhook endpoint is active
+[ ] Verify staff welcome email sends on provisioning
+[ ] Verify Daily Review week view renders correctly
+[ ] Tag release: git tag v2.3.0 && git push origin master:main --tags
+```
+
+---
+
+## v2.2.0-pre-compliance — Admin Overhaul & Stability
+**Released:** 2026-03-15
+
+### Overview
+Comprehensive admin portal reorganisation, security audit pass, session stability fixes, and installer portal UX improvements in preparation for the compliance feature set.
+
+### Changes
+- Installer management divided by type (Installers / FT Field Techs / Inspection)
+- Collapsible roll-up sections throughout admin; default collapsed
+- TeamUp sync accuracy and FT classification fixed
+- Settings save moved to Cloud Function
+- Security audit: XSS fixes, Firestore rule tightening, input validation
+- Function auth hardening; storage rules tightened
+- Session: sync interval, preview auth, tutorial walkthrough fixes
+- Email sign-in confirm screen added to prevent scanner consumption of one-time links
+- Today quick-link on schedule; Next Opening quick-flow in photos
+- Auth token auto-refresh every 30 min
+- Installer preview link parameter fix
+- SGD → Sliders rename throughout
+- Production readiness fixes: finance math, job records, UI accuracy
+
+---
+
+## v2.1.1 — COC/Walkthrough Viewer & Defect Fixes
+**Released:** 2026-03-11
+
+### Changes
+- COC and Walkthrough documents now viewable inline in reports.html (no separate print page)
+- Print buttons renamed to "View COC" / "View Walkthrough"
+- Print layout: forced page break between walkthrough and COC sections
+- Duplicate re-order prevention: defect flagged with `reorderedAt` on first order
+- Dashboard stat cards: fixed infinite spinner on query failure
+- Admin page: reverted silent sign-out — now shows error message
+
+---
+
+## v2.1.0 — COC Viewer & Failed Inspections Foundation
+**Released:** 2026-03-11
+
+### Changes
+- `print-job.html` added for COC/Walkthrough print view
+- Admin auth fixed for print page
+- `failed_inspections` Firestore index added
+
+---
+
 ## v2.0.0 — Reports Redesign & Security Hardening
 **Released:** 2026-03-09
 
@@ -81,7 +293,7 @@ All routes now serve:
 
 #### Admin UID Removed from Shared Config
 - `window.ADMIN_UID` removed from `deploy/js/firebase-config.js` (public, shared across portals)
-- `installer.html` auth handler replaced with async `management_users` Firestore lookup — any active management user is routed to preview mode; no hardcoded UID in client-facing JS
+- `installer.html` auth handler replaced with async `management_users` Firestore lookup
 - `index.html` retains a local `const ADMIN_UID` scoped only to that file's script block
 
 ---
@@ -110,12 +322,10 @@ All routes now serve:
 #### New Field: `settings/portal.monthlyGoal`
 - Type: number
 - Set by manager in admin portal Settings → Portal Settings
-- Used by Finance tab running totals progress bar
 
 #### New Field: `job_records.amountCollected`
 - Type: number
 - Set by installer (partial status) or auto-filled from `balanceDue` (collected status)
-- Drives all Finance running total calculations
 
 #### New Fields on `job_records.openings[].defects[]`
 | Field | Type | Description |
@@ -125,22 +335,6 @@ All routes now serve:
 | `clearedByName` | string | Display name of who cleared it |
 | `tracked` | boolean | Whether defect is being tracked |
 | `trackingNote` | string | Free-text tracking note |
-
-#### `job_records.amountCollected` derivation rule
-| Status | `amountCollected` value |
-|---|---|
-| `completed_collected` | `balanceDue` (auto-filled) |
-| `completed_partial` | User-entered value |
-| `completed_not_collected` | 0 |
-
----
-
-### Reverted / Preserved
-
-#### `contractAmt` Retained in `jobs` Collection
-- An earlier draft stripped `contractAmt` from `jobs.financials` to prevent installer exposure.
-- **Reverted**: `contractAmt` is stored as part of the full `financials` object in `jobs` for use in management Finance reports.
-- Installer exposure is prevented at the UI layer — `installer.html` never displays `contractAmt` in any view.
 
 ---
 
@@ -152,34 +346,6 @@ All routes now serve:
 | Finance | Yes | Yes | No |
 | Service | Yes | No | Yes |
 | Materials | Yes | No | Yes |
-
----
-
-### Breaking Changes / Migration Notes
-
-- **`amountCollected` required for Finance totals** — existing `completed_partial` records without `amountCollected` will show as $0 in running totals until finance staff updates the cards
-- **`material_orders` Firestore rules** must be deployed before the Materials tab is used; creating orders without the rules in place will be rejected
-- **Storage rules rewrite** — the new rules are more restrictive; any paths not matching `jobs/{jobId}/installers/{installerId}/` or `installers/{installerId}/` will be denied. Verify no legacy paths exist before deploying.
-- **Admin preview mode in installer.html** now requires an active `management_users` record. Staff who previously relied on ADMIN_UID matching will need a `management_users` doc with `status: 'active'`.
-
----
-
-### Deployment Checklist
-
-```
-[ ] Deploy Firestore rules:   firebase deploy --only firestore:rules
-[ ] Deploy Storage rules:     firebase deploy --only storage
-[ ] Deploy Hosting:           firebase deploy --only hosting
-[ ] Verify monthly goal loads in reports Finance tab
-[ ] Verify running totals compute correctly (set a test amountCollected)
-[ ] Verify defect Clear / Track / Re-order persist in Firestore
-[ ] Verify Materials tab lifecycle (pending → ordered → complete)
-[ ] Verify Daily Review shows finance + service snapshots (manager login)
-[ ] Verify role gating: finance user sees only Finance tab
-[ ] Verify installer amountCollected field appears on partial/collected status
-[ ] Verify HTTP security headers present on all routes (curl -I or DevTools)
-[ ] Confirm contractAmt is present in jobs.financials (not stripped)
-```
 
 ---
 
