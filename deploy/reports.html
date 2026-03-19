@@ -296,6 +296,7 @@ let _serviceStats  = [];
 let _monthlyGoal   = 0;
 let _laborWarnPct  = 28;
 let _laborHighPct  = 35;
+let _allServiceRecords = [];
 let activeTab      = null;
 let activeView     = 'dashboard'; // 'dashboard' | 'archive'
 let archiveFrom    = '';
@@ -1122,9 +1123,12 @@ async function loadServiceReport() {
             .map(d => ({ id: d.id, ...d.data() }))
             .filter(r =>
                 _serviceStats.includes(r.status) ||
-                (r.openings || []).some(o => (o.defects || []).length > 0)
+                _financeStats.includes(r.status) ||
+                (r.openings || []).some(o => (o.defects || []).length > 0) ||
+                (r.inspectionStatus && r.inspectionStatus !== 'passed')
             );
         records = await enrichRecords(records);
+        _allServiceRecords = records;
 
         if (activeView === 'dashboard') {
             const reminders = remSnap ? remSnap.docs.map(d => ({ id: d.id, ...d.data() })) : [];
@@ -1152,10 +1156,11 @@ function renderServiceDashboard(records, actions, reminders) {
     let html = renderFollowUpSection(reminders);
 
     const pending  = records.filter(r => !actions[r.id]);
-    const activeDefects  = [];
-    const trackedDefects = [];
-    const needService    = [];
-    const inspectionReady = [];
+    const activeDefects       = [];
+    const trackedDefects      = [];
+    const needService         = [];
+    const inspectionReady     = [];
+    const inspectionScheduled = [];
 
     pending.forEach(r => {
         (r.openings || []).forEach((o, oi) => {
@@ -1166,8 +1171,11 @@ function renderServiceDashboard(records, actions, reminders) {
                 else           activeDefects.push(item);
             });
         });
-        if (_serviceStats.includes(r.status))  needService.push(r);
-        if (_financeStats.includes(r.status))  inspectionReady.push(r);
+        if (_serviceStats.includes(r.status)) needService.push(r);
+        if (_financeStats.includes(r.status) || r.inspectionStatus) {
+            if (r.inspectionStatus === 'scheduled') inspectionScheduled.push(r);
+            else if (r.inspectionStatus !== 'passed') inspectionReady.push(r);
+        }
     });
 
     if (activeDefects.length > 0) {
@@ -1182,9 +1190,13 @@ function renderServiceDashboard(records, actions, reminders) {
         html += `<div class="section-label">Needs Service (${needService.length})</div>`;
         html += needService.map(r => serviceCard(r, actions, false)).join('');
     }
+    if (inspectionScheduled.length > 0) {
+        html += `<div class="section-label">Inspection Scheduled (${inspectionScheduled.length})</div>`;
+        html += inspectionScheduled.map(r => inspectionCard(r)).join('');
+    }
     if (inspectionReady.length > 0) {
         html += `<div class="section-label">Ready for Inspection (${inspectionReady.length})</div>`;
-        html += inspectionReady.map(r => serviceCard(r, actions, false)).join('');
+        html += inspectionReady.map(r => inspectionCard(r)).join('');
     }
 
     return html || '<div class="empty-state">✓ Nothing needs attention right now.</div>';
@@ -1516,6 +1528,174 @@ async function saveMaterialNote(orderId, inputId) {
 }
 
 // ── Archive action ────────────────────────────────────────────
+function inspectionCard(r) {
+    const color   = statusColor(r.status);
+    const jobDate = r.startDt
+        ? (r.startDt.toDate ? r.startDt.toDate() : new Date(r.startDt))
+            .toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : '';
+    const isScheduled = r.inspectionStatus === 'scheduled';
+    const schedDate   = r.inspectionDate
+        ? new Date(r.inspectionDate + 'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})
+        : '';
+
+    return `
+    <div class="report-card" id="insp-card-${r.id}">
+        <div class="rc-header">
+            <div>
+                <div class="rc-name">${esc(r.customerName)}</div>
+                <div class="rc-job">Job #${esc(r.jobNumber || r.jobId)} · ${esc(r.installerName)}${jobDate ? ' · ' + jobDate : ''}</div>
+                ${r.address ? `<div style="font-size:.72rem;color:var(--muted)">${esc(r.address.replace(/\n/g,' '))}</div>` : ''}
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="printJob('${r.id}')" title="View COC &amp; Walkthrough">📄 View</button>
+        </div>
+        <div><span class="rc-status" style="color:${color};border-color:${color}">${esc(statusLabel(r.status))}</span></div>
+        ${isScheduled ? `
+        <div style="margin:.5rem 0;padding:.5rem .75rem;background:var(--accent-soft,#fef3c7);border-radius:6px;font-size:.82rem">
+            <strong>Inspection scheduled:</strong> ${schedDate || 'Date TBD'}
+            ${r.inspectionNote ? `<div style="color:var(--muted);margin-top:.2rem">${esc(r.inspectionNote)}</div>` : ''}
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">Scheduled by ${esc(r.inspectionScheduledBy || '—')}</div>
+        </div>` : ''}
+        <div class="rc-actions" style="flex-wrap:wrap;gap:.4rem">
+            ${!isScheduled
+                ? `<button class="btn btn-primary btn-sm" onclick="openScheduleInspectionModal('${r.id}')">📅 Schedule Inspection</button>`
+                : `<button class="btn btn-secondary btn-sm" onclick="openScheduleInspectionModal('${r.id}')">✏️ Edit Schedule</button>`}
+            <button class="btn btn-sm" style="background:var(--ok,#22c55e);color:#fff;border:none" onclick="markInspectionPassed('${r.id}')">✓ Passed</button>
+            <button class="btn btn-sm" style="background:var(--bad,#ef4444);color:#fff;border:none" onclick="openFailInspectionModal('${r.id}','${esc(r.customerName).replace(/'/g,"\\'")}','${esc(r.jobNumber||r.jobId)}','${esc(r.installerName||'').replace(/'/g,"\\'")}')">✗ Failed</button>
+        </div>
+    </div>`;
+}
+
+function openScheduleInspectionModal(recordId) {
+    const existing = document.getElementById('insp-modal');
+    if (existing) existing.remove();
+    const rec = _allServiceRecords?.find(r => r.id === recordId);
+    const modal = document.createElement('div');
+    modal.id = 'insp-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem';
+    modal.innerHTML = `
+        <div style="background:var(--surface);border-radius:12px;padding:1.5rem;width:100%;max-width:420px">
+            <h3 style="margin:0 0 1rem">Schedule Inspection</h3>
+            ${rec ? `<div style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">${esc(rec.customerName)} · Job #${esc(rec.jobNumber||rec.jobId)}</div>` : ''}
+            <div class="form-group">
+                <label class="form-label">Inspection Date</label>
+                <input class="form-input" type="date" id="insp-date" value="${rec?.inspectionDate || ''}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea class="form-input" id="insp-note" rows="3" placeholder="Inspector name, time, location…">${esc(rec?.inspectionNote || '')}</textarea>
+            </div>
+            <div style="display:flex;gap:.65rem;margin-top:1rem">
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('insp-modal').remove()">Cancel</button>
+                <button class="btn btn-primary flex-1" onclick="saveScheduleInspection('${recordId}')">Save</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+async function saveScheduleInspection(recordId) {
+    const date = document.getElementById('insp-date').value;
+    const note = document.getElementById('insp-note').value.trim();
+    if (!date) { flash('error', 'Please select an inspection date.'); return; }
+    try {
+        await db.collection('job_records').doc(recordId).update({
+            inspectionStatus:      'scheduled',
+            inspectionDate:        date,
+            inspectionNote:        note,
+            inspectionScheduledBy: currentUser.displayName || currentUser.email,
+            inspectionUpdatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+        });
+        document.getElementById('insp-modal')?.remove();
+        flash('ok', 'Inspection scheduled.');
+        loadServiceReport();
+    } catch(err) { flash('error', 'Could not save: ' + err.message); }
+}
+
+async function markInspectionPassed(recordId) {
+    if (!confirm('Mark this inspection as passed?')) return;
+    try {
+        await db.collection('job_records').doc(recordId).update({
+            inspectionStatus:    'passed',
+            inspectionUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            inspectionPassedBy:  currentUser.displayName || currentUser.email
+        });
+        flash('ok', 'Inspection marked as passed.');
+        loadServiceReport();
+    } catch(err) { flash('error', 'Could not update: ' + err.message); }
+}
+
+function openFailInspectionModal(recordId, customerName, jobNumber, installerName) {
+    const existing = document.getElementById('fail-insp-modal');
+    if (existing) existing.remove();
+    const today = new Date().toISOString().slice(0,10);
+    const modal = document.createElement('div');
+    modal.id = 'fail-insp-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:1rem';
+    modal.innerHTML = `
+        <div style="background:var(--surface);border-radius:12px;padding:1.5rem;width:100%;max-width:420px">
+            <h3 style="margin:0 0 .35rem">Failed Inspection</h3>
+            <div style="font-size:.85rem;color:var(--muted);margin-bottom:1rem">${esc(customerName)} · Job #${esc(jobNumber)}</div>
+            <div class="form-group">
+                <label class="form-label">Inspection Date</label>
+                <input class="form-input" type="date" id="fi-date" value="${today}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reason for Failure *</label>
+                <input class="form-input" id="fi-reason" placeholder="e.g. Flashing not installed correctly">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Fee (if any)</label>
+                <input class="form-input" id="fi-fee" type="number" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea class="form-input" id="fi-note" rows="2" placeholder="Additional details…"></textarea>
+            </div>
+            <div style="display:flex;gap:.65rem;margin-top:1rem">
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('fail-insp-modal').remove()">Cancel</button>
+                <button class="btn flex-1" style="background:var(--bad,#ef4444);color:#fff;border:none" onclick="saveFailInspection('${recordId}','${esc(customerName).replace(/'/g,"\\'")}','${esc(jobNumber)}','${esc(installerName).replace(/'/g,"\\'")}')">Record Failure</button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+async function saveFailInspection(recordId, customerName, jobNumber, installerName) {
+    const date   = document.getElementById('fi-date').value;
+    const reason = document.getElementById('fi-reason').value.trim();
+    const fee    = document.getElementById('fi-fee').value.trim();
+    const note   = document.getElementById('fi-note').value.trim();
+    if (!reason) { flash('error', 'Please enter a reason for the failure.'); return; }
+    try {
+        // Get installerId from job record
+        const recDoc = await db.collection('job_records').doc(recordId).get();
+        const rec    = recDoc.data() || {};
+        await Promise.all([
+            db.collection('job_records').doc(recordId).update({
+                inspectionStatus:    'failed',
+                inspectionUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                inspectionFailedBy:  currentUser.displayName || currentUser.email
+            }),
+            db.collection('failed_inspections').add({
+                jobId:          rec.jobId || recordId,
+                jobNumber:      jobNumber,
+                clientName:     customerName,
+                installerId:    rec.installerId || '',
+                inspectionDate: date,
+                reason,
+                fee:            fee ? parseFloat(fee) : null,
+                note,
+                status:         'open',
+                source:         'manual',
+                createdBy:      currentUser.displayName || currentUser.email,
+                createdAt:      firebase.firestore.FieldValue.serverTimestamp()
+            })
+        ]);
+        document.getElementById('fail-insp-modal')?.remove();
+        flash('error', 'Inspection failure recorded.');
+        loadServiceReport();
+    } catch(err) { flash('error', 'Could not save: ' + err.message); }
+}
+
 async function archiveItem(recordId, type, noteInputId) {
     const note = (document.getElementById(noteInputId)?.value || '').trim();
     try {
