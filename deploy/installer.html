@@ -167,10 +167,11 @@
     /* Status bar */
     .status-bar {
       position: fixed;
-      bottom: 60px; left: 0; right: 0;
+      bottom: 0; left: 0; right: 0;
       background: var(--bg);
       border-top: 1px solid var(--hairline);
       padding: .75rem 1rem;
+      padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
       display: flex;
       gap: .6rem;
       align-items: center;
@@ -2037,9 +2038,6 @@ function renderJobDetail(job, rec) {
         statusBarEl.className = 'status-bar';
         document.body.appendChild(statusBarEl);
     }
-    // Position status bar above the bottom nav (handles safe-area-inset on iPhones)
-    const navEl = document.getElementById('bottom-nav');
-    statusBarEl.style.bottom = (navEl ? navEl.offsetHeight : 60) + 'px';
     statusBarEl.style.display = 'flex';
     renderStatusBar(job, rec);
 
@@ -4274,24 +4272,58 @@ const WALKTHROUGH_ITEMS = [
 
 let wfJobId        = null;
 let wfJobData      = null;
+let wfJobRecord    = null;
 let wfScreen       = 1;
 let wfCustBlob     = null;
 let wfAcknowledged = {}; // itemId → ISO timestamp
 let wfNote         = '';
 
-function showWalkthroughFlow(jobId) {
+async function showWalkthroughFlow(jobId) {
     wfJobId        = jobId;
     wfScreen       = 1;
     wfAcknowledged = {};
     wfNote         = '';
-    // Find job from cache
+    wfCustBlob     = null;
+    wfJobRecord    = null;
+
     const allJobs = Object.values(jobCache).flat();
     wfJobData = allJobs.find(j => j.id === jobId) || { id: jobId };
+
     showModal('modal-walkthrough');
+    document.getElementById('wf-content').innerHTML =
+        '<div class="text-center p-4"><span class="spinner"></span></div>';
+
+    try {
+        const recDoc = await db.collection('job_records')
+            .doc(`${jobId}_${currentInstaller.id}`).get();
+        wfJobRecord = recDoc.exists ? recDoc.data() : {};
+    } catch(e) {
+        wfJobRecord = {};
+    }
+
+    // Pre-populate checklist from any previously saved state
+    if (wfJobRecord.walkthroughChecklist) {
+        wfJobRecord.walkthroughChecklist.forEach(item => {
+            if (item.acknowledgedAt) wfAcknowledged[item.itemId] = item.acknowledgedAt;
+        });
+    }
+    if (wfJobRecord.walkthroughCustomerNote) {
+        wfNote = wfJobRecord.walkthroughCustomerNote;
+    }
+
     wfRenderScreen(1);
 }
 
 function wfRenderScreen(n) {
+    // If already fully signed, show read-only completed view
+    const wt = wfJobRecord && wfJobRecord.signatures && wfJobRecord.signatures.walkthrough;
+    if (wt && wt.installerAt) {
+        document.getElementById('wf-title').textContent = 'Walkthrough Checklist';
+        document.getElementById('wf-back-btn').style.display = 'none';
+        wfRenderCompleted(document.getElementById('wf-content'), wt);
+        return;
+    }
+
     wfScreen = n;
     const titles = ['Field Inspection Checklist', 'Customer Signature', 'Installer Sign-off'];
     document.getElementById('wf-title').textContent = titles[n - 1];
@@ -4300,6 +4332,35 @@ function wfRenderScreen(n) {
     if (n === 1) wfRenderChecklist(el);
     if (n === 2) wfRenderCustomerSig(el);
     if (n === 3) wfRenderInstallerSig(el);
+}
+
+function wfRenderCompleted(el, wt) {
+    const date = wt.customerAt
+        ? new Date(wt.customerAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' })
+        : '';
+    el.innerHTML = `
+        <div style="flex:1;overflow-y:auto;padding-bottom:.5rem">
+            <div style="text-align:center;margin-bottom:1.5rem">
+                <span style="font-size:2rem">✅</span>
+                <div style="font-weight:700;margin-top:.25rem">Walkthrough Complete</div>
+                <div class="text-sm text-muted">${date}</div>
+            </div>
+            ${wt.customerUrl ? `
+            <div style="margin-bottom:.75rem">
+                <div class="text-sm text-muted" style="margin-bottom:.3rem">Customer Signature</div>
+                <div style="border:1px solid var(--hairline);border-radius:var(--r-card);background:#fff;padding:.5rem;text-align:center">
+                    <img src="${wt.customerUrl}" style="max-width:100%;max-height:120px;object-fit:contain">
+                </div>
+            </div>` : ''}
+            ${wt.installerUrl ? `
+            <div>
+                <div class="text-sm text-muted" style="margin-bottom:.3rem">Installer Signature</div>
+                <div style="border:1px solid var(--hairline);border-radius:var(--r-card);background:#fff;padding:.5rem;text-align:center">
+                    <img src="${wt.installerUrl}" style="max-width:100%;max-height:120px;object-fit:contain">
+                </div>
+            </div>` : ''}
+        </div>
+        <button class="btn btn-secondary w-full" style="flex-shrink:0;margin-top:1rem" onclick="closeModal()">Close</button>`;
 }
 
 function wfRenderChecklist(el) {
