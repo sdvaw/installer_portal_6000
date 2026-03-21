@@ -60,6 +60,11 @@
       max-width: 100%; margin: 0;
       padding: 0; overflow-y: auto;
     }
+    /* Vertically center the auth card in the viewport */
+    #page-no-access.active {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
 
     /* Job card on schedule */
     .schedule-job-card {
@@ -630,7 +635,7 @@
   <p class="text-muted">Loading your portal…</p>
 </div>
 
-<div id="page-no-access" class="installer-page" style="padding-top:20vh;text-align:center">
+<div id="page-no-access" class="installer-page" style="text-align:center">
   <div class="login-logo" style="margin-bottom:1rem">
     <div class="brand">Armor Vue</div>
     <div class="sub">Installer Portal</div>
@@ -987,7 +992,7 @@ function showSignInConfirmScreen() {
     resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
-        <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
+        <div style="max-width:360px;width:100%;padding:1rem;text-align:center">
             <div class="login-logo mb-4">
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
@@ -1039,7 +1044,7 @@ function showEmailPrompt() {
     const pg = document.getElementById('page-no-access');
     pg.classList.add('active');
     pg.innerHTML = `
-        <div style="max-width:360px;margin:30vh auto 0;padding:1rem">
+        <div style="max-width:360px;width:100%;padding:1rem">
             <div class="login-logo mb-4">
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
@@ -1157,6 +1162,10 @@ function showPage(name) {
     const bar = document.getElementById('status-bar');
     if (bar && name !== 'job-detail') bar.style.display = 'none';
 
+    // Hide bottom nav on job detail (it has its own back button); restore on all other pages
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) bottomNav.style.display = name === 'job-detail' ? 'none' : '';
+
     if (name === 'schedule')  renderSchedule();
     if (name === 'blackout')  renderBlackout();
     if (name === 'defects')   renderDefects();
@@ -1172,7 +1181,7 @@ async function showAdminPreviewPicker() {
     const pg = document.getElementById('page-no-access');
     pg.classList.add('active');
     pg.innerHTML = `
-        <div style="max-width:360px;margin:20vh auto 0;padding:1rem">
+        <div style="max-width:360px;width:100%;padding:1rem">
             <div class="login-logo mb-4" style="text-align:center">
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Admin Preview Mode</div>
@@ -1248,7 +1257,7 @@ function showAccessError(msg) {
     resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
-        <div style="max-width:360px;margin:30vh auto 0;padding:1rem;text-align:center">
+        <div style="max-width:360px;width:100%;padding:1rem;text-align:center">
             <div class="login-logo mb-4">
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
@@ -1264,7 +1273,7 @@ function showLinkExpiredScreen(knownEmail) {
     resetToUnauthState();
     const pg = document.getElementById('page-no-access');
     pg.innerHTML = `
-        <div style="max-width:360px;margin:20vh auto 0;padding:1rem">
+        <div style="max-width:360px;width:100%;padding:1rem">
             <div class="login-logo mb-4" style="text-align:center">
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
