@@ -1151,7 +1151,10 @@ function handleLogout() {
 // PAGE NAVIGATION
 // ============================================================
 function showPage(name) {
-    document.querySelectorAll('.installer-page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.installer-page').forEach(p => {
+        p.classList.remove('active');
+        p.style.display = '';   // clear any inline display set by auth screens
+    });
     document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
 
     document.getElementById('page-' + name).classList.add('active');
