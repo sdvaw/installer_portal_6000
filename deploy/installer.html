@@ -1911,15 +1911,21 @@ async function openJobDetail(jobId) {
 
         let records;
         try {
-            records = await loadJobRecords([recId]);
+            // Fetch canonical ID and actual job ID — handles pre-existing records
+            // that were created under a non-canonical series member's ID
+            const idsToFetch = recId !== jobId ? [recId, jobId] : [recId];
+            records = await loadJobRecords(idsToFetch);
         } catch(e) { throw new Error('job_records: ' + e.message); }
 
         if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
 
         const job = { id: jobDoc.id, ...jobDoc.data() };
-        const rec = records[recId] || null;
+        // Prefer canonical record; fall back to job-specific record for backward compat;
+        // default to canonical for new jobs so series always share one record going forward
+        const effectiveRecId = records[recId] ? recId : (records[jobId] ? jobId : recId);
+        const rec = records[effectiveRecId] || null;
 
-        renderJobDetail(job, rec, recId);
+        renderJobDetail(job, rec, effectiveRecId);
     } catch(err) {
         el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${esc(err.message)}</div>`;
     }
