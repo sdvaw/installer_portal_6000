@@ -1876,7 +1876,29 @@ async function submitInventoryIssue() {
 // ============================================================
 // JOB DETAIL PAGE
 // ============================================================
+
+// For multi-day (series) jobs, all occurrences share one job_record.
+// Resolve to the earliest occurrence's ID so status/progress is consistent
+// regardless of which day the installer taps.
+function resolveCanonicalJobId(jobId) {
+    const allJobs = [
+        ...(weekJobsData?.jobs || []),
+        ...Object.values(jobCache).flat()
+    ];
+    const thisJob = allJobs.find(j => j.id === jobId);
+    if (!thisJob || !thisJob.seriesId) return jobId;
+
+    const siblings = allJobs.filter(j => j.seriesId === thisJob.seriesId);
+    if (siblings.length <= 1) return jobId;
+
+    siblings.sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+    return siblings[0].id;
+}
+
 async function openJobDetail(jobId) {
+    // Always use the canonical (earliest) series member as the record ID
+    const recId = resolveCanonicalJobId(jobId);
+
     showPage('job-detail');
     const el = document.getElementById('page-job-detail');
     el.innerHTML = `<div class="text-center p-4" style="padding-top:3rem"><span class="spinner spinner-lg"></span></div>`;
@@ -1889,22 +1911,23 @@ async function openJobDetail(jobId) {
 
         let records;
         try {
-            records = await loadJobRecords([jobId]);
+            records = await loadJobRecords([recId]);
         } catch(e) { throw new Error('job_records: ' + e.message); }
 
         if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
 
         const job = { id: jobDoc.id, ...jobDoc.data() };
-        const rec = records[jobId] || null;
+        const rec = records[recId] || null;
 
-        renderJobDetail(job, rec);
+        renderJobDetail(job, rec, recId);
     } catch(err) {
         el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${esc(err.message)}</div>`;
     }
 }
 
-function renderJobDetail(job, rec) {
-    currentJobIdForCapture = job.id;
+function renderJobDetail(job, rec, recId) {
+    // recId is the canonical job_record ID (may differ from job.id for series jobs)
+    currentJobIdForCapture = recId || job.id;
     const el      = document.getElementById('page-job-detail');
     const status  = rec ? rec.status : 'not_started';
     const startDt = toDate(job.startDt);
@@ -1993,7 +2016,7 @@ function renderJobDetail(job, rec) {
         ${status !== 'not_started' ? `
         <div class="detail-section">
             <h3>Job Modules</h3>
-            <button class="module-btn" onclick="showProgressPhotos('${job.id}')">
+            <button class="module-btn" onclick="showProgressPhotos('${currentJobIdForCapture}')">
                 <span class="m-icon">📷</span>
                 <div class="m-body">
                     <div class="m-label">Progress Photos</div>
@@ -2001,7 +2024,7 @@ function renderJobDetail(job, rec) {
                 </div>
                 <span class="m-arrow">›</span>
             </button>
-            <button class="module-btn" onclick="showCertificateFlow('${job.id}')">
+            <button class="module-btn" onclick="showCertificateFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">✅</span>
                 <div class="m-body">
                     <div class="m-label">Certificate of Completion</div>
@@ -2009,7 +2032,7 @@ function renderJobDetail(job, rec) {
                 </div>
                 <span class="m-arrow">›</span>
             </button>
-            <button class="module-btn" onclick="showWalkthroughFlow('${job.id}')">
+            <button class="module-btn" onclick="showWalkthroughFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">🚶</span>
                 <div class="m-body">
                     <div class="m-label">Walkthrough Checklist</div>
@@ -2017,11 +2040,11 @@ function renderJobDetail(job, rec) {
                 </div>
                 <span class="m-arrow">›</span>
             </button>
-            <button class="module-btn" onclick="showExtraWorkFlow('${job.id}')">
+            <button class="module-btn" onclick="showExtraWorkFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">🔧</span>
                 <div class="m-body">
                     <div class="m-label">Extra Work Requests</div>
-                    <div class="m-meta" id="ew-meta-${job.id}">Loading…</div>
+                    <div class="m-meta" id="ew-meta-${currentJobIdForCapture}">Loading…</div>
                 </div>
                 <span class="m-arrow">›</span>
             </button>
@@ -2043,12 +2066,12 @@ function renderJobDetail(job, rec) {
 
     // Async-load openings into their container
     if (rec && rec.status !== 'not_started') {
-        renderOpenings(job.id, rec);
-        ewLoadMetaBadge(job.id);
+        renderOpenings(currentJobIdForCapture, rec);
+        ewLoadMetaBadge(currentJobIdForCapture);
     }
 
     // Async-load failed inspection alerts (read-only for installer)
-    loadJobInspectionAlert(job.id);
+    loadJobInspectionAlert(job.id);  // use actual job ID for inspection lookup
 }
 
 async function loadJobInspectionAlert(jobId) {
@@ -2082,8 +2105,10 @@ function renderStatusBar(job, rec) {
     if (!el) return;
     const status = rec ? rec.status : 'not_started';
 
+    // Use canonical record ID (currentJobIdForCapture) for all record-writing actions
+    const recJobId = currentJobIdForCapture || job.id;
     if (status === 'not_started') {
-        el.innerHTML = `<button class="btn btn-primary" style="flex:1" onclick="startJobFlow('${job.id}')">▶ Start Job</button>`;
+        el.innerHTML = `<button class="btn btn-primary" style="flex:1" onclick="startJobFlow('${recJobId}')">▶ Start Job</button>`;
     } else {
         const note = rec && rec.statusNote ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${esc(rec.statusNote)}</div>` : '';
         el.innerHTML = `
@@ -2092,7 +2117,7 @@ function renderStatusBar(job, rec) {
                 <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
                 ${note}
             </div>
-            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" onclick="showStatusPicker('${job.id}','${status}')">Change</button>`;
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" onclick="showStatusPicker('${recJobId}','${status}')">Change</button>`;
     }
 }
 
