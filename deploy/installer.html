@@ -1643,7 +1643,10 @@ let jasCurrentJobId = null;
 function showJobActions(jobId) {
     jasCurrentJobId = jobId;
     const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
-    const rec = weekJobsData?.jobRecords?.[jobId] || jobRecordCache[jobId];
+    // For series jobs, find whichever sibling has a record
+    const seriesIds = getSeriesMemberIds(jobId);
+    const rec = seriesIds.reduce((found, id) =>
+        found || weekJobsData?.jobRecords?.[id] || jobRecordCache[id], null);
     const status = rec ? rec.status : 'not_started';
     const inv = rec?.inventoryReceived || {};
 
@@ -1878,26 +1881,25 @@ async function submitInventoryIssue() {
 // ============================================================
 
 // For multi-day (series) jobs, all occurrences share one job_record.
-// Resolve to the earliest occurrence's ID so status/progress is consistent
-// regardless of which day the installer taps.
-function resolveCanonicalJobId(jobId) {
+// Returns all sibling IDs sorted by startDt (earliest = canonical first).
+function getSeriesMemberIds(jobId) {
     const allJobs = [
         ...(weekJobsData?.jobs || []),
         ...Object.values(jobCache).flat()
     ];
     const thisJob = allJobs.find(j => j.id === jobId);
-    if (!thisJob || !thisJob.seriesId) return jobId;
+    if (!thisJob || !thisJob.seriesId) return [jobId];
 
     const siblings = allJobs.filter(j => j.seriesId === thisJob.seriesId);
-    if (siblings.length <= 1) return jobId;
-
     siblings.sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
-    return siblings[0].id;
+    return siblings.map(j => j.id);
 }
 
 async function openJobDetail(jobId) {
-    // Always use the canonical (earliest) series member as the record ID
-    const recId = resolveCanonicalJobId(jobId);
+    // For series (multi-day) jobs fetch ALL sibling IDs so we find the record
+    // regardless of which day it was originally created under.
+    const seriesIds = getSeriesMemberIds(jobId);   // sorted earliest-first
+    const idsToFetch = [...new Set([...seriesIds, jobId])];
 
     showPage('job-detail');
     const el = document.getElementById('page-job-detail');
@@ -1911,18 +1913,15 @@ async function openJobDetail(jobId) {
 
         let records;
         try {
-            // Fetch canonical ID and actual job ID — handles pre-existing records
-            // that were created under a non-canonical series member's ID
-            const idsToFetch = recId !== jobId ? [recId, jobId] : [recId];
             records = await loadJobRecords(idsToFetch);
         } catch(e) { throw new Error('job_records: ' + e.message); }
 
         if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
 
         const job = { id: jobDoc.id, ...jobDoc.data() };
-        // Prefer canonical record; fall back to job-specific record for backward compat;
-        // default to canonical for new jobs so series always share one record going forward
-        const effectiveRecId = records[recId] ? recId : (records[jobId] ? jobId : recId);
+        // Use whichever sibling has a record (earliest = canonical preferred).
+        // Fall back to earliest sibling for new jobs so new records go under the canonical ID.
+        const effectiveRecId = idsToFetch.find(id => records[id]) || seriesIds[0] || jobId;
         const rec = records[effectiveRecId] || null;
 
         renderJobDetail(job, rec, effectiveRecId);
