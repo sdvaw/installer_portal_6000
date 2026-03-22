@@ -2,8 +2,48 @@
 
 ---
 
+## v2.4.0 — Bug Fix & UX Polish: Auth Security, Series Jobs, Photo Wizard, Status Picker
+**Released:** 2026-03-21
+
+### Overview
+Critical bug fix release addressing a security vulnerability in the installer portal, multi-day series job record sharing, the status picker being incorrectly locked despite valid signatures, and a full photo capture wizard replacing the flat slot grid.
+
+---
+
+### Security Fix
+- **Management user portal exposure:** Refreshing `installer.html` while a management session was active showed the admin installer picker, allowing access to any installer's portal. Fixed: management users without an explicit `?preview=installerId` param are now immediately signed out and shown the normal installer login screen.
+
+### Bug Fixes
+
+#### Status Picker Locked Despite Signed COC + Walkthrough
+- Root cause: `updateJobStatus` was overwriting `jobRecordCache[jobId]` with only `{ status: newStatus }`, discarding signatures. `showStatusPicker` then read the stale partial cache entry and saw no signatures.
+- Fix: Added `currentJobRec` global that always holds the full displayed record. `showStatusPicker` and `saveNewStatus` now read from `currentJobRec` (what's on screen) instead of the cache. `updateJobStatus` now merges status changes into the full record and passes `recId` back to `renderJobDetail` so `currentJobIdForCapture` stays stable.
+
+#### Multi-Day (Series) Job — Wrong Record / "Starting From Beginning"
+- Root cause: Series sibling lookup relied on client-side job cache, which was empty, stale, or incomplete (especially for jobs spanning different calendar weeks or after cache was cleared by a save operation).
+- Fix: `openJobDetail` now queries Firestore directly (`where('seriesId', '==', ...)`) to get all series siblings authoritatively. Falls back to client-side cache only if the Firestore query fails.
+- Also fixed schedule cards: each day card now checks all series siblings for a record so the correct status shows on Day 2 even when the record is stored under Day 1's ID.
+
+### UX Improvements
+
+#### Photo Capture Wizard (installer.html)
+- Replaced the flat photo-slot grid with a step-by-step wizard inside each opening.
+- Single-slot photos (e.g., Frame, Sill) auto-advance to the next unfilled slot after capture.
+- Multi-photo slots (Bucking, Fasteners) stay on the same slot so the installer can take multiple photos; "→ Next Photo" button advances manually.
+- Progress dots show which slots are done and which is active.
+- Completion screen at the end offers: "Continue to [Next Opening]", "+ Add Next Opening", "≡ Review / Add Photos", and "← Back to All Openings".
+- Overview grid still accessible via ≡ button for retakes or out-of-order captures.
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — installer.html changes
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.3.0 — Compliance, Reviews, Analytics & Operations
-**Released:** 2026-03-19 (unreleased tag — tag after deploy)
+**Released:** 2026-03-19
 
 ### Overview
 Major feature release spanning compliance document tracking, installer reviews and ratings, a full Analytics tab, failed inspection email ingestion pipeline, staff management improvements, and significant UI/UX polish across all portals. Also includes a critical magic link login fix for admin-sent sign-in links.

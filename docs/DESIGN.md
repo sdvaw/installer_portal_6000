@@ -1,7 +1,7 @@
 # Armor Vue — Installer Portal
 ## System Design Document
 
-**Version:** 2.3
+**Version:** 2.4
 **Date:** March 2026
 **Status:** Production
 **Live URL:** https://installer-portal-6000.web.app
@@ -181,6 +181,8 @@ Installers authenticate via **passwordless email magic link**. No password is re
 ### 5.3 Management Authentication
 
 Management staff use **email + password** authentication via Firebase Auth. On sign-in, the portal verifies the user exists in the `management_users` collection with `status: "active"` before granting access.
+
+**Installer portal access for management:** Management users can preview any installer's portal via `installer.html?preview=installerId`. If a management user lands on `installer.html` without a `?preview=` param (e.g., by refreshing after a session), they are immediately signed out and shown the normal installer login screen. The admin picker is never shown to unauthenticated or management-only sessions.
 
 ---
 
