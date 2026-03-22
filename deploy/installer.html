@@ -935,6 +935,7 @@ let ppCurrentOpening = null;
 let ppPhotoReqs      = [];       // opening-category requirements (cached)
 let ppDefectTypes    = [];       // configurable defect types (cached)
 let ppCurrentSlot    = null;     // slot name being captured
+let ppCurrentSlotIdx = 0;        // index into ppGetSlots(ppCurrentOpening) for wizard
 
 const MULTI_PHOTO_SLOTS = ['Bucking', 'Fasteners'];  // allow up to 4 photos each
 const MAX_MULTI_PHOTOS  = 4;
@@ -969,7 +970,12 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
             if (isMgmt) {
                 const previewId = new URLSearchParams(window.location.search).get('preview');
                 if (previewId) loadPortalAsInstaller(previewId);
-                else           showAdminPreviewPicker();
+                else {
+                    // Management users must use an explicit ?preview=installerId link.
+                    // Sign them out so the normal installer login screen is shown.
+                    await auth.signOut();
+                    showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
+                }
             } else {
                 loadPortal(user);
             }
@@ -1598,7 +1604,9 @@ function renderSelectedDay() {
     }
 
     jobsEl.innerHTML = dayJobs.map(job => {
-        const rec    = jobRecords[job.id];
+        // For series jobs, check all siblings for a record so the correct status shows on each day
+        const seriesIds = getSeriesMemberIds(job.id);
+        const rec    = seriesIds.reduce((found, id) => found || jobRecords[id] || jobRecordCache[id], null);
         const status = rec ? rec.status : 'not_started';
         const timeStr = formatTime(toDate(job.startDt));
         const pay = parseFloat((job.financials?.installerPay || '').toString().replace(/[,$\s]/g, '')) || 0;
@@ -1896,11 +1904,6 @@ function getSeriesMemberIds(jobId) {
 }
 
 async function openJobDetail(jobId) {
-    // For series (multi-day) jobs fetch ALL sibling IDs so we find the record
-    // regardless of which day it was originally created under.
-    const seriesIds = getSeriesMemberIds(jobId);   // sorted earliest-first
-    const idsToFetch = [...new Set([...seriesIds, jobId])];
-
     showPage('job-detail');
     const el = document.getElementById('page-job-detail');
     el.innerHTML = `<div class="text-center p-4" style="padding-top:3rem"><span class="spinner spinner-lg"></span></div>`;
@@ -1911,14 +1914,35 @@ async function openJobDetail(jobId) {
             jobDoc = await db.collection('jobs').doc(jobId).get();
         } catch(e) { throw new Error('jobs/' + jobId + ': ' + e.message); }
 
+        if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
+
+        const job = { id: jobDoc.id, ...jobDoc.data() };
+
+        // For series (multi-day) jobs, query Firestore directly for ALL siblings
+        // so we find the shared record regardless of which day's ID it was created under.
+        // This is authoritative — it works even if siblings are in different weeks or cache was cleared.
+        let seriesIds = [jobId];
+        if (job.seriesId) {
+            try {
+                const siblingsSnap = await db.collection('jobs')
+                    .where('seriesId', '==', job.seriesId).get();
+                const siblings = siblingsSnap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+                if (siblings.length > 0) seriesIds = siblings.map(s => s.id);
+            } catch(e) {
+                // Fallback to client-side cache lookup if the query fails
+                seriesIds = getSeriesMemberIds(jobId);
+            }
+        }
+
+        const idsToFetch = [...new Set([...seriesIds, jobId])];
+
         let records;
         try {
             records = await loadJobRecords(idsToFetch);
         } catch(e) { throw new Error('job_records: ' + e.message); }
 
-        if (!jobDoc.exists) { el.innerHTML = '<p class="text-muted p-4">Job not found.</p>'; return; }
-
-        const job = { id: jobDoc.id, ...jobDoc.data() };
         // Use whichever sibling has a record (earliest = canonical preferred).
         // Fall back to earliest sibling for new jobs so new records go under the canonical ID.
         const effectiveRecId = idsToFetch.find(id => records[id]) || seriesIds[0] || jobId;
@@ -1933,6 +1957,7 @@ async function openJobDetail(jobId) {
 function renderJobDetail(job, rec, recId) {
     // recId is the canonical job_record ID (may differ from job.id for series jobs)
     currentJobIdForCapture = recId || job.id;
+    currentJobRec          = rec;   // keep in sync for status picker signature checks
     const el      = document.getElementById('page-job-detail');
     const status  = rec ? rec.status : 'not_started';
     const startDt = toDate(job.startDt);
@@ -2157,7 +2182,9 @@ function showStatusPicker(jobId, currentStatus) {
     _spJobId    = jobId;
     _spSelected = currentStatus;
 
-    const rec             = jobRecordCache[jobId];
+    // Use the full displayed record (currentJobRec) — more reliable than cache,
+    // since updateJobStatus only writes status into the cache, not the full record.
+    const rec             = currentJobRec || jobRecordCache[jobId];
     const walkthroughDone = !!(rec?.signatures?.walkthrough?.installerAt);
     const cocDone         = !!(rec?.signatures?.completion?.installerAt);
     const canComplete     = walkthroughDone && cocDone;
@@ -2239,7 +2266,7 @@ function closeStatusPicker() {
 async function saveNewStatus() {
     if (!_spSelected || !_spJobId) return;
     if (STATUS_OPTIONS.find(s => s.val === _spSelected)?.requiresSignatures) {
-        const rec             = jobRecordCache[_spJobId];
+        const rec             = currentJobRec || jobRecordCache[_spJobId];
         const walkthroughDone = !!(rec?.signatures?.walkthrough?.installerAt);
         const cocDone         = !!(rec?.signatures?.completion?.installerAt);
         if (!walkthroughDone || !cocDone) {
@@ -2312,17 +2339,18 @@ async function updateJobStatus(jobId, newStatus, statusNote, amountCollected = n
             });
         }
 
-        // Update cache
-        jobRecordCache[jobId] = { ...(jobRecordCache[jobId] || {}), status: newStatus };
+        // Update cache — merge into existing full record so signatures are preserved
+        const existing = currentJobRec || jobRecordCache[jobId] || {};
+        jobRecordCache[jobId] = { ...existing, status: newStatus, statusNote: statusNote || '' };
 
         // Invalidate job cache so schedule refreshes
         jobCache = {};
 
-        // Re-render status bar with updated state
+        // Re-render with the current canonical recId so currentJobIdForCapture stays correct
         const jobDoc = await db.collection('jobs').doc(jobId).get();
         const job    = { id: jobDoc.id, ...jobDoc.data() };
-        const newRec = jobRecordCache[jobId] || { status: newStatus };
-        renderJobDetail(job, newRec);
+        const newRec = jobRecordCache[jobId];
+        renderJobDetail(job, newRec, jobId);
 
     } catch(err) {
         alert('Could not update status: ' + err.message);
@@ -3132,6 +3160,7 @@ function compressImage(file, maxPx = 1920, quality = 0.82) {
 // ============================================================
 
 let currentJobIdForCapture    = null;
+let currentJobRec             = null;   // full record for currently-displayed job (used by status picker)
 let currentOpeningIdForCapture = null;
 let currentDefectOpeningId    = null;
 let sigJobId  = null;
@@ -3822,10 +3851,146 @@ function ppOpenCapture(openingId) {
     ppCurrentOpening = ppOpenings.find(o => o.id === openingId) || null;
     if (!ppCurrentOpening) return;
     ppView = 'capture';
+    // Start wizard at first unfilled slot (or slot 0 if all filled)
+    const slots = ppGetSlots(ppCurrentOpening);
+    const photos = ppCurrentOpening.photos || [];
+    const firstUnfilled = slots.findIndex(s => !photos.some(p => p.category === s.name));
+    ppCurrentSlotIdx = firstUnfilled >= 0 ? firstUnfilled : 0;
+    ppCurrentSlot = slots[ppCurrentSlotIdx]?.name || null;
     ppRenderCapture();
 }
 
 function ppRenderCapture() {
+    const op = ppCurrentOpening;
+    if (!op) return;
+
+    const slots   = ppGetSlots(op);
+    const photos  = op.photos || [];
+    const allDone = slots.every(s => photos.some(p => p.category === s.name));
+
+    if (allDone) { ppRenderOpeningComplete(); return; }
+
+    // Ensure ppCurrentSlotIdx is valid and points to an unfilled slot
+    if (ppCurrentSlotIdx >= slots.length) ppCurrentSlotIdx = 0;
+    // If the current slot is already filled, advance to next unfilled
+    while (ppCurrentSlotIdx < slots.length &&
+           photos.some(p => p.category === slots[ppCurrentSlotIdx].name) &&
+           !MULTI_PHOTO_SLOTS.includes(slots[ppCurrentSlotIdx].name)) {
+        ppCurrentSlotIdx++;
+    }
+    if (ppCurrentSlotIdx >= slots.length) { ppRenderOpeningComplete(); return; }
+
+    const slot   = slots[ppCurrentSlotIdx];
+    ppCurrentSlot = slot.name;
+    const isMulti = MULTI_PHOTO_SLOTS.includes(slot.name);
+    const slotPhotos = photos.filter(p => p.category === slot.name);
+
+    document.getElementById('pp-back-btn').style.display = '';
+    document.getElementById('pp-title').textContent = op.label;
+    document.getElementById('pp-header-right').innerHTML =
+        `<span class="opening-type-badge">${op.type||'window'}</span>`;
+
+    // Progress dots — one per slot
+    const dotsHtml = slots.map((s, i) => {
+        const filled   = photos.some(p => p.category === s.name);
+        const isCur    = i === ppCurrentSlotIdx;
+        const bg       = filled ? 'var(--ok)' : isCur ? 'var(--accent)' : 'var(--hairline)';
+        const w        = isCur ? '20px' : '8px';
+        return `<span style="display:inline-block;width:${w};height:8px;border-radius:4px;background:${bg};margin:0 2px;transition:all .2s;vertical-align:middle"></span>`;
+    }).join('');
+
+    // Thumbnails already taken for this slot
+    const thumbsHtml = slotPhotos.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:1rem">
+            ${slotPhotos.map((p, i) => `
+            <div style="position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:2px solid var(--ok)">
+                <img src="${p.url}" style="width:100%;height:100%;object-fit:cover">
+                <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.45);color:#fff;font-size:.6rem;text-align:center;padding:2px">${i+1}</div>
+            </div>`).join('')}
+        </div>` : '';
+
+    // Decide button label
+    const btnLabel = slotPhotos.length === 0
+        ? `📷 Take ${esc(slot.name)} Photo`
+        : isMulti
+            ? `📷 Take Another ${esc(slot.name)}`
+            : `📷 Retake ${esc(slot.name)}`;
+
+    // "Next →" button — show after first photo on multi, or always allow skip
+    const nextBtnLabel = ppCurrentSlotIdx < slots.length - 1
+        ? `→ Next Photo`
+        : `✓ Done — Review Opening`;
+    const showNextBtn = isMulti ? slotPhotos.length > 0 : false;
+
+    // Always show a "skip / view overview" option after first slot
+    const showSkipBtn = ppCurrentSlotIdx > 0 || slotPhotos.length > 0;
+
+    document.getElementById('pp-content').innerHTML = `
+        <div style="text-align:center;padding:1.5rem 1rem 1rem">
+            <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">
+                Photo ${ppCurrentSlotIdx + 1} of ${slots.length}
+            </div>
+            <div style="font-size:1.25rem;font-weight:700;margin-bottom:.75rem">${esc(slot.name)}</div>
+            <div style="margin-bottom:1rem">${dotsHtml}</div>
+            ${thumbsHtml}
+        </div>
+
+        <button class="btn btn-primary w-full mb-3"
+                style="font-size:1.05rem;padding:.9rem;min-height:52px"
+                onclick="ppTakeSlotCurrent()">
+            ${btnLabel}
+        </button>
+
+        ${showNextBtn ? `
+        <button class="btn btn-secondary w-full mb-3" onclick="ppAdvanceSlot()">
+            ${nextBtnLabel}
+        </button>` : ''}
+
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem">
+            ${ppCurrentSlotIdx > 0 ? `
+            <button class="btn btn-ghost" style="flex:1;font-size:.85rem" onclick="ppCurrentSlotIdx--;ppCurrentSlot=ppGetSlots(ppCurrentOpening)[ppCurrentSlotIdx]?.name||null;ppRenderCapture()">
+                ← Prev
+            </button>` : '<div style="flex:1"></div>'}
+            <button class="btn btn-ghost" style="flex:1;font-size:.85rem" onclick="ppRenderOverview()">
+                ≡ Overview
+            </button>
+            ${ppCurrentSlotIdx < slots.length - 1 ? `
+            <button class="btn btn-ghost" style="flex:1;font-size:.85rem" onclick="ppAdvanceSlot()">
+                Skip →
+            </button>` : `<div style="flex:1"></div>`}
+        </div>
+
+        <button class="btn btn-secondary w-full" onclick="ppShowDefectModal('${op.id}','${esc(op.label).replace(/'/g,"\\'")}')">
+            ⚠ Report Defect on this Opening
+        </button>`;
+}
+
+// Advance to next unfilled slot (or completion screen if all done)
+function ppAdvanceSlot() {
+    const slots  = ppGetSlots(ppCurrentOpening);
+    const photos = ppCurrentOpening.photos || [];
+    // Find next slot after current
+    let next = ppCurrentSlotIdx + 1;
+    while (next < slots.length && photos.some(p => p.category === slots[next].name) && !MULTI_PHOTO_SLOTS.includes(slots[next].name)) {
+        next++;
+    }
+    if (next < slots.length) {
+        ppCurrentSlotIdx = next;
+        ppCurrentSlot    = slots[next].name;
+        ppRenderCapture();
+    } else {
+        ppRenderOpeningComplete();
+    }
+}
+
+// Trigger camera for the currently active slot
+function ppTakeSlotCurrent() {
+    currentPhotoMode = 'progress';
+    document.getElementById('photo-input').click();
+}
+
+// Overview grid — shows all slots with thumbnails; installer can tap any slot
+function ppRenderOverview() {
     const op = ppCurrentOpening;
     if (!op) return;
 
@@ -3835,39 +4000,35 @@ function ppRenderCapture() {
         `<span class="opening-type-badge">${op.type||'window'}</span>`;
 
     const slots = ppGetSlots(op);
-    const slotsHtml = slots.map(slot => {
+    const slotsHtml = slots.map((slot, i) => {
         const taken   = (op.photos||[]).filter(p => p.category === slot.name);
         const isMulti = MULTI_PHOTO_SLOTS.includes(slot.name);
 
         if (isMulti) {
-            // Show each taken photo as a thumbnail, then an Add slot if under the max
-            const thumbs = taken.map((p, i) => `
+            const thumbs = taken.map((p, idx) => `
             <div class="pp-slot filled">
-                <img class="pp-slot-img" src="${p.url}" alt="${esc(slot.name)} ${i+1}">
-                <div class="pp-slot-label-filled">${esc(slot.name)} ${i+1}</div>
+                <img class="pp-slot-img" src="${p.url}" alt="${esc(slot.name)} ${idx+1}">
+                <div class="pp-slot-label-filled">${esc(slot.name)} ${idx+1}</div>
                 <div class="pp-slot-check">✓</div>
             </div>`).join('');
-
             const addSlot = taken.length < MAX_MULTI_PHOTOS ? `
-            <div class="pp-slot" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+            <div class="pp-slot" onclick="ppCurrentSlotIdx=${i};ppCurrentSlot='${esc(slot.name)}';ppTakeSlotCurrent()">
                 <span class="pp-slot-cam">${taken.length === 0 ? '📷' : '➕'}</span>
                 <span class="pp-slot-label">${taken.length === 0 ? esc(slot.name) : 'Add ' + esc(slot.name)}</span>
             </div>` : '';
-
             return thumbs + addSlot;
         }
 
-        // Single-photo slot — existing behaviour
         if (taken.length) {
             return `
-            <div class="pp-slot filled" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+            <div class="pp-slot filled" onclick="ppCurrentSlotIdx=${i};ppCurrentSlot='${esc(slot.name)}';ppTakeSlotCurrent()">
                 <img class="pp-slot-img" src="${taken[taken.length-1].url}" alt="${esc(slot.name)}">
                 <div class="pp-slot-label-filled">${esc(slot.name)}</div>
                 <div class="pp-slot-check">✓</div>
             </div>`;
         }
         return `
-        <div class="pp-slot" onclick="ppTakeSlot('${esc(slot.name)}','${op.id}')">
+        <div class="pp-slot" onclick="ppCurrentSlotIdx=${i};ppCurrentSlot='${esc(slot.name)}';ppTakeSlotCurrent()">
             <span class="pp-slot-cam">📷</span>
             <span class="pp-slot-label">${esc(slot.name)}</span>
         </div>`;
@@ -3880,10 +4041,11 @@ function ppRenderCapture() {
                 <div class="pp-defect-type">${esc(d.typeName||d.type||'Defect')}</div>
                 ${d.description ? `<div>${esc(d.description)}</div>` : ''}
             </div>`).join('')
-        : '<p class="text-muted text-sm">No defects reported on this opening.</p>';
+        : '<p class="text-muted text-sm">No defects reported.</p>';
 
     const curType = op.type || 'window';
     const curNum  = parseInt(op.number) || 1;
+    const allDone = slots.every(s => (op.photos||[]).some(p => p.category === s.name));
 
     document.getElementById('pp-content').innerHTML = `
         <div class="pp-slot-grid">${slotsHtml}</div>
@@ -3892,8 +4054,54 @@ function ppRenderCapture() {
             <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Defects</div>
             ${defectsHtml}
         </div>
-        <button class="btn btn-primary w-full mt-4" onclick="ppNextOpening('${curType}',${curNum})">
-            → Next Opening
+        ${allDone ? `
+        <button class="btn btn-primary w-full mt-4" onclick="ppRenderOpeningComplete()">
+            ✓ Opening Complete — Next
+        </button>` : `
+        <button class="btn btn-primary w-full mt-4" onclick="ppRenderCapture()">
+            ← Back to Wizard
+        </button>`}`;
+}
+
+// Shown when all required slots have at least one photo
+function ppRenderOpeningComplete() {
+    const op = ppCurrentOpening;
+    if (!op) return;
+
+    document.getElementById('pp-back-btn').style.display = '';
+    document.getElementById('pp-title').textContent = op.label;
+    document.getElementById('pp-header-right').innerHTML =
+        `<span class="opening-type-badge">${op.type||'window'}</span>`;
+
+    const curType = op.type || 'window';
+    const curNum  = parseInt(op.number) || 1;
+    const photos  = op.photos || [];
+    const opIdx   = ppOpenings.findIndex(o => o.id === op.id);
+    const nextExisting = opIdx >= 0 && opIdx < ppOpenings.length - 1 ? ppOpenings[opIdx + 1] : null;
+
+    document.getElementById('pp-content').innerHTML = `
+        <div style="text-align:center;padding:2.5rem 1rem 1.5rem">
+            <div style="font-size:3.5rem;margin-bottom:.75rem">✅</div>
+            <div style="font-size:1.15rem;font-weight:700;margin-bottom:.3rem">${esc(op.label)} — Complete</div>
+            <div style="font-size:.875rem;color:var(--muted)">${photos.length} photo${photos.length !== 1 ? 's' : ''} saved</div>
+        </div>
+
+        ${nextExisting ? `
+        <button class="btn btn-primary w-full mb-3" onclick="ppOpenCapture('${nextExisting.id}')">
+            → Continue: ${esc(nextExisting.label)}
+        </button>` : ''}
+
+        <button class="btn ${nextExisting ? 'btn-secondary' : 'btn-primary'} w-full mb-3"
+                onclick="ppNextOpening('${curType}',${curNum})">
+            + Add Next Opening
+        </button>
+
+        <button class="btn btn-secondary w-full mb-3" onclick="ppRenderOverview()">
+            ≡ Review / Add Photos
+        </button>
+
+        <button class="btn btn-ghost w-full" onclick="ppGoBack()">
+            ← Back to All Openings
         </button>`;
 }
 
@@ -3918,6 +4126,7 @@ function ppTakeSlot(slotName, openingId) {
     currentPhotoMode = 'progress';
     ppCurrentSlot    = slotName;
     ppCurrentOpening = ppOpenings.find(o => o.id === openingId) || ppCurrentOpening;
+    ppCurrentSlotIdx = ppGetSlots(ppCurrentOpening).findIndex(s => s.name === slotName);
     document.getElementById('photo-input').click();
 }
 
@@ -3946,7 +4155,15 @@ async function ppHandlePhoto(url) {
 
         ppOpenings[opIdx] = openings[opIdx];
         ppCurrentOpening  = openings[opIdx];
-        ppRenderCapture();
+
+        const isMulti = MULTI_PHOTO_SLOTS.includes(slotName);
+        if (isMulti) {
+            // Multi-photo slot: stay on same slot so they can take more; re-render shows "Take Another"
+            ppRenderCapture();
+        } else {
+            // Single-photo slot: auto-advance to next unfilled slot
+            ppAdvanceSlot();
+        }
     } catch(err) {
         alert('Photo upload failed: ' + err.message);
     }
