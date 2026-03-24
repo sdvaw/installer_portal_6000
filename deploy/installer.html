@@ -1992,7 +1992,7 @@ function renderJobDetail(job, rec, recId) {
 
         <div id="job-inspection-alert"></div>
 
-        <div class="detail-section">
+        <div class="detail-section" id="jd-details">
             <h3>Details</h3>
             ${job.address ? `<div class="detail-row"><span class="lbl">Address</span><span>${esc(job.address.replace(/\n/g,' '))}</span></div>` : ''}
             ${job.customerPhone ? `<div class="detail-row"><span class="lbl">Phone</span><a href="tel:${esc(job.customerPhone)}" style="color:var(--accent)">${esc(job.customerPhone)}</a></div>` : ''}
@@ -2102,6 +2102,9 @@ function renderJobDetail(job, rec, recId) {
 
     // Async-load failed inspection alerts (read-only for installer)
     loadJobInspectionAlert(job.id);  // use actual job ID for inspection lookup
+
+    // First-time job tutorial
+    maybeStartJobDetailTutorial();
 }
 
 async function loadJobInspectionAlert(jobId) {
@@ -5576,6 +5579,67 @@ function startTutorial(forced = false) {
                     description: 'Tap the <strong>?</strong> button in the top bar any time to replay this tour.',
                     side:  'bottom',
                     align: 'end'
+                }
+            }
+        ]
+    });
+    driverObj.drive();
+}
+
+function maybeStartJobDetailTutorial() {
+    if (!currentInstaller || isPreviewMode) return;
+    const key = `jdTutorial_${currentInstaller.id}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    setTimeout(() => startJobDetailTutorial(), 400);
+}
+
+function startJobDetailTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    const driverObj = driver({
+        showProgress:  true,
+        progressText:  '{{current}} of {{total}}',
+        allowClose:    true,
+        showButtons:   ['next', 'previous', 'close'],
+        nextBtnText:   'Next →',
+        prevBtnText:   '← Back',
+        doneBtnText:   'Got it ✓',
+        steps: [
+            {
+                popover: {
+                    title:       '📋 Your Job Page',
+                    description: 'This is where you\'ll work a job from start to finish. Here\'s a quick rundown of how it all flows.'
+                }
+            },
+            {
+                element: '#jd-details',
+                popover: {
+                    title:       '📍 Job Details',
+                    description: 'Customer name, address, time, product count, balance due, and your pay are all here. Tap the address to open it in Maps.',
+                    side:  'bottom',
+                    align: 'center'
+                }
+            },
+            {
+                element: '#status-bar',
+                popover: {
+                    title:       '▶ Starting the Job',
+                    description: 'When you arrive on site, tap <strong>Start Job</strong>. You\'ll take a few photos of the property and document any pre-existing conditions before work begins.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '🔧 Once the Job is Started',
+                    description: 'Four tools will unlock on this page:<br><br>📷 <strong>Progress Photos</strong> — photo each opening as you install<br>🚶 <strong>Walkthrough Checklist</strong> — walk the customer through a quality check<br>✅ <strong>Certificate of Completion</strong> — collect the customer\'s signature to close out<br>🔧 <strong>Extra Work Requests</strong> — flag anything outside the original scope for approval'
+                }
+            },
+            {
+                popover: {
+                    title:       '✅ Closing Out',
+                    description: 'Complete the <strong>Certificate of Completion</strong> last — it captures the customer\'s signature and your sign-off, and locks the job as done.'
                 }
             }
         ]
