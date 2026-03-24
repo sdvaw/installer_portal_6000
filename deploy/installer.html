@@ -3812,6 +3812,8 @@ function ppRenderList() {
 
     const content = document.getElementById('pp-content');
 
+    maybeStartProgressPhotosTutorial();
+
     if (!ppOpenings.length) {
         content.innerHTML = `
             <div style="text-align:center;padding:3rem 1rem;color:var(--muted)">
@@ -4635,6 +4637,7 @@ function wfRenderChecklist(el) {
             <button class="btn btn-primary w-full" id="wf-continue-btn"
                     onclick="wfRenderScreen(2)">Continue to Signatures →</button>
         </div>`;
+    maybeStartWalkthroughTutorial();
 }
 
 function wfAcknowledgeItem(itemId) {
@@ -4774,6 +4777,7 @@ async function showCertificateFlow(jobId) {
     }
     showModal('modal-certificate');
     cfRenderScreen(0);
+    maybeStartCOCTutorial();
 }
 
 function cfRenderScreen(n) {
@@ -4996,6 +5000,7 @@ async function showExtraWorkFlow(jobId) {
     if (titleEl) titleEl.textContent = 'Extra Work Requests';
     showModal('modal-extra-work');
     ewRenderCurrent();
+    maybeStartExtraWorkTutorial();
 }
 
 function ewRenderCurrent() {
@@ -5622,18 +5627,24 @@ function startJobDetailTutorial() {
                 }
             },
             {
+                popover: {
+                    title:       '📦 Receive Product First',
+                    description: 'Before you can start a job, you may need to confirm product receipt. When you tap a job card on the schedule you\'ll see a <strong>Receive Inventory</strong> button if product is assigned. Confirm it before heading to site — <strong>Start Job</strong> won\'t unlock until that\'s done.'
+                }
+            },
+            {
                 element: '#status-bar',
                 popover: {
-                    title:       '▶ Starting the Job',
-                    description: 'When you arrive on site, tap <strong>Start Job</strong>. You\'ll take a few photos of the property and document any pre-existing conditions before work begins.',
+                    title:       '▶ Start Job',
+                    description: 'Once product is received, tap <strong>Start Job</strong>. You\'ll take exterior photos of the property and document any pre-existing conditions before work begins.',
                     side:  'top',
                     align: 'center'
                 }
             },
             {
                 popover: {
-                    title:       '🔧 Once the Job is Started',
-                    description: 'Four tools will unlock on this page:<br><br>📷 <strong>Progress Photos</strong> — photo each opening as you install<br>🚶 <strong>Walkthrough Checklist</strong> — walk the customer through a quality check<br>✅ <strong>Certificate of Completion</strong> — collect the customer\'s signature to close out<br>🔧 <strong>Extra Work Requests</strong> — flag anything outside the original scope for approval'
+                    title:       '🔧 Once Started',
+                    description: 'Four tools unlock on this page:<br><br>📷 <strong>Progress Photos</strong> — photo each opening as you install<br>🚶 <strong>Walkthrough Checklist</strong> — walk the customer through a quality check<br>✅ <strong>Certificate of Completion</strong> — collect the customer\'s signature to close out<br>🔧 <strong>Extra Work Requests</strong> — flag anything outside the original scope for approval'
                 }
             },
             {
@@ -5645,6 +5656,175 @@ function startJobDetailTutorial() {
         ]
     });
     driverObj.drive();
+}
+
+// ── Sub-module first-time tutorials ──────────────────────────
+
+function maybeStartSubTutorial(key, fn) {
+    if (!currentInstaller || isPreviewMode) return;
+    const storageKey = `${key}_${currentInstaller.id}`;
+    if (localStorage.getItem(storageKey)) return;
+    localStorage.setItem(storageKey, '1');
+    setTimeout(fn, 400);
+}
+
+function maybeStartProgressPhotosTutorial() {
+    maybeStartSubTutorial('ppTutorial', startProgressPhotosTutorial);
+}
+function startProgressPhotosTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    driver({
+        showProgress: true, progressText: '{{current}} of {{total}}',
+        allowClose: true, showButtons: ['next', 'previous', 'close'],
+        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        steps: [
+            {
+                popover: {
+                    title:       '📷 Progress Photos',
+                    description: 'This is where you document your installation opening by opening.'
+                }
+            },
+            {
+                element: '#pp-header-right',
+                popover: {
+                    title:       '➕ Add an Opening',
+                    description: 'Tap <strong>+ Add Opening</strong> to register each window, door, or slider you\'re installing. Add one for each unit on the job.',
+                    side:  'bottom',
+                    align: 'end'
+                }
+            },
+            {
+                element: '#pp-content',
+                popover: {
+                    title:       '📋 Opening List',
+                    description: 'Each opening you add appears here. Tap one to open the photo wizard — you\'ll work through the required shots one by one (before install, during, and final).',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '⚠️ Reporting Issues',
+                    description: 'Inside each opening you can also report a defect if something is wrong with the unit — damaged, missing, wrong specs, etc. That gets flagged to the office automatically.'
+                }
+            }
+        ]
+    }).drive();
+}
+
+function maybeStartWalkthroughTutorial() {
+    maybeStartSubTutorial('wfTutorial', startWalkthroughTutorial);
+}
+function startWalkthroughTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    driver({
+        showProgress: true, progressText: '{{current}} of {{total}}',
+        allowClose: true, showButtons: ['next', 'previous', 'close'],
+        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        steps: [
+            {
+                popover: {
+                    title:       '🚶 Walkthrough Checklist',
+                    description: 'Do this with the customer present before you close out. Walk them through each quality item and confirm it together.'
+                }
+            },
+            {
+                element: '#wf-content',
+                popover: {
+                    title:       '✅ Check Off Each Item',
+                    description: 'Tap each circle to mark it done. Work through the full list with the customer — every item needs to be acknowledged before you can continue.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '✍️ Signatures',
+                    description: 'Once the checklist is complete, you\'ll collect the <strong>customer\'s signature</strong> first, then add <strong>your own</strong> to sign off. Both are required.'
+                }
+            }
+        ]
+    }).drive();
+}
+
+function maybeStartCOCTutorial() {
+    maybeStartSubTutorial('cfTutorial', startCOCTutorial);
+}
+function startCOCTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    driver({
+        showProgress: true, progressText: '{{current}} of {{total}}',
+        allowClose: true, showButtons: ['next', 'previous', 'close'],
+        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        steps: [
+            {
+                popover: {
+                    title:       '✅ Certificate of Completion',
+                    description: 'This is the final step to close out a job. Do this with the customer present.'
+                }
+            },
+            {
+                element: '#cf-content',
+                popover: {
+                    title:       '⭐ Step 1 — Rate the Job',
+                    description: 'Start by rating the product quality, sales experience, and installation. These ratings help us improve.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '📄 Step 2 — Agreement & Summary',
+                    description: 'The customer reviews the completion agreement and a summary of the work done.'
+                }
+            },
+            {
+                popover: {
+                    title:       '✍️ Step 3 — Signatures',
+                    description: 'The customer signs first, then you add your signature. Once both are captured the job is locked as complete and the status updates automatically.'
+                }
+            }
+        ]
+    }).drive();
+}
+
+function maybeStartExtraWorkTutorial() {
+    maybeStartSubTutorial('ewTutorial', startExtraWorkTutorial);
+}
+function startExtraWorkTutorial() {
+    if (!window.driver || !window.driver.js) return;
+    const { driver } = window.driver.js;
+    driver({
+        showProgress: true, progressText: '{{current}} of {{total}}',
+        allowClose: true, showButtons: ['next', 'previous', 'close'],
+        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        steps: [
+            {
+                popover: {
+                    title:       '🔧 Extra Work Requests',
+                    description: 'Use this if you discover work that\'s outside the original scope — additional damage, extra units, anything that wasn\'t in the original job.'
+                }
+            },
+            {
+                element: '#ew-content',
+                popover: {
+                    title:       '➕ Submit a Request',
+                    description: 'Tap <strong>+ New Request</strong> to describe what\'s needed, add photos if you have them, and enter the amount. The office will review and approve, deny, or counter.',
+                    side:  'top',
+                    align: 'center'
+                }
+            },
+            {
+                popover: {
+                    title:       '⏳ Waiting on Approval',
+                    description: 'Once submitted, your request shows as <strong>Pending</strong>. If management counters with a different amount, you\'ll be able to accept or decline it here.'
+                }
+            }
+        ]
+    }).drive();
 }
 
 async function markTutorialComplete() {
