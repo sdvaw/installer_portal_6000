@@ -883,7 +883,7 @@
     <span class="icon">🗓</span>Days Off
   </button>
   <button class="bottom-nav-btn" id="nav-defects" onclick="showPage('defects')">
-    <span class="icon">⚠️</span>Defects
+    <span class="icon">⚠️</span>Inspections/Quality
   </button>
   <button class="bottom-nav-btn" id="nav-earnings" onclick="showPage('earnings')">
     <span class="icon">💰</span>Earnings
@@ -2536,11 +2536,8 @@ async function checkComplianceBlock() {
             return s === 'expired' || s === 'missing';
         });
 
-        if (blocking.length) {
-            showPage('documents');
-            renderDocumentsPage(true);
-            return true;
-        }
+        // Never hard-block — the compliance banner on the schedule page warns them.
+        // Installers have time to upload docs; management can override if needed.
 
         // Cache loaded data for Documents page
         return false;
@@ -5548,8 +5545,8 @@ function startTutorial(forced = false) {
             {
                 element: '#nav-defects',
                 popover: {
-                    title:       '⚠️ Defects',
-                    description: 'Any defects you log during a job show up here in one place so you can track their status across all your jobs.',
+                    title:       '⚠️ Inspections/Quality',
+                    description: 'This is where you\'ll see any failed inspections and any customer or company concerns raised about your work. It\'s not for job supply issues like mis-measures or mis-orders — those are handled separately.',
                     side:  'top',
                     align: 'center'
                 }
