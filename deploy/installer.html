@@ -781,6 +781,7 @@
       <button class="btn btn-ghost btn-sm" id="pp-back-btn" onclick="ppGoBack()" style="display:none;padding:.4rem .6rem">←</button>
       <h3 id="pp-title" style="flex:1;margin:0">Progress Photos</h3>
       <div id="pp-header-right" class="flex gap-2"></div>
+      <button class="btn btn-ghost btn-sm" onclick="startProgressPhotosTutorial()" title="How this works" style="padding:.4rem .55rem;font-size:1rem;line-height:1">?</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal()" style="padding:.4rem .6rem">✕</button>
     </div>
     <div id="pp-content" class="pp-content-wrap"></div>
@@ -824,6 +825,7 @@
     <div class="modal-header" style="gap:.5rem">
       <button class="btn btn-ghost btn-sm" id="wf-back-btn" onclick="wfGoBack()" style="display:none;padding:.4rem .6rem">←</button>
       <h3 id="wf-title" style="flex:1;margin:0">Field Inspection Checklist</h3>
+      <button class="btn btn-ghost btn-sm" onclick="startWalkthroughTutorial()" title="How this works" style="padding:.4rem .55rem;font-size:1rem;line-height:1">?</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
     </div>
     <div id="wf-content" class="modal-body"></div>
@@ -834,6 +836,7 @@
     <div class="modal-header" style="gap:.5rem">
       <button class="btn btn-ghost btn-sm" id="cf-back-btn" onclick="cfGoBack()" style="display:none;padding:.4rem .6rem">←</button>
       <h3 id="cf-title" style="flex:1;margin:0">Certificate of Completion</h3>
+      <button class="btn btn-ghost btn-sm" onclick="startCOCTutorial()" title="How this works" style="padding:.4rem .55rem;font-size:1rem;line-height:1">?</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
     </div>
     <div id="cf-content" class="modal-body"></div>
@@ -867,6 +870,7 @@
       <button class="btn btn-ghost btn-sm" id="ew-back-btn" onclick="ewGoBack()"
               style="display:none;padding:.4rem .6rem">←</button>
       <h3 id="ew-title" style="flex:1;margin:0">Extra Work Requests</h3>
+      <button class="btn btn-ghost btn-sm" onclick="startExtraWorkTutorial()" title="How this works" style="padding:.4rem .55rem;font-size:1rem;line-height:1">?</button>
       <button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button>
     </div>
     <div id="ew-content" class="modal-body"></div>
@@ -1982,7 +1986,10 @@ function renderJobDetail(job, rec, recId) {
         : '<p class="text-muted text-sm">No office comments.</p>';
 
     el.innerHTML = `
-        <button class="detail-back" onclick="goBackToSchedule()">← Back to Schedule</button>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <button class="detail-back" onclick="goBackToSchedule()">← Back to Schedule</button>
+            <button class="btn btn-ghost btn-sm" onclick="startJobDetailTutorial()" title="How this works" style="padding:.3rem .55rem;font-size:1rem;line-height:1">?</button>
+        </div>
 
         <div style="margin-bottom:.5rem">
             <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Job #${esc(job.jobNumber || job.id)}</div>
