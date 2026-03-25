@@ -184,7 +184,7 @@ function showDashboard() {
     renderDashboard();
 }
 
-async function switchSection(name) {
+function switchSection(name) {
     currentSection = name;
     document.querySelectorAll('.nav-link').forEach(btn => {
         const matches = btn.textContent.toLowerCase().replace(/\s/g,'').startsWith(name.slice(0,4));
@@ -193,14 +193,20 @@ async function switchSection(name) {
     ['dashboard','installers','settings','teamup','management','staff'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
     });
-    // Ensure auth token is fresh before any Firestore queries run
-    if (auth.currentUser) await auth.currentUser.getIdToken(true).catch(() => {});
-    if (name === 'dashboard')  renderDashboard();
-    if (name === 'installers') renderInstallers();
-    if (name === 'settings')   renderSettings();
-    if (name === 'teamup')     renderTeamUpStatus();
-    if (name === 'management') renderManagement();
-    if (name === 'staff')      renderStaff();
+    // Ensure fresh token then render — covers stale-token permission errors on section load
+    const render = () => {
+        if (name === 'dashboard')  renderDashboard();
+        if (name === 'installers') renderInstallers();
+        if (name === 'settings')   renderSettings();
+        if (name === 'teamup')     renderTeamUpStatus();
+        if (name === 'management') renderManagement();
+        if (name === 'staff')      renderStaff();
+    };
+    if (auth.currentUser) {
+        auth.currentUser.getIdToken(true).catch(() => {}).then(render);
+    } else {
+        render();
+    }
 }
 
 // ============================================================
