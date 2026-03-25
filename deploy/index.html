@@ -77,6 +77,13 @@ auth.onAuthStateChanged(user => {
     }
 });
 
+// Proactively refresh token when admin returns to this tab
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && _dashboardActive && auth.currentUser) {
+        auth.currentUser.getIdToken(true).catch(() => {});
+    }
+});
+
 function handleLogout() {
     _dashboardActive = false;
     auth.signOut().then(() => showLogin());

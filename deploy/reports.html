@@ -1567,16 +1567,16 @@ function materialCard(o, isComplete = false) {
         <div class="rc-header">
             <div>
                 <div class="rc-name">${esc(o.material || 'Unknown material')}</div>
-                <div class="rc-job">Job #${esc(o.jobNumber || o.jobId || '—')} · ${esc(o.customerName || '—')} · ${esc(o.installerName || '—')}</div>
+                <div class="rc-job" style="color:var(--text);opacity:.8">Job #${esc(o.jobNumber || o.jobId || '—')} · ${esc(o.customerName || '—')} · ${esc(o.installerName || '—')}</div>
             </div>
-            ${o.defectType ? `<span style="font-size:.72rem;padding:.15rem .5rem;border:1px solid var(--hairline);color:var(--muted);border-radius:4px">${esc(o.defectType)}</span>` : ''}
+            ${o.defectType ? `<span style="font-size:.72rem;padding:.15rem .5rem;border:1px solid var(--hairline);color:var(--text);border-radius:4px">${esc(o.defectType)}</span>` : ''}
         </div>
-        ${o.defectDesc  ? `<div class="rc-body">${esc(o.defectDesc)}</div>` : ''}
-        ${o.openingLabel ? `<div style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem">Opening: ${esc(o.openingLabel)}</div>` : ''}
-        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">
+        ${o.defectDesc  ? `<div class="rc-body" style="color:var(--text);opacity:.85">${esc(o.defectDesc)}</div>` : ''}
+        ${o.openingLabel ? `<div style="font-size:.78rem;color:var(--text);opacity:.75;margin-bottom:.3rem">Opening: ${esc(o.openingLabel)}</div>` : ''}
+        <div style="font-size:.75rem;color:var(--text);opacity:.7;margin-bottom:.5rem">
             Reported: ${createdStr || '—'} · By: ${esc(o.createdByName || '—')}${orderedStr ? ` · Ordered: ${orderedStr}` : ''}
         </div>
-        ${o.notes ? `<div style="font-size:.8rem;background:var(--surface-2);padding:.4rem .6rem;border-radius:4px;margin-bottom:.5rem">${esc(o.notes)}</div>` : ''}
+        ${o.notes ? `<div style="font-size:.8rem;background:var(--surface-2);color:var(--text);padding:.4rem .6rem;border-radius:4px;margin-bottom:.5rem">${esc(o.notes)}</div>` : ''}
         ${!isComplete ? `
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
             ${o.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="markOrdered('${o.id}')">✓ Mark Ordered</button>` : ''}
