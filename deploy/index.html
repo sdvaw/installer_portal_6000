@@ -54,40 +54,27 @@ function flash(type, msg, ms = 4500) {
 // ============================================================
 // AUTH
 // ============================================================
-// Guard: once the dashboard is showing, don't let another tab's
-// auth change (e.g. a management user logging into reports.html)
-// kick the admin out. Only an explicit logout resets this.
 let _dashboardActive = false;
 
-// Debounce auth state changes — Firebase fires null transiently on init/tab-switch
-// before resolving the real session. We wait 300ms so rapid null→user sequences
-// don't flash the login screen.
-let _authStateTimer = null;
-
 auth.onAuthStateChanged(user => {
-    clearTimeout(_authStateTimer);
-    _authStateTimer = setTimeout(() => {
-        if (user && user.uid === ADMIN_UID) {
-            // Only render the dashboard once — prevent re-renders on tab switch
-            if (!_dashboardActive) {
-                _dashboardActive = true;
-                clearInterval(window._tokenRefreshInterval);
-                window._tokenRefreshInterval = setInterval(() => {
-                    auth.currentUser?.getIdToken(true).catch(() => {});
-                }, 30 * 60 * 1000);
-                showDashboard();
-            }
-        } else {
-            // Genuinely signed out or wrong user — redirect to login
-            _dashboardActive = false;
-            clearInterval(window._tokenRefreshInterval);
-            if (user) {
-                auth.signOut().then(() => showLogin('This account does not have admin access.'));
-            } else {
-                showLogin();
-            }
+    if (user && user.uid === ADMIN_UID) {
+        _dashboardActive = true;
+        clearInterval(window._tokenRefreshInterval);
+        window._tokenRefreshInterval = setInterval(() => {
+            auth.currentUser?.getIdToken(true).catch(() => {});
+        }, 30 * 60 * 1000);
+        // Only render if the dashboard shell isn't already in the DOM
+        if (!document.getElementById('section-dashboard')) {
+            showDashboard();
         }
-    }, 300);
+    } else if (!_dashboardActive) {
+        clearInterval(window._tokenRefreshInterval);
+        if (user) {
+            auth.signOut().then(() => showLogin('This account does not have admin access.'));
+        } else {
+            showLogin();
+        }
+    }
 });
 
 function handleLogout() {
