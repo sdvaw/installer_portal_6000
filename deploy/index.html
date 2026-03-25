@@ -61,6 +61,7 @@ let _dashboardActive = false;
 
 auth.onAuthStateChanged(user => {
     if (user && user.uid === ADMIN_UID) {
+        // Only render the dashboard once — prevent re-renders on tab switch / token refresh
         if (!_dashboardActive) {
             _dashboardActive = true;
             // Force-refresh token every 30 min so Firestore writes never hit stale-token errors
@@ -70,7 +71,9 @@ auth.onAuthStateChanged(user => {
             }, 30 * 60 * 1000);
             showDashboard();
         }
-    } else if (!_dashboardActive) {
+    } else {
+        // Always respond to sign-out or wrong user — never leave the dashboard showing without valid auth
+        _dashboardActive = false;
         clearInterval(window._tokenRefreshInterval);
         if (user) {
             auth.signOut().then(() => showLogin('This account does not have admin access.'));
