@@ -59,28 +59,35 @@ function flash(type, msg, ms = 4500) {
 // kick the admin out. Only an explicit logout resets this.
 let _dashboardActive = false;
 
+// Debounce auth state changes — Firebase fires null transiently on init/tab-switch
+// before resolving the real session. We wait 300ms so rapid null→user sequences
+// don't flash the login screen.
+let _authStateTimer = null;
+
 auth.onAuthStateChanged(user => {
-    if (user && user.uid === ADMIN_UID) {
-        // Only render the dashboard once — prevent re-renders on tab switch / token refresh
-        if (!_dashboardActive) {
-            _dashboardActive = true;
-            // Force-refresh token every 30 min so Firestore writes never hit stale-token errors
-            clearInterval(window._tokenRefreshInterval);
-            window._tokenRefreshInterval = setInterval(() => {
-                auth.currentUser?.getIdToken(true).catch(() => {});
-            }, 30 * 60 * 1000);
-            showDashboard();
-        }
-    } else {
-        // Always respond to sign-out or wrong user — never leave the dashboard showing without valid auth
-        _dashboardActive = false;
-        clearInterval(window._tokenRefreshInterval);
-        if (user) {
-            auth.signOut().then(() => showLogin('This account does not have admin access.'));
+    clearTimeout(_authStateTimer);
+    _authStateTimer = setTimeout(() => {
+        if (user && user.uid === ADMIN_UID) {
+            // Only render the dashboard once — prevent re-renders on tab switch
+            if (!_dashboardActive) {
+                _dashboardActive = true;
+                clearInterval(window._tokenRefreshInterval);
+                window._tokenRefreshInterval = setInterval(() => {
+                    auth.currentUser?.getIdToken(true).catch(() => {});
+                }, 30 * 60 * 1000);
+                showDashboard();
+            }
         } else {
-            showLogin();
+            // Genuinely signed out or wrong user — redirect to login
+            _dashboardActive = false;
+            clearInterval(window._tokenRefreshInterval);
+            if (user) {
+                auth.signOut().then(() => showLogin('This account does not have admin access.'));
+            } else {
+                showLogin();
+            }
         }
-    }
+    }, 300);
 });
 
 function handleLogout() {
