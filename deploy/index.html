@@ -193,20 +193,12 @@ function switchSection(name) {
     ['dashboard','installers','settings','teamup','management','staff'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
     });
-    // Ensure fresh token then render — covers stale-token permission errors on section load
-    const render = () => {
-        if (name === 'dashboard')  renderDashboard();
-        if (name === 'installers') renderInstallers();
-        if (name === 'settings')   renderSettings();
-        if (name === 'teamup')     renderTeamUpStatus();
-        if (name === 'management') renderManagement();
-        if (name === 'staff')      renderStaff();
-    };
-    if (auth.currentUser) {
-        auth.currentUser.getIdToken(true).catch(() => {}).then(render);
-    } else {
-        render();
-    }
+    if (name === 'dashboard')  renderDashboard();
+    if (name === 'installers') renderInstallers();
+    if (name === 'settings')   renderSettings();
+    if (name === 'teamup')     renderTeamUpStatus();
+    if (name === 'management') renderManagement();
+    if (name === 'staff')      renderStaff();
 }
 
 // ============================================================
@@ -530,7 +522,7 @@ function getInstallerType(i) {
     return i.type || 'installer';
 }
 
-async function renderInstallers() {
+async function renderInstallers(retries = 1) {
     const el = document.getElementById('section-installers');
     if (!el) return;
     el.innerHTML = `
@@ -594,7 +586,13 @@ async function loadInstallerData() {
         renderPendingTable();
         renderProvisionedTables();
         loadInstallerRatings().catch(() => {});
-    } catch(err) { flash('error', 'Could not load installers: ' + err.message); }
+    } catch(err) {
+        if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
+            await auth.currentUser.getIdToken(true);
+            return renderInstallers(0);
+        }
+        flash('error', 'Could not load installers: ' + err.message);
+    }
 }
 
 function renderPendingTable() {
@@ -1069,7 +1067,7 @@ async function submitEdit(installerId) {
 // SETTINGS SECTION
 // ============================================================
 let _renderingSettings = false;
-async function renderSettings() {
+async function renderSettings(retries = 1) {
     if (_renderingSettings) return;
     _renderingSettings = true;
     const el = document.getElementById('section-settings');
@@ -1323,7 +1321,14 @@ async function loadSettings() {
             if (laborWarnEl && pd.laborWarnPct != null) laborWarnEl.value = pd.laborWarnPct;
             if (laborHighEl && pd.laborHighPct != null) laborHighEl.value = pd.laborHighPct;
         }
-    } catch(err) { flash('error', 'Could not load settings: ' + err.message); }
+    } catch(err) {
+        if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
+            _renderingSettings = false;
+            await auth.currentUser.getIdToken(true);
+            return renderSettings(0);
+        }
+        flash('error', 'Could not load settings: ' + err.message);
+    }
 }
 
 async function savePortalSettings() {
@@ -2508,7 +2513,7 @@ async function deleteReview(reviewId, installerId) {
 // ============================================================
 // TEAMUP STATUS SECTION
 // ============================================================
-async function renderTeamUpStatus() {
+async function renderTeamUpStatus(retries = 1) {
     const el = document.getElementById('section-teamup');
     if (!el) return;
     el.innerHTML = `
@@ -2598,7 +2603,13 @@ async function renderTeamUpStatus() {
             instMatch.textContent = tuInst === fbInst ? '✓' : '⚠';
             instMatch.style.color = tuInst === fbInst ? 'var(--color-ok, #22c55e)' : 'var(--color-warn, #f59e0b)';
         }
-    } catch(err) { flash('error', 'Could not load status: ' + err.message); }
+    } catch(err) {
+        if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
+            await auth.currentUser.getIdToken(true);
+            return renderTeamUpStatus(0);
+        }
+        flash('error', 'Could not load status: ' + err.message);
+    }
 }
 
 // ============================================================
