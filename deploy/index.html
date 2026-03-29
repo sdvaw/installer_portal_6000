@@ -767,7 +767,7 @@ async function resendLink(installerId) {
             url: `https://installer-portal-6000.web.app/installer.html?hint=${encodeURIComponent(installer.email.toLowerCase())}`,
             handleCodeInApp: true
         };
-        await auth.sendSignInLinkToEmail(installer.email, actionCodeSettings);
+        await auth.sendSignInLinkToEmail(installer.email.toLowerCase(), actionCodeSettings);
         flash('ok', `New sign-in link sent to ${installer.email}.`);
     } catch(err) {
         flash('error', 'Could not send link: ' + err.message);
@@ -882,13 +882,13 @@ async function submitProvisioning(installerId) {
             url: `https://installer-portal-6000.web.app/installer.html?hint=${encodeURIComponent(email.toLowerCase())}`,
             handleCodeInApp: true
         };
-        await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        await auth.sendSignInLinkToEmail(email.toLowerCase(), actionCodeSettings);
 
-        // Update installer doc
+        // Update installer doc — store email lowercase so Firestore query in installer.html matches
         await db.collection('installers').doc(installerId).update({
             displayName:   name,
             company:       company,
-            email:         email,
+            email:         email.toLowerCase(),
             phone:         phone,
             status:        'active',
             provisionedAt: firebase.firestore.FieldValue.serverTimestamp()
