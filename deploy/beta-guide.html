@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Armor Vue — Beta Testing Guide</title>
+<style>
+  :root {
+    --accent: #38BDF8;
+    --accent-soft: rgba(56,189,248,0.12);
+    --bg: #0B0F14;
+    --surface: #141A22;
+    --surface-2: #1C2530;
+    --hairline: rgba(255,255,255,0.08);
+    --text: #E2E8F0;
+    --muted: #94A3B8;
+    --green: #34D399;
+    --amber: #FBBF24;
+    --red: #F87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--hairline);
+    padding: 1.5rem 1.25rem 1.25rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-brand { font-size: 1.5rem; font-weight: 800; color: var(--accent); letter-spacing: -.5px; }
+  .header-sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+  .toc {
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--hairline);
+    padding: .75rem 1.25rem;
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .toc::-webkit-scrollbar { display: none; }
+  .toc a {
+    white-space: nowrap;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    padding: .3rem .65rem;
+    border-radius: 20px;
+    border: 1px solid var(--hairline);
+    flex-shrink: 0;
+  }
+  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+  .content { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 2.5rem 0 .75rem;
+    padding-top: .5rem;
+    border-top: 1px solid var(--hairline);
+    scroll-margin-top: 110px;
+  }
+  h2:first-child { border-top: none; margin-top: 1rem; }
+  h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 1.5rem 0 .4rem;
+    scroll-margin-top: 110px;
+  }
+  p { color: var(--muted); margin-bottom: .6rem; }
+  p strong { color: var(--text); }
+  .step-list { list-style: none; padding: 0; }
+  .step-list li {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num {
+    background: var(--accent);
+    color: #000;
+    font-size: .7rem;
+    font-weight: 800;
+    border-radius: 50%;
+    width: 1.4rem;
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: .1rem;
+  }
+  .step-text { color: var(--text); font-size: .9rem; flex: 1; }
+  .step-text .note { display: block; color: var(--muted); font-size: .8rem; margin-top: .15rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    margin: .75rem 0;
+  }
+  .card-title {
+    font-weight: 700;
+    font-size: .95rem;
+    margin-bottom: .4rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .card-title .icon { font-size: 1.2rem; }
+  .card p { margin: 0; font-size: .85rem; }
+  .checklist { list-style: none; padding: 0; margin: .5rem 0 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .35rem 0;
+    font-size: .85rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '☐';
+    color: var(--accent);
+    font-size: 1rem;
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+  .badge {
+    display: inline-block;
+    font-size: .7rem;
+    font-weight: 700;
+    padding: .15rem .45rem;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-left: .25rem;
+  }
+  .badge-green { background: rgba(52,211,153,.15); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
+  .badge-amber { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.25); }
+  .badge-blue  { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(56,189,248,.25); }
+  .url-box {
+    background: var(--surface-2);
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    padding: .6rem 1rem;
+    font-family: monospace;
+    font-size: .82rem;
+    color: var(--accent);
+    word-break: break-all;
+    margin: .5rem 0;
+  }
+  .tip {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: .6rem .9rem;
+    margin: .75rem 0;
+    font-size: .85rem;
+    color: var(--text);
+  }
+  .warn {
+    background: rgba(251,191,36,.08);
+    border-left: 3px solid var(--amber);
+    border-radius: 0 6px 6px 0;
+    padding: .6rem .9rem;
+    margin: .75rem 0;
+    font-size: .85rem;
+    color: var(--text);
+  }
+  .section-divider {
+    height: 1px;
+    background: var(--hairline);
+    margin: 2rem 0;
+  }
+  .feedback-box {
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem;
+    margin-top: 2rem;
+  }
+  .feedback-box h3 { margin-top: 0; color: var(--accent); }
+  .feedback-box p { font-size: .88rem; }
+  @media (min-width: 600px) {
+    .content { padding: 2rem 2rem 4rem; }
+    h2 { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">Armor Vue</div>
+  <div class="header-sub">Installer Portal — Beta Testing Guide</div>
+</div>
+
+<div class="toc">
+  <a href="#overview">Overview</a>
+  <a href="#setup">Your Setup</a>
+  <a href="#onboarding">First Login</a>
+  <a href="#schedule">Schedule</a>
+  <a href="#job-detail">Job Detail</a>
+  <a href="#days-off">Days Off</a>
+  <a href="#inspections">Inspections</a>
+  <a href="#earnings">Earnings</a>
+  <a href="#docs">Docs</a>
+  <a href="#checklist">Full Checklist</a>
+  <a href="#feedback">Feedback</a>
+</div>
+
+<div class="content">
+
+  <!-- OVERVIEW -->
+  <h2 id="overview">What You're Testing</h2>
+  <p>The <strong>Armor Vue Installer Portal</strong> is a mobile-first web app used by window film installers in the field. It gives them their daily schedule, lets them log job status and photos, request time off, view inspection flags, and check their earnings.</p>
+  <p>You're testing it as a <strong>first-time installer</strong> would experience it — from receiving the sign-in link all the way through the main features. There's no app to install; it runs entirely in your phone's browser.</p>
+
+  <div class="tip">
+    <strong>Best tested on your phone.</strong> This portal is designed for mobile use. Open everything on iOS Safari or Android Chrome for the most realistic experience.
+  </div>
+
+  <!-- SETUP -->
+  <h2 id="setup">Your Setup (Before You Start)</h2>
+  <p>The admin needs to send you a magic sign-in link. Here's what that flow looks like from their side, so you understand what's happening:</p>
+
+  <ol class="step-list">
+    <li>
+      <span class="step-num">1</span>
+      <span class="step-text">Admin opens the admin portal and navigates to <strong>Installers</strong>
+        <span class="note">Your account should already be listed there as a provisioned installer.</span>
+      </span>
+    </li>
+    <li>
+      <span class="step-num">2</span>
+      <span class="step-text">Admin clicks the <strong>⟳ Link</strong> button next to your name to send a fresh sign-in link to your email.</span>
+    </li>
+    <li>
+      <span class="step-num">3</span>
+      <span class="step-text">You receive an email from Firebase / Armor Vue with a <strong>"Sign in to installer-portal-6000"</strong> link.
+        <span class="note">Check spam if you don't see it within a minute.</span>
+      </span>
+    </li>
+    <li>
+      <span class="step-num">4</span>
+      <span class="step-text"><strong>Open that link on your phone.</strong> Do not open it in Gmail's in-app browser — use Safari or Chrome.
+        <span class="note">If Gmail opens it in-app, tap the ⋮ menu → "Open in Chrome/Safari".</span>
+      </span>
+    </li>
+  </ol>
+
+  <div class="warn">
+    <strong>One-time link:</strong> The sign-in link expires after use. If you accidentally close the tab before finishing, ask the admin to resend a new link.
+  </div>
+
+  <!-- ONBOARDING -->
+  <h2 id="onboarding">First Login — Onboarding Flow</h2>
+  <p>The first time you sign in, the portal walks you through two required steps before giving you access to the main app.</p>
+
+  <h3>Step 1 — Tap to Sign In</h3>
+  <p>When you open the link, you'll see a <strong>"Sign In to Portal →"</strong> confirmation screen instead of signing in automatically. This is intentional — it prevents email security scanners from consuming the link before you do.</p>
+  <ul class="checklist">
+    <li>Tap the button and confirm it signs you in without error</li>
+  </ul>
+
+  <h3>Step 2 — Signature Pad</h3>
+  <p>You'll be asked to draw your signature. This is stored on your account and printed on completed job records.</p>
+  <ul class="checklist">
+    <li>Draw a signature using your finger</li>
+    <li>Tap <strong>Save Signature</strong> — it should save and advance</li>
+    <li>Try the <strong>Clear</strong> button to erase and re-draw</li>
+  </ul>
+
+  <h3>Step 3 — Tutorial Walkthrough</h3>
+  <p>A short in-app tutorial highlights the main features. Swipe or tap through all the steps.</p>
+  <ul class="checklist">
+    <li>Complete the full tutorial to the end</li>
+    <li>Confirm the main portal loads after the tutorial finishes</li>
+  </ul>
+
+  <!-- SCHEDULE -->
+  <h2 id="schedule">📅 Schedule Tab</h2>
+  <p>This is the home screen. It shows a week view with a chip for each day (Mon–Fri) and a list of jobs assigned to the selected day.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📅</span> What's on this screen</div>
+    <p>Day chips across the top — tap any day to see that day's jobs. Today's chip is highlighted. Each job card shows the customer name, address, job type, and time window.</p>
+  </div>
+
+  <ul class="checklist">
+    <li>Tap different day chips — verify the job list updates for each day</li>
+    <li>If today has jobs, confirm they appear correctly</li>
+    <li>Verify the <strong>"↩ Today"</strong> quick-link appears when you navigate away from the current week</li>
+    <li>Scroll through a day with multiple jobs — confirm no layout issues</li>
+    <li>Confirm your name appears in the top nav bar</li>
+  </ul>
+
+  <!-- JOB DETAIL -->
+  <h2 id="job-detail">Job Detail</h2>
+  <p>Tap any job card on the schedule to open its detail view. This is where installers do most of their work during a job.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🏠</span> What's on this screen</div>
+    <p>Customer info, job address, film type, opening list, job status selector, photo upload slots, and a COC (Certificate of Completion) sign-off section.</p>
+  </div>
+
+  <h3>Status Updates</h3>
+  <ul class="checklist">
+    <li>Change the job status (e.g., "In Progress", "Complete") using the status dropdown</li>
+    <li>Confirm the status saves and persists if you leave and return to the job</li>
+  </ul>
+
+  <h3>Photos</h3>
+  <ul class="checklist">
+    <li>Tap a photo slot and upload a photo from your camera roll (or take a new one)</li>
+    <li>Confirm the photo appears in the slot after upload</li>
+    <li>Try uploading more than one photo if multiple slots are shown</li>
+  </ul>
+
+  <h3>Certificate of Completion (COC)</h3>
+  <ul class="checklist">
+    <li>Scroll to the COC section — confirm it lists job openings</li>
+    <li>Tap <strong>Sign &amp; Complete</strong> — you should be prompted to sign with your finger</li>
+    <li>Confirm a signed COC is generated and can be viewed/shared</li>
+  </ul>
+
+  <h3>Navigation</h3>
+  <ul class="checklist">
+    <li>Tap the <strong>← Back</strong> button to return to the schedule</li>
+    <li>Confirm no data is lost when navigating back</li>
+  </ul>
+
+  <!-- DAYS OFF -->
+  <h2 id="days-off">🗓 Days Off Tab</h2>
+  <p>Installers use this to request blackout dates — days they're unavailable. Management reviews these requests.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🗓</span> What's on this screen</div>
+    <p>A calendar picker to select unavailable dates, a reason field, and a list of past/pending requests with their approval status.</p>
+  </div>
+
+  <ul class="checklist">
+    <li>Select one or more dates using the calendar</li>
+    <li>Enter a reason (e.g., "Vacation") and submit the request</li>
+    <li>Confirm the request appears in the pending list below the form</li>
+    <li>Verify past approved/denied requests show the correct status badge</li>
+  </ul>
+
+  <!-- INSPECTIONS -->
+  <h2 id="inspections">⚠️ Inspections / Quality Tab</h2>
+  <p>This tab shows any failed inspection reports or quality flags linked to this installer. It also allows the installer to respond to or acknowledge an issue.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">⚠️</span> What's on this screen</div>
+    <p>A list of inspection flags (if any) with job details, defect type, and status. Installers can add a note or update the status of their own flags.</p>
+  </div>
+
+  <ul class="checklist">
+    <li>If any flags are shown, tap one to expand the detail</li>
+    <li>Try adding an installer note and saving it</li>
+    <li>If no flags exist, confirm the "no issues" empty state looks correct</li>
+    <li>Verify a badge/alert appears on the nav icon when there are unresolved flags</li>
+  </ul>
+
+  <!-- EARNINGS -->
+  <h2 id="earnings">💰 Earnings Tab</h2>
+  <p>Shows the installer a summary of their pay — broken down by job, with running totals. Management controls what is visible here.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">💰</span> What's on this screen</div>
+    <p>A list of completed jobs with the installer's pay amount per job. Totals shown at the top. Note: the full contract amount is never shown to installers — only their portion.</p>
+  </div>
+
+  <ul class="checklist">
+    <li>Confirm job entries and pay amounts are displayed</li>
+    <li>Confirm no "contract amount" or customer-facing pricing is visible</li>
+    <li>Tap a row (if interactive) to see job-level detail</li>
+    <li>Verify the total figure at the top matches the sum of visible entries</li>
+  </ul>
+
+  <!-- DOCS -->
+  <h2 id="docs">📋 Docs Tab</h2>
+  <p>Compliance document storage. Installers upload required documents (insurance certificates, licenses, etc.). Admins review and verify them.</p>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📋</span> What's on this screen</div>
+    <p>A list of required document types with upload slots. Each slot shows "pending review", "verified", or "expired" status once a document is uploaded.</p>
+  </div>
+
+  <ul class="checklist">
+    <li>Confirm the list of required document types is shown</li>
+    <li>Tap <strong>Upload</strong> on one slot and attach a PDF or image</li>
+    <li>Confirm the document shows a "pending review" status after upload</li>
+    <li>Verify you can view/open a previously uploaded document</li>
+    <li>Confirm you cannot edit the "verified" status yourself — that's admin-only</li>
+  </ul>
+
+  <div class="section-divider"></div>
+
+  <!-- FULL CHECKLIST -->
+  <h2 id="checklist">Full Test Checklist</h2>
+  <p>Quick pass/fail reference. Work through these in order on your phone.</p>
+
+  <h3>Sign-In &amp; Onboarding</h3>
+  <ul class="checklist">
+    <li>Received magic link email within ~1 minute</li>
+    <li>Link opened correctly in Chrome/Safari (not in Gmail app)</li>
+    <li>"Sign In to Portal →" tap-to-confirm screen appeared</li>
+    <li>Signature pad loaded and accepted a drawn signature</li>
+    <li>Tutorial ran start-to-finish with no crashes</li>
+    <li>Main portal loaded after tutorial</li>
+  </ul>
+
+  <h3>Schedule</h3>
+  <ul class="checklist">
+    <li>All 5 day chips visible and tappable</li>
+    <li>Job cards show correct info (name, address, time)</li>
+    <li>Correct day is highlighted as "today"</li>
+    <li>Navigating weeks works (if forward/back arrows present)</li>
+  </ul>
+
+  <h3>Job Detail</h3>
+  <ul class="checklist">
+    <li>Tapping a job card opens the detail view</li>
+    <li>All job fields display without layout issues</li>
+    <li>Status change saves correctly</li>
+    <li>At least one photo uploads successfully</li>
+    <li>COC section is present and signable</li>
+    <li>Back button returns to schedule</li>
+  </ul>
+
+  <h3>Days Off</h3>
+  <ul class="checklist">
+    <li>Calendar picker works on mobile</li>
+    <li>Blackout request submitted without error</li>
+    <li>Request appears in the pending list</li>
+  </ul>
+
+  <h3>Inspections / Quality</h3>
+  <ul class="checklist">
+    <li>Tab loads without error</li>
+    <li>Empty state looks correct (if no flags)</li>
+    <li>Installer note can be saved (if flags exist)</li>
+  </ul>
+
+  <h3>Earnings</h3>
+  <ul class="checklist">
+    <li>Tab loads and shows job entries</li>
+    <li>No raw contract amounts visible</li>
+  </ul>
+
+  <h3>Docs</h3>
+  <ul class="checklist">
+    <li>Required doc types listed</li>
+    <li>Document upload works (PDF or image)</li>
+    <li>Uploaded doc shows "pending review"</li>
+  </ul>
+
+  <h3>General / Cross-Cutting</h3>
+  <ul class="checklist">
+    <li>App feels fast and responsive on mobile</li>
+    <li>No visible JavaScript errors (check browser console if possible)</li>
+    <li>Text is readable — no contrast or overflow issues</li>
+    <li>Buttons and tappable areas are large enough to hit accurately</li>
+    <li>Closing and re-opening the browser tab keeps you logged in</li>
+    <li>Logout button (top-right) signs you out cleanly</li>
+  </ul>
+
+  <!-- FEEDBACK -->
+  <h2 id="feedback">Reporting Feedback</h2>
+
+  <div class="feedback-box">
+    <h3>How to Report Issues</h3>
+    <p>For each issue you find, note:</p>
+    <ul class="checklist" style="margin-top:.6rem">
+      <li><strong>What you were doing</strong> — which tab, what action</li>
+      <li><strong>What you expected</strong> — what should have happened</li>
+      <li><strong>What actually happened</strong> — error message, blank screen, wrong data, etc.</li>
+      <li><strong>Screenshot</strong> — if possible, always helpful</li>
+      <li><strong>Device &amp; browser</strong> — e.g., iPhone 15 / Safari 17</li>
+    </ul>
+  </div>
+
+  <div class="tip" style="margin-top:1.5rem">
+    <strong>Things that are intentional:</strong> You won't see the full contract amount anywhere in the installer app — that's by design. The tutorial can only be replayed from the profile menu; it won't re-run on every login after the first time.
+  </div>
+
+</div>
+</body>
+</html>
