@@ -1054,6 +1054,7 @@ async function submitEdit(installerId) {
     btn.innerHTML = '<span class="spinner"></span> Saving…';
 
     try {
+        if (auth.currentUser) await auth.currentUser.getIdToken(true);
         const updates = { displayName: name, company, email: email.toLowerCase(), phone, status };
         if (teamupRaw) updates.teamupId = parseInt(teamupRaw, 10);
         await db.collection('installers').doc(installerId).update(updates);
