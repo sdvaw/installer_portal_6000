@@ -19,184 +19,74 @@
     --red: #F87171;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    font-size: 15px;
-  }
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--hairline);
-    padding: 1.5rem 1.25rem 1.25rem;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .header-brand { font-size: 1.5rem; font-weight: 800; color: var(--accent); letter-spacing: -.5px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+
+  /* Header */
+  .header { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 1.25rem 1.25rem 1rem; }
+  .header-brand { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
   .header-sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
-  .toc {
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--hairline);
-    padding: .75rem 1.25rem;
-    display: flex;
-    gap: .5rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
+
+  /* Portal switcher tabs */
+  .portal-tabs { display: flex; background: var(--surface-2); border-bottom: 2px solid var(--hairline); }
+  .portal-tab { flex: 1; padding: .8rem .5rem; text-align: center; font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; letter-spacing: .02em; }
+  .portal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* TOC strip */
+  .toc { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: .6rem 1rem; display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .toc::-webkit-scrollbar { display: none; }
-  .toc a {
-    white-space: nowrap;
-    font-size: .78rem;
-    font-weight: 600;
-    color: var(--muted);
-    text-decoration: none;
-    padding: .3rem .65rem;
-    border-radius: 20px;
-    border: 1px solid var(--hairline);
-    flex-shrink: 0;
-  }
+  .toc a { white-space: nowrap; font-size: .75rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .25rem .6rem; border-radius: 20px; border: 1px solid var(--hairline); flex-shrink: 0; }
   .toc a:hover { color: var(--accent); border-color: var(--accent); }
-  .content { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
-  h2 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--accent);
-    margin: 2.5rem 0 .75rem;
-    padding-top: .5rem;
-    border-top: 1px solid var(--hairline);
-    scroll-margin-top: 110px;
-  }
-  h2:first-child { border-top: none; margin-top: 1rem; }
-  h3 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text);
-    margin: 1.5rem 0 .4rem;
-    scroll-margin-top: 110px;
-  }
-  p { color: var(--muted); margin-bottom: .6rem; }
+
+  /* Content */
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .content { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.25rem 5rem; }
+
+  h2 { font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 2.25rem 0 .6rem; padding-top: .5rem; border-top: 1px solid var(--hairline); scroll-margin-top: 120px; }
+  h2:first-child { border-top: none; margin-top: .5rem; }
+  h3 { font-size: .95rem; font-weight: 700; color: var(--text); margin: 1.4rem 0 .35rem; scroll-margin-top: 120px; }
+  p { color: var(--muted); margin-bottom: .5rem; font-size: .9rem; }
   p strong { color: var(--text); }
-  .step-list { list-style: none; padding: 0; }
-  .step-list li {
-    display: flex;
-    gap: .75rem;
-    align-items: flex-start;
-    padding: .5rem 0;
-    border-bottom: 1px solid var(--hairline);
-  }
-  .step-list li:last-child { border-bottom: none; }
-  .step-num {
-    background: var(--accent);
-    color: #000;
-    font-size: .7rem;
-    font-weight: 800;
-    border-radius: 50%;
-    width: 1.4rem;
-    height: 1.4rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: .1rem;
-  }
-  .step-text { color: var(--text); font-size: .9rem; flex: 1; }
-  .step-text .note { display: block; color: var(--muted); font-size: .8rem; margin-top: .15rem; }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: 10px;
-    padding: 1rem 1.1rem;
-    margin: .75rem 0;
-  }
-  .card-title {
-    font-weight: 700;
-    font-size: .95rem;
-    margin-bottom: .4rem;
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-  }
-  .card-title .icon { font-size: 1.2rem; }
-  .card p { margin: 0; font-size: .85rem; }
-  .checklist { list-style: none; padding: 0; margin: .5rem 0 0; }
-  .checklist li {
-    display: flex;
-    align-items: flex-start;
-    gap: .6rem;
-    padding: .35rem 0;
-    font-size: .85rem;
-    color: var(--text);
-    border-bottom: 1px solid var(--hairline);
-  }
-  .checklist li:last-child { border-bottom: none; }
-  .checklist li::before {
-    content: '☐';
-    color: var(--accent);
-    font-size: 1rem;
-    flex-shrink: 0;
-    line-height: 1.3;
-  }
-  .badge {
-    display: inline-block;
-    font-size: .7rem;
-    font-weight: 700;
-    padding: .15rem .45rem;
-    border-radius: 4px;
-    vertical-align: middle;
-    margin-left: .25rem;
-  }
-  .badge-green { background: rgba(52,211,153,.15); color: var(--green); border: 1px solid rgba(52,211,153,.3); }
-  .badge-amber { background: rgba(251,191,36,.12); color: var(--amber); border: 1px solid rgba(251,191,36,.25); }
-  .badge-blue  { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(56,189,248,.25); }
-  .url-box {
-    background: var(--surface-2);
-    border: 1px solid var(--hairline);
-    border-radius: 8px;
-    padding: .6rem 1rem;
-    font-family: monospace;
-    font-size: .82rem;
-    color: var(--accent);
-    word-break: break-all;
-    margin: .5rem 0;
-  }
-  .tip {
-    background: var(--accent-soft);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 6px 6px 0;
-    padding: .6rem .9rem;
-    margin: .75rem 0;
-    font-size: .85rem;
-    color: var(--text);
-  }
-  .warn {
-    background: rgba(251,191,36,.08);
-    border-left: 3px solid var(--amber);
-    border-radius: 0 6px 6px 0;
-    padding: .6rem .9rem;
-    margin: .75rem 0;
-    font-size: .85rem;
-    color: var(--text);
-  }
-  .section-divider {
-    height: 1px;
-    background: var(--hairline);
-    margin: 2rem 0;
-  }
-  .feedback-box {
-    background: var(--surface);
-    border: 1px solid var(--accent);
-    border-radius: 10px;
-    padding: 1.1rem 1.2rem;
-    margin-top: 2rem;
-  }
-  .feedback-box h3 { margin-top: 0; color: var(--accent); }
-  .feedback-box p { font-size: .88rem; }
+
+  /* Step list */
+  .steps { list-style: none; padding: 0; margin: .5rem 0; }
+  .steps li { display: flex; gap: .7rem; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid var(--hairline); }
+  .steps li:last-child { border-bottom: none; }
+  .step-n { background: var(--accent); color: #000; font-size: .68rem; font-weight: 800; border-radius: 50%; width: 1.35rem; height: 1.35rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .15rem; }
+  .step-t { color: var(--text); font-size: .88rem; flex: 1; }
+  .step-t .note { display: block; color: var(--muted); font-size: .78rem; margin-top: .1rem; }
+
+  /* Checklist */
+  .checks { list-style: none; padding: 0; margin: .4rem 0; }
+  .checks li { display: flex; align-items: flex-start; gap: .55rem; padding: .3rem 0; font-size: .85rem; color: var(--text); border-bottom: 1px solid var(--hairline); }
+  .checks li:last-child { border-bottom: none; }
+  .checks li::before { content: '☐'; color: var(--accent); font-size: .95rem; flex-shrink: 0; line-height: 1.35; }
+
+  /* Card */
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: .9rem 1rem; margin: .6rem 0; }
+  .card-title { font-weight: 700; font-size: .9rem; margin-bottom: .3rem; display: flex; align-items: center; gap: .4rem; }
+  .card p { margin: 0; font-size: .82rem; }
+
+  /* Callouts */
+  .tip { background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
+  .warn { background: rgba(251,191,36,.08); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
+  .info { background: rgba(52,211,153,.07); border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
+
+  /* URL box */
+  .url { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 7px; padding: .5rem .9rem; font-family: monospace; font-size: .82rem; color: var(--accent); word-break: break-all; margin: .4rem 0; display: flex; align-items: center; gap: .5rem; }
+  .url-label { color: var(--muted); font-family: inherit; font-size: .75rem; white-space: nowrap; }
+
+  /* Setup box */
+  .setup-box { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 1rem 1.1rem; margin: 1rem 0; }
+  .setup-box h3 { margin-top: 0; color: var(--accent); font-size: .95rem; }
+
+  /* Feedback box */
+  .feedback-box { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 1rem 1.1rem; margin-top: 1.5rem; }
+  .feedback-box h3 { margin-top: 0; font-size: .95rem; }
+
   @media (min-width: 600px) {
-    .content { padding: 2rem 2rem 4rem; }
-    h2 { font-size: 1.4rem; }
+    .content { padding: 1.75rem 2rem 5rem; }
+    .portal-tab { font-size: .88rem; }
   }
 </style>
 </head>
@@ -204,299 +94,532 @@
 
 <div class="header">
   <div class="header-brand">Armor Vue</div>
-  <div class="header-sub">Installer Portal — Beta Testing Guide</div>
+  <div class="header-sub">Beta Testing Guide — All Portals</div>
 </div>
 
-<div class="toc">
-  <a href="#overview">Overview</a>
-  <a href="#setup">Your Setup</a>
-  <a href="#onboarding">First Login</a>
-  <a href="#schedule">Schedule</a>
-  <a href="#job-detail">Job Detail</a>
-  <a href="#days-off">Days Off</a>
-  <a href="#inspections">Inspections</a>
-  <a href="#earnings">Earnings</a>
-  <a href="#docs">Docs</a>
-  <a href="#checklist">Full Checklist</a>
-  <a href="#feedback">Feedback</a>
+<!-- PORTAL SWITCHER -->
+<div class="portal-tabs">
+  <button class="portal-tab active" onclick="showPanel('setup')">🚀 Setup</button>
+  <button class="portal-tab" onclick="showPanel('admin')">⚙️ Admin</button>
+  <button class="portal-tab" onclick="showPanel('reports')">📊 Reports</button>
+  <button class="portal-tab" onclick="showPanel('installer')">📱 Installer</button>
+  <button class="portal-tab" onclick="showPanel('feedback')">📝 Feedback</button>
 </div>
 
-<div class="content">
+<!-- ============================================================ -->
+<!-- SETUP PANEL -->
+<!-- ============================================================ -->
+<div class="panel active" id="panel-setup">
+  <div class="content">
 
-  <!-- OVERVIEW -->
-  <h2 id="overview">What You're Testing</h2>
-  <p>The <strong>Armor Vue Installer Portal</strong> is a mobile-first web app used by window film installers in the field. It gives them their daily schedule, lets them log job status and photos, request time off, view inspection flags, and check their earnings.</p>
-  <p>You're testing it as a <strong>first-time installer</strong> would experience it — from receiving the sign-in link all the way through the main features. There's no app to install; it runs entirely in your phone's browser.</p>
+    <h2 id="s-overview">What You're Testing</h2>
+    <p>Armor Vue is a job management platform for window film installers. There are <strong>three separate portals</strong>, each for a different role:</p>
 
-  <div class="tip">
-    <strong>Best tested on your phone.</strong> This portal is designed for mobile use. Open everything on iOS Safari or Android Chrome for the most realistic experience.
+    <div class="card" style="margin:.75rem 0">
+      <div class="card-title">⚙️ Admin Portal</div>
+      <p>Full system control — manage installers, configure settings, review flagged items. Desktop browser, email/password login.</p>
+    </div>
+    <div class="card" style="margin:.75rem 0">
+      <div class="card-title">📊 Reports Dashboard</div>
+      <p>Management view for Finance, Service, and Operations teams — job financials, service follow-ups, analytics, material orders. Desktop or tablet, email/password login.</p>
+    </div>
+    <div class="card" style="margin:.75rem 0">
+      <div class="card-title">📱 Installer Portal</div>
+      <p>Mobile-first app for field installers — daily schedule, job sign-off, photos, earnings, compliance docs. Phone browser, magic link login.</p>
+    </div>
+
+    <h2 id="s-access">Your Access</h2>
+    <p>You'll need three things before you can start. Your admin (the person who sent you this guide) needs to set these up for you first.</p>
+
+    <div class="setup-box">
+      <h3>Admin Portal</h3>
+      <p style="font-size:.85rem;color:var(--muted)">Shared admin login — your admin will give you the email and password directly. Open on a desktop browser:</p>
+      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/index.html</div>
+    </div>
+
+    <div class="setup-box">
+      <h3>Reports Dashboard</h3>
+      <p style="font-size:.85rem;color:var(--muted)">Your own staff account — admin creates it in the Admin Portal under <strong>System → Staff</strong>. You'll set your own password. Open on desktop or tablet:</p>
+      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/reports.html</div>
+    </div>
+
+    <div class="setup-box">
+      <h3>Installer Portal</h3>
+      <p style="font-size:.85rem;color:var(--muted)">Magic link login — admin sends a sign-in link to your email. Open on your phone (Safari or Chrome, not Gmail's in-app browser):</p>
+      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/installer.html</div>
+    </div>
+
+    <h2 id="s-order">Recommended Testing Order</h2>
+    <ol class="steps">
+      <li><span class="step-n">1</span><span class="step-t">Start with the <strong>Admin Portal</strong> — it's the control center. Explore all four sections to understand how the system is configured before testing the downstream portals.<span class="note">Takes ~20 min. Desktop only.</span></span></li>
+      <li><span class="step-n">2</span><span class="step-t">Move to the <strong>Reports Dashboard</strong> — log in with your own staff credentials and review the management views.<span class="note">Takes ~15 min. Desktop or tablet.</span></span></li>
+      <li><span class="step-n">3</span><span class="step-t">Finish with the <strong>Installer Portal</strong> — experience it exactly as a field installer would, on your phone.<span class="note">Takes ~20 min. Phone only.</span></span></li>
+    </ol>
+
+    <div class="tip" style="margin-top:1rem">
+      <strong>Important:</strong> Test the Admin Portal and Installer Portal in <strong>different browsers</strong> (or one in a private/incognito window). Using the same browser for both can mix up the login sessions.
+    </div>
+
   </div>
+</div>
 
-  <!-- SETUP -->
-  <h2 id="setup">Your Setup (Before You Start)</h2>
-  <p>The admin needs to send you a magic sign-in link. Here's what that flow looks like from their side, so you understand what's happening:</p>
-
-  <ol class="step-list">
-    <li>
-      <span class="step-num">1</span>
-      <span class="step-text">Admin opens the admin portal and navigates to <strong>Installers</strong>
-        <span class="note">Your account should already be listed there as a provisioned installer.</span>
-      </span>
-    </li>
-    <li>
-      <span class="step-num">2</span>
-      <span class="step-text">Admin clicks the <strong>⟳ Link</strong> button next to your name to send a fresh sign-in link to your email.</span>
-    </li>
-    <li>
-      <span class="step-num">3</span>
-      <span class="step-text">You receive an email from Firebase / Armor Vue with a <strong>"Sign in to installer-portal-6000"</strong> link.
-        <span class="note">Check spam if you don't see it within a minute.</span>
-      </span>
-    </li>
-    <li>
-      <span class="step-num">4</span>
-      <span class="step-text"><strong>Open that link on your phone.</strong> Do not open it in Gmail's in-app browser — use Safari or Chrome.
-        <span class="note">If Gmail opens it in-app, tap the ⋮ menu → "Open in Chrome/Safari".</span>
-      </span>
-    </li>
-  </ol>
-
-  <div class="warn">
-    <strong>One-time link:</strong> The sign-in link expires after use. If you accidentally close the tab before finishing, ask the admin to resend a new link.
+<!-- ============================================================ -->
+<!-- ADMIN PORTAL PANEL -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-admin">
+  <div class="toc">
+    <a href="#a-login">Login</a>
+    <a href="#a-dashboard">Dashboard</a>
+    <a href="#a-installers">Installers</a>
+    <a href="#a-system">System</a>
+    <a href="#a-teamup">TeamUp</a>
+    <a href="#a-checklist">Checklist</a>
   </div>
+  <div class="content">
 
-  <!-- ONBOARDING -->
-  <h2 id="onboarding">First Login — Onboarding Flow</h2>
-  <p>The first time you sign in, the portal walks you through two required steps before giving you access to the main app.</p>
-
-  <h3>Step 1 — Tap to Sign In</h3>
-  <p>When you open the link, you'll see a <strong>"Sign In to Portal →"</strong> confirmation screen instead of signing in automatically. This is intentional — it prevents email security scanners from consuming the link before you do.</p>
-  <ul class="checklist">
-    <li>Tap the button and confirm it signs you in without error</li>
-  </ul>
-
-  <h3>Step 2 — Signature Pad</h3>
-  <p>You'll be asked to draw your signature. This is stored on your account and printed on completed job records.</p>
-  <ul class="checklist">
-    <li>Draw a signature using your finger</li>
-    <li>Tap <strong>Save Signature</strong> — it should save and advance</li>
-    <li>Try the <strong>Clear</strong> button to erase and re-draw</li>
-  </ul>
-
-  <h3>Step 3 — Tutorial Walkthrough</h3>
-  <p>A short in-app tutorial highlights the main features. Swipe or tap through all the steps.</p>
-  <ul class="checklist">
-    <li>Complete the full tutorial to the end</li>
-    <li>Confirm the main portal loads after the tutorial finishes</li>
-  </ul>
-
-  <!-- SCHEDULE -->
-  <h2 id="schedule">📅 Schedule Tab</h2>
-  <p>This is the home screen. It shows a week view with a chip for each day (Mon–Fri) and a list of jobs assigned to the selected day.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">📅</span> What's on this screen</div>
-    <p>Day chips across the top — tap any day to see that day's jobs. Today's chip is highlighted. Each job card shows the customer name, address, job type, and time window.</p>
-  </div>
-
-  <ul class="checklist">
-    <li>Tap different day chips — verify the job list updates for each day</li>
-    <li>If today has jobs, confirm they appear correctly</li>
-    <li>Verify the <strong>"↩ Today"</strong> quick-link appears when you navigate away from the current week</li>
-    <li>Scroll through a day with multiple jobs — confirm no layout issues</li>
-    <li>Confirm your name appears in the top nav bar</li>
-  </ul>
-
-  <!-- JOB DETAIL -->
-  <h2 id="job-detail">Job Detail</h2>
-  <p>Tap any job card on the schedule to open its detail view. This is where installers do most of their work during a job.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">🏠</span> What's on this screen</div>
-    <p>Customer info, job address, film type, opening list, job status selector, photo upload slots, and a COC (Certificate of Completion) sign-off section.</p>
-  </div>
-
-  <h3>Status Updates</h3>
-  <ul class="checklist">
-    <li>Change the job status (e.g., "In Progress", "Complete") using the status dropdown</li>
-    <li>Confirm the status saves and persists if you leave and return to the job</li>
-  </ul>
-
-  <h3>Photos</h3>
-  <ul class="checklist">
-    <li>Tap a photo slot and upload a photo from your camera roll (or take a new one)</li>
-    <li>Confirm the photo appears in the slot after upload</li>
-    <li>Try uploading more than one photo if multiple slots are shown</li>
-  </ul>
-
-  <h3>Certificate of Completion (COC)</h3>
-  <ul class="checklist">
-    <li>Scroll to the COC section — confirm it lists job openings</li>
-    <li>Tap <strong>Sign &amp; Complete</strong> — you should be prompted to sign with your finger</li>
-    <li>Confirm a signed COC is generated and can be viewed/shared</li>
-  </ul>
-
-  <h3>Navigation</h3>
-  <ul class="checklist">
-    <li>Tap the <strong>← Back</strong> button to return to the schedule</li>
-    <li>Confirm no data is lost when navigating back</li>
-  </ul>
-
-  <!-- DAYS OFF -->
-  <h2 id="days-off">🗓 Days Off Tab</h2>
-  <p>Installers use this to request blackout dates — days they're unavailable. Management reviews these requests.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">🗓</span> What's on this screen</div>
-    <p>A calendar picker to select unavailable dates, a reason field, and a list of past/pending requests with their approval status.</p>
-  </div>
-
-  <ul class="checklist">
-    <li>Select one or more dates using the calendar</li>
-    <li>Enter a reason (e.g., "Vacation") and submit the request</li>
-    <li>Confirm the request appears in the pending list below the form</li>
-    <li>Verify past approved/denied requests show the correct status badge</li>
-  </ul>
-
-  <!-- INSPECTIONS -->
-  <h2 id="inspections">⚠️ Inspections / Quality Tab</h2>
-  <p>This tab shows any failed inspection reports or quality flags linked to this installer. It also allows the installer to respond to or acknowledge an issue.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">⚠️</span> What's on this screen</div>
-    <p>A list of inspection flags (if any) with job details, defect type, and status. Installers can add a note or update the status of their own flags.</p>
-  </div>
-
-  <ul class="checklist">
-    <li>If any flags are shown, tap one to expand the detail</li>
-    <li>Try adding an installer note and saving it</li>
-    <li>If no flags exist, confirm the "no issues" empty state looks correct</li>
-    <li>Verify a badge/alert appears on the nav icon when there are unresolved flags</li>
-  </ul>
-
-  <!-- EARNINGS -->
-  <h2 id="earnings">💰 Earnings Tab</h2>
-  <p>Shows the installer a summary of their pay — broken down by job, with running totals. Management controls what is visible here.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">💰</span> What's on this screen</div>
-    <p>A list of completed jobs with the installer's pay amount per job. Totals shown at the top. Note: the full contract amount is never shown to installers — only their portion.</p>
-  </div>
-
-  <ul class="checklist">
-    <li>Confirm job entries and pay amounts are displayed</li>
-    <li>Confirm no "contract amount" or customer-facing pricing is visible</li>
-    <li>Tap a row (if interactive) to see job-level detail</li>
-    <li>Verify the total figure at the top matches the sum of visible entries</li>
-  </ul>
-
-  <!-- DOCS -->
-  <h2 id="docs">📋 Docs Tab</h2>
-  <p>Compliance document storage. Installers upload required documents (insurance certificates, licenses, etc.). Admins review and verify them.</p>
-
-  <div class="card">
-    <div class="card-title"><span class="icon">📋</span> What's on this screen</div>
-    <p>A list of required document types with upload slots. Each slot shows "pending review", "verified", or "expired" status once a document is uploaded.</p>
-  </div>
-
-  <ul class="checklist">
-    <li>Confirm the list of required document types is shown</li>
-    <li>Tap <strong>Upload</strong> on one slot and attach a PDF or image</li>
-    <li>Confirm the document shows a "pending review" status after upload</li>
-    <li>Verify you can view/open a previously uploaded document</li>
-    <li>Confirm you cannot edit the "verified" status yourself — that's admin-only</li>
-  </ul>
-
-  <div class="section-divider"></div>
-
-  <!-- FULL CHECKLIST -->
-  <h2 id="checklist">Full Test Checklist</h2>
-  <p>Quick pass/fail reference. Work through these in order on your phone.</p>
-
-  <h3>Sign-In &amp; Onboarding</h3>
-  <ul class="checklist">
-    <li>Received magic link email within ~1 minute</li>
-    <li>Link opened correctly in Chrome/Safari (not in Gmail app)</li>
-    <li>"Sign In to Portal →" tap-to-confirm screen appeared</li>
-    <li>Signature pad loaded and accepted a drawn signature</li>
-    <li>Tutorial ran start-to-finish with no crashes</li>
-    <li>Main portal loaded after tutorial</li>
-  </ul>
-
-  <h3>Schedule</h3>
-  <ul class="checklist">
-    <li>All 5 day chips visible and tappable</li>
-    <li>Job cards show correct info (name, address, time)</li>
-    <li>Correct day is highlighted as "today"</li>
-    <li>Navigating weeks works (if forward/back arrows present)</li>
-  </ul>
-
-  <h3>Job Detail</h3>
-  <ul class="checklist">
-    <li>Tapping a job card opens the detail view</li>
-    <li>All job fields display without layout issues</li>
-    <li>Status change saves correctly</li>
-    <li>At least one photo uploads successfully</li>
-    <li>COC section is present and signable</li>
-    <li>Back button returns to schedule</li>
-  </ul>
-
-  <h3>Days Off</h3>
-  <ul class="checklist">
-    <li>Calendar picker works on mobile</li>
-    <li>Blackout request submitted without error</li>
-    <li>Request appears in the pending list</li>
-  </ul>
-
-  <h3>Inspections / Quality</h3>
-  <ul class="checklist">
-    <li>Tab loads without error</li>
-    <li>Empty state looks correct (if no flags)</li>
-    <li>Installer note can be saved (if flags exist)</li>
-  </ul>
-
-  <h3>Earnings</h3>
-  <ul class="checklist">
-    <li>Tab loads and shows job entries</li>
-    <li>No raw contract amounts visible</li>
-  </ul>
-
-  <h3>Docs</h3>
-  <ul class="checklist">
-    <li>Required doc types listed</li>
-    <li>Document upload works (PDF or image)</li>
-    <li>Uploaded doc shows "pending review"</li>
-  </ul>
-
-  <h3>General / Cross-Cutting</h3>
-  <ul class="checklist">
-    <li>App feels fast and responsive on mobile</li>
-    <li>No visible JavaScript errors (check browser console if possible)</li>
-    <li>Text is readable — no contrast or overflow issues</li>
-    <li>Buttons and tappable areas are large enough to hit accurately</li>
-    <li>Closing and re-opening the browser tab keeps you logged in</li>
-    <li>Logout button (top-right) signs you out cleanly</li>
-  </ul>
-
-  <!-- FEEDBACK -->
-  <h2 id="feedback">Reporting Feedback</h2>
-
-  <div class="feedback-box">
-    <h3>How to Report Issues</h3>
-    <p>For each issue you find, note:</p>
-    <ul class="checklist" style="margin-top:.6rem">
-      <li><strong>What you were doing</strong> — which tab, what action</li>
-      <li><strong>What you expected</strong> — what should have happened</li>
-      <li><strong>What actually happened</strong> — error message, blank screen, wrong data, etc.</li>
-      <li><strong>Screenshot</strong> — if possible, always helpful</li>
-      <li><strong>Device &amp; browser</strong> — e.g., iPhone 15 / Safari 17</li>
+    <h2 id="a-login">Signing In</h2>
+    <p>Open the admin portal on a desktop browser. Use the shared admin email and password your admin gave you.</p>
+    <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/index.html</div>
+    <ul class="checks">
+      <li>Login screen appears and accepts credentials</li>
+      <li>Dashboard loads with stat cards at the top</li>
     </ul>
-  </div>
 
-  <div class="tip" style="margin-top:1.5rem">
-    <strong>Things that are intentional:</strong> You won't see the full contract amount anywhere in the installer app — that's by design. The tutorial can only be replayed from the profile menu; it won't re-run on every login after the first time.
-  </div>
+    <h2 id="a-dashboard">Dashboard Section</h2>
+    <p>The landing page after login. Shows a real-time snapshot of items needing attention.</p>
 
+    <h3>Stat Cards (top row)</h3>
+    <div class="card">
+      <div class="card-title">Three always-visible counters</div>
+      <p><strong>Pending Provisioning</strong> — installers in the system but not yet activated.<br>
+      <strong>Blackout Requests</strong> — days-off requests from installers awaiting approval.<br>
+      <strong>Active Installers</strong> — total currently active in the system.</p>
+    </div>
+    <ul class="checks">
+      <li>All three stat cards load with numbers (not spinners)</li>
+      <li>Clicking "View →" on Pending Provisioning navigates to the Installers section</li>
+    </ul>
+
+    <h3>Action Cards (collapsible)</h3>
+    <p>These only appear when there's something to act on. Each is collapsible — click the header to expand.</p>
+    <div class="card">
+      <div class="card-title">🚨 Installer Compliance Issues</div>
+      <p>Installers with missing or expired required documents (insurance, licenses, etc.).</p>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠ Unmatched Failed Inspections</div>
+      <p>Municipal inspection failures that couldn't be automatically linked to a job record.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Blackout Requests — Pending Approval</div>
+      <p>Time-off requests from installers. Review and approve or deny each one.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">🔧 Extra Work Requests</div>
+      <p>Installers requesting additional pay for out-of-scope work on a job.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">⚠ Incomplete Walkthroughs</div>
+      <p>Jobs where the installer completed the COC but hasn't finished the walkthrough checklist.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">💳 Missing Payment Info</div>
+      <p>Jobs missing financial data needed for installer pay calculation. Collapsed by default.</p>
+    </div>
+    <ul class="checks">
+      <li>Expand at least one action card and confirm the contents load</li>
+      <li>If blackout requests exist — try approving or denying one</li>
+      <li>Cards that have no items should stay hidden (not show empty)</li>
+    </ul>
+
+    <h2 id="a-installers">Installers Section</h2>
+    <p>Manage all installer accounts. Click <strong>Installers</strong> in the top nav to open.</p>
+
+    <h3>Pending List</h3>
+    <p>Installers synced from TeamUp who haven't been provisioned yet (no login access). Each row has a <strong>Provision</strong> button.</p>
+    <ul class="checks">
+      <li>Pending list loads and shows installer names from TeamUp</li>
+      <li>Click <strong>Provision</strong> on a pending installer — the modal opens</li>
+      <li>Fill in display name and email, click <strong>Provision &amp; Send Link</strong> — confirm success message and link sent</li>
+    </ul>
+
+    <h3>Active / Inactive Installers</h3>
+    <p>Three collapsible groups: <strong>Installers</strong>, <strong>FT Field Techs</strong>, and <strong>Inspection</strong> (based on TeamUp calendar type). Each row has Details, Resend Link, and Activate/Deactivate buttons.</p>
+    <ul class="checks">
+      <li>At least one installer group expands and shows a table</li>
+      <li>Click <strong>Details</strong> on an installer — the detail modal opens with editable fields</li>
+      <li>Edit the display name and save — confirm "Installer updated" flash</li>
+      <li>Click <strong>⟳ Link</strong> on an active installer — confirm "New sign-in link sent" flash</li>
+      <li>Deactivate an installer, confirm status changes, then re-activate them</li>
+    </ul>
+
+    <h3>Installer Detail Modal (tabs)</h3>
+    <p>When you open Details, there are sub-tabs: Info, Payment, Compliance, History.</p>
+    <ul class="checks">
+      <li>Switch through all tabs and confirm each loads without error</li>
+      <li>Payment tab — verify pay rate fields are editable</li>
+      <li>Compliance tab — shows document upload status per required doc type</li>
+      <li>History tab — shows a log of changes made to this installer</li>
+    </ul>
+
+    <h2 id="a-system">System Section</h2>
+    <p>Configuration for the entire platform. Click <strong>System</strong> in the top nav.</p>
+
+    <h3>TeamUp / Sync Settings</h3>
+    <p>API key, calendar ID, and sync interval for pulling jobs from TeamUp into the portal.</p>
+    <ul class="checks">
+      <li>Settings load with existing values (fields not empty)</li>
+      <li>Do not change the API key or calendar ID — just verify they're populated</li>
+    </ul>
+
+    <h3>Job Statuses</h3>
+    <p>The status options installers can set on a job (e.g., "In Progress", "Complete"). Configurable per-role visibility.</p>
+    <ul class="checks">
+      <li>List of statuses loads</li>
+      <li>Add a test status, confirm it appears, then delete it</li>
+    </ul>
+
+    <h3>Photo Requirements</h3>
+    <p>Required photos installers must capture per job (e.g., "Before" shot of each opening).</p>
+    <ul class="checks">
+      <li>List loads with existing requirements</li>
+      <li>Verify each requirement shows its name and whether it applies to all openings or specific types</li>
+    </ul>
+
+    <h3>Document Types</h3>
+    <p>Compliance documents installers must keep on file (insurance, license, etc.).</p>
+    <ul class="checks">
+      <li>List of required document types loads</li>
+      <li>Each shows name, expiry tracking setting, and whether it's required</li>
+    </ul>
+
+    <h3>Staff Accounts</h3>
+    <p>Manage accounts for management portal users (Finance, Service, Manager roles).</p>
+    <ul class="checks">
+      <li>Staff list loads showing existing accounts</li>
+      <li>Try creating a test staff account — confirm credentials are generated</li>
+      <li>Edit an existing staff account's display name</li>
+    </ul>
+
+    <h2 id="a-teamup">TeamUp Status Section</h2>
+    <p>Shows the health of the TeamUp calendar sync. Click <strong>TeamUp Status</strong> in the nav.</p>
+    <ul class="checks">
+      <li>Last sync time is shown and recent (not hours ago)</li>
+      <li>Job count and installer count in DB are non-zero</li>
+      <li>No sync errors displayed</li>
+      <li>Try clicking <strong>Sync Now</strong> (if present) — confirm it runs without error</li>
+    </ul>
+
+    <h2 id="a-checklist">Admin Portal — Full Checklist</h2>
+    <ul class="checks">
+      <li>Login with admin credentials works</li>
+      <li>All three dashboard stat cards load</li>
+      <li>At least one collapsible action card can be expanded</li>
+      <li>Installer pending list loads</li>
+      <li>Provision flow sends a magic link without error</li>
+      <li>Installer detail modal opens and all tabs load</li>
+      <li>Detail edit saves successfully</li>
+      <li>System section loads all config lists</li>
+      <li>Staff account creation works</li>
+      <li>TeamUp Status shows a recent sync time</li>
+      <li>Logout button signs out cleanly</li>
+    </ul>
+
+  </div>
 </div>
+
+<!-- ============================================================ -->
+<!-- REPORTS DASHBOARD PANEL -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-reports">
+  <div class="toc">
+    <a href="#r-login">Login</a>
+    <a href="#r-daily">Daily Review</a>
+    <a href="#r-finance">Finance</a>
+    <a href="#r-analytics">Analytics</a>
+    <a href="#r-service">Service</a>
+    <a href="#r-materials">Materials</a>
+    <a href="#r-checklist">Checklist</a>
+  </div>
+  <div class="content">
+
+    <h2 id="r-login">Signing In</h2>
+    <p>Open the reports portal on a desktop or tablet browser. Use the staff credentials your admin created for you in <strong>System → Staff</strong>.</p>
+    <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/reports.html</div>
+    <div class="info">As a <strong>Manager</strong>, you'll see all five tabs: Daily Review, Finance, Analytics, Service, and Materials. Finance and Service roles only see their relevant tabs.</div>
+    <ul class="checks">
+      <li>Login screen loads and accepts your staff credentials</li>
+      <li>After login, your name and role (Manager) appear in the top bar</li>
+      <li>All five tabs are visible in the tab bar</li>
+      <li>"Forgot password?" link works if you need to reset</li>
+    </ul>
+
+    <h2 id="r-daily">📋 Daily Review Tab</h2>
+    <p>Manager-only tab. A live view of today's jobs — who's on what job, COC and walkthrough completion status, and quick-action check-offs for each job.</p>
+    <div class="card">
+      <div class="card-title">What's on this screen</div>
+      <p>Job cards grouped by date/installer. Each card shows job status, installer name, address, and whether the COC and walkthrough have been completed. Managers can mark items reviewed with a check-off button.</p>
+    </div>
+    <ul class="checks">
+      <li>Tab loads with job cards (may be empty if no jobs today — check tomorrow's date too using the date filter)</li>
+      <li>Job cards show installer name, address, and status</li>
+      <li>COC / walkthrough completion badges are visible on each card</li>
+      <li>Try clicking a job card to expand its detail</li>
+      <li>Mark a job as reviewed — confirm the check-off saves</li>
+      <li>Use the date range filter to view a different day's jobs</li>
+    </ul>
+
+    <h2 id="r-finance">💰 Finance Tab</h2>
+    <p>Shows completed job records filtered by financial status. Used by Finance to process installer pay.</p>
+    <div class="card">
+      <div class="card-title">What's on this screen</div>
+      <p>Job records with installer pay amounts, job details, and payment status. Two views: <strong>Active</strong> (pending payment) and <strong>Archived</strong> (processed). Totals shown at the top.</p>
+    </div>
+    <ul class="checks">
+      <li>Finance tab loads with job records</li>
+      <li>Pay amounts are shown per job — confirm no "contract amount" or customer pricing is visible</li>
+      <li>Toggle between Active and Archived views</li>
+      <li>Expand a job record to see full detail</li>
+      <li>Archive a record (if any active ones exist) and confirm it moves to the Archived view</li>
+      <li>Date range filter adjusts the results correctly</li>
+    </ul>
+
+    <h2 id="r-analytics">📊 Analytics Tab</h2>
+    <p>Summary statistics and trends — jobs completed, installer performance, revenue trends over time.</p>
+    <ul class="checks">
+      <li>Tab loads without error</li>
+      <li>Charts or stat totals are displayed</li>
+      <li>Date range controls (if present) update the data</li>
+      <li>Installer breakdown shows individual performance stats</li>
+    </ul>
+
+    <h2 id="r-service">🔧 Service Tab</h2>
+    <p>Follow-up queue for jobs that need service attention (call-backs, defects, customer complaints). Used by the Service team.</p>
+    <div class="card">
+      <div class="card-title">What's on this screen</div>
+      <p>Job records needing follow-up, grouped by status. Service team can add reminders, schedule follow-up calls, and mark items resolved. Archive view for completed service work.</p>
+    </div>
+    <ul class="checks">
+      <li>Service tab loads with any open service records</li>
+      <li>Toggle between Active and Archived views</li>
+      <li>Add a reminder to a record — confirm it saves</li>
+      <li>Mark a reminder as complete</li>
+      <li>Schedule an inspection on a job (if the flow is present)</li>
+    </ul>
+
+    <h2 id="r-materials">📦 Materials Tab</h2>
+    <p>Material re-order requests — when a defect job needs replacement parts, service staff log them here for the materials team to order.</p>
+    <div class="card">
+      <div class="card-title">What's on this screen</div>
+      <p>A list of pending material orders with part details, quantity, and status. Items can be marked as ordered or fulfilled.</p>
+    </div>
+    <ul class="checks">
+      <li>Materials tab loads (may be empty if no orders pending)</li>
+      <li>If orders exist — confirm part name, quantity, and status are shown</li>
+      <li>Status can be updated on an existing order</li>
+    </ul>
+
+    <h2 id="r-checklist">Reports Dashboard — Full Checklist</h2>
+    <ul class="checks">
+      <li>Login with staff credentials works</li>
+      <li>Name and "Manager" role shown in header</li>
+      <li>All five tabs visible and load without error</li>
+      <li>Daily Review shows jobs for today or a selected date</li>
+      <li>Finance tab shows job records with pay amounts (no contract totals)</li>
+      <li>Analytics tab loads charts or stats</li>
+      <li>Service tab loads and allows adding a reminder</li>
+      <li>Materials tab loads</li>
+      <li>Date range filter works across tabs</li>
+      <li>Logout signs out cleanly</li>
+    </ul>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- INSTALLER PORTAL PANEL -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-installer">
+  <div class="toc">
+    <a href="#i-setup">Getting In</a>
+    <a href="#i-onboarding">First Login</a>
+    <a href="#i-schedule">Schedule</a>
+    <a href="#i-job">Job Detail</a>
+    <a href="#i-daysoff">Days Off</a>
+    <a href="#i-inspections">Inspections</a>
+    <a href="#i-earnings">Earnings</a>
+    <a href="#i-docs">Docs</a>
+    <a href="#i-checklist">Checklist</a>
+  </div>
+  <div class="content">
+
+    <h2 id="i-setup">Getting In</h2>
+    <p>The installer portal uses <strong>magic link login</strong> — no password. The admin provisions your account and the system emails you a one-time sign-in link.</p>
+    <ol class="steps">
+      <li><span class="step-n">1</span><span class="step-t">Admin provisions your account in the Admin Portal → Installers → Provision.<span class="note">You'll receive an email with a "Sign in to installer-portal-6000" link.</span></span></li>
+      <li><span class="step-n">2</span><span class="step-t"><strong>Open the email on your phone.</strong> If using Gmail, tap ⋮ → "Open in Chrome" or "Open in Safari" — don't use Gmail's built-in browser.<span class="note">The link is single-use. Opening it in the wrong browser wastes it.</span></span></li>
+      <li><span class="step-n">3</span><span class="step-t">A confirmation screen appears. Tap <strong>Sign In to Portal →</strong> to proceed.</span></li>
+    </ol>
+    <div class="warn"><strong>Link expired?</strong> Ask the admin to resend via the ⟳ Link button next to your name in the Installers section.</div>
+
+    <h2 id="i-onboarding">First Login — Onboarding</h2>
+    <h3>Signature Pad</h3>
+    <p>You'll be asked to draw your signature before anything else. It's stored on your account and printed on completed job records.</p>
+    <ul class="checks">
+      <li>Signature pad appears immediately after sign-in</li>
+      <li>Draw a signature with your finger — it renders clearly</li>
+      <li>Clear button erases and lets you redo</li>
+      <li>Save Signature advances to the tutorial</li>
+    </ul>
+    <h3>Tutorial</h3>
+    <p>A short walkthrough highlights the key features. It runs once on first login.</p>
+    <ul class="checks">
+      <li>Tutorial runs through all steps without freezing</li>
+      <li>Completing the tutorial loads the main portal</li>
+      <li>Top nav (your name) and bottom nav (5 tabs) are visible</li>
+    </ul>
+
+    <h2 id="i-schedule">📅 Schedule Tab</h2>
+    <p>Home screen. Shows a week view — tap any day chip (Mon–Fri) to see that day's jobs.</p>
+    <ul class="checks">
+      <li>All 5 day chips load, today's chip is highlighted</li>
+      <li>Tapping a chip updates the job list below</li>
+      <li>Job cards show customer name, address, job type, and time window</li>
+      <li>Forward/back arrows navigate to other weeks</li>
+      <li>"↩ Today" link appears when you've navigated away from the current week</li>
+    </ul>
+
+    <h2 id="i-job">Job Detail</h2>
+    <p>Tap any job card on the schedule to open it. This is where installers do their main work on site.</p>
+    <h3>Status</h3>
+    <ul class="checks">
+      <li>Status dropdown shows configured options (e.g., In Progress, Complete)</li>
+      <li>Changing status and leaving/returning to the job keeps the new status</li>
+    </ul>
+    <h3>Photos</h3>
+    <ul class="checks">
+      <li>Photo upload slots are shown for required photo types</li>
+      <li>Tapping a slot opens camera / photo picker</li>
+      <li>Uploaded photo appears in the slot</li>
+    </ul>
+    <h3>Certificate of Completion (COC)</h3>
+    <ul class="checks">
+      <li>COC section lists the job openings</li>
+      <li>Tapping Sign &amp; Complete prompts for a finger signature</li>
+      <li>Signed COC can be viewed and shared</li>
+    </ul>
+    <ul class="checks">
+      <li>← Back button returns to the schedule without data loss</li>
+    </ul>
+
+    <h2 id="i-daysoff">🗓 Days Off Tab</h2>
+    <p>Request unavailable dates. Management reviews and approves/denies each request.</p>
+    <ul class="checks">
+      <li>Calendar date picker works on mobile</li>
+      <li>Submit a request with a reason — confirmation shows</li>
+      <li>Request appears in the list with "Pending" status</li>
+    </ul>
+
+    <h2 id="i-inspections">⚠️ Inspections / Quality Tab</h2>
+    <p>Any failed inspection reports or quality flags linked to this installer's jobs.</p>
+    <ul class="checks">
+      <li>Tab loads — empty state looks correct if no flags</li>
+      <li>If flags exist — expand one and add an installer note</li>
+      <li>Nav icon shows a badge count when flags are unresolved</li>
+    </ul>
+
+    <h2 id="i-earnings">💰 Earnings Tab</h2>
+    <p>Installer's pay breakdown by job. Shows their portion only — full contract amounts are never visible.</p>
+    <ul class="checks">
+      <li>Job entries and pay amounts load correctly</li>
+      <li>No customer-facing contract pricing visible anywhere</li>
+      <li>Total at top matches the sum of entries</li>
+    </ul>
+
+    <h2 id="i-docs">📋 Docs Tab</h2>
+    <p>Compliance document uploads — insurance certificates, licenses, etc. Admin verifies them.</p>
+    <ul class="checks">
+      <li>Required document types are listed</li>
+      <li>Upload a PDF or photo to one slot — it shows "pending review"</li>
+      <li>Cannot self-verify — verified status is admin-only</li>
+    </ul>
+
+    <h2 id="i-checklist">Installer Portal — Full Checklist</h2>
+    <ul class="checks">
+      <li>Magic link email received within ~1 minute</li>
+      <li>Link opened in Chrome/Safari (not Gmail in-app)</li>
+      <li>Tap-to-sign-in screen appeared before auto-login</li>
+      <li>Signature pad accepted a drawn signature</li>
+      <li>Tutorial ran start-to-finish without issues</li>
+      <li>Main portal loaded with top and bottom nav visible</li>
+      <li>All 5 day chips work on the schedule</li>
+      <li>Job card opens detail view correctly</li>
+      <li>Status change saves and persists</li>
+      <li>At least one photo uploads successfully</li>
+      <li>COC section is present and signable</li>
+      <li>Days Off request submits without error</li>
+      <li>Inspections tab loads (empty state OK)</li>
+      <li>Earnings tab shows pay amounts only (no contract totals)</li>
+      <li>Docs tab shows required types and accepts an upload</li>
+      <li>Closing and reopening the browser tab keeps you logged in</li>
+      <li>Logout button signs out cleanly</li>
+    </ul>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- FEEDBACK PANEL -->
+<!-- ============================================================ -->
+<div class="panel" id="panel-feedback">
+  <div class="content">
+
+    <h2 id="f-how">How to Report Issues</h2>
+    <p>For every issue you find, capture these five things:</p>
+    <ol class="steps">
+      <li><span class="step-n">1</span><span class="step-t"><strong>Portal</strong> — Admin, Reports, or Installer</span></li>
+      <li><span class="step-n">2</span><span class="step-t"><strong>What you were doing</strong> — which section/tab, what action you took</span></li>
+      <li><span class="step-n">3</span><span class="step-t"><strong>What you expected</strong> — what should have happened</span></li>
+      <li><span class="step-n">4</span><span class="step-t"><strong>What actually happened</strong> — error message, blank screen, wrong data</span></li>
+      <li><span class="step-n">5</span><span class="step-t"><strong>Screenshot</strong> — always helpful, especially for layout issues<span class="note">Device + browser: e.g., "iPhone 15 / Safari" or "Windows Chrome"</span></span></li>
+    </ol>
+
+    <h2 id="f-scope">What We're Specifically Looking For</h2>
+
+    <div class="card" style="margin:.5rem 0">
+      <div class="card-title">🐛 Bugs</div>
+      <p>Anything that errors, crashes, shows a blank screen, or doesn't save correctly.</p>
+    </div>
+    <div class="card" style="margin:.5rem 0">
+      <div class="card-title">📱 Mobile Experience</div>
+      <p>Buttons too small to tap, text overflowing, keyboards covering inputs, slow loading on cellular.</p>
+    </div>
+    <div class="card" style="margin:.5rem 0">
+      <div class="card-title">🤔 Confusing Flows</div>
+      <p>Anything that's unclear about what to do next, missing labels, ambiguous buttons.</p>
+    </div>
+    <div class="card" style="margin:.5rem 0">
+      <div class="card-title">🔒 Data / Privacy</div>
+      <p>Any place where an installer can see data they shouldn't (especially financial data).</p>
+    </div>
+
+    <h2 id="f-intentional">Things That Are Intentional</h2>
+    <div class="info">Installers never see the full job contract amount — only their own pay portion. This is by design.</div>
+    <div class="info">The magic link is single-use and expires. If it doesn't work, the admin resends a fresh one.</div>
+    <div class="info">The tutorial only runs on first login. It can be replayed from the profile menu — it won't re-run automatically.</div>
+    <div class="info">The admin portal only works in one browser at a time with the admin account. Testing the installer portal in the same browser will log out the admin session.</div>
+
+  </div>
+</div>
+
+<script>
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.portal-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  window.scrollTo(0, 0);
+}
+</script>
 </body>
 </html>
