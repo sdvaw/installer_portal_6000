@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Armor Vue — Beta Testing Guide</title>
+<title>Armor Vue — Welcome &amp; Walkthrough</title>
 <style>
   :root {
     --accent: #38BDF8;
@@ -11,615 +11,611 @@
     --bg: #0B0F14;
     --surface: #141A22;
     --surface-2: #1C2530;
-    --hairline: rgba(255,255,255,0.08);
+    --hairline: rgba(255,255,255,0.09);
     --text: #E2E8F0;
     --muted: #94A3B8;
     --green: #34D399;
     --amber: #FBBF24;
     --red: #F87171;
+    --purple: #A78BFA;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; font-size: 15px; }
+  html { scroll-behavior: smooth; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.65; }
 
-  /* Header */
-  .header { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: 1.25rem 1.25rem 1rem; }
-  .header-brand { font-size: 1.4rem; font-weight: 800; color: var(--accent); }
-  .header-sub { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(160deg, #0d1520 0%, #0B0F14 60%);
+    border-bottom: 1px solid var(--hairline);
+    padding: 3.5rem 1.5rem 3rem;
+    text-align: center;
+  }
+  .hero-logo { font-size: 2rem; font-weight: 900; color: var(--accent); letter-spacing: -.5px; margin-bottom: .25rem; }
+  .hero-tagline { font-size: 1rem; color: var(--muted); margin-bottom: 1.75rem; }
+  .hero-intro { max-width: 540px; margin: 0 auto 2rem; font-size: .95rem; color: var(--text); line-height: 1.7; }
+  .hero-intro strong { color: var(--accent); }
 
-  /* Portal switcher tabs */
-  .portal-tabs { display: flex; background: var(--surface-2); border-bottom: 2px solid var(--hairline); }
-  .portal-tab { flex: 1; padding: .8rem .5rem; text-align: center; font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all .15s; letter-spacing: .02em; }
-  .portal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  /* Role pills */
+  .role-pills { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-bottom: 2rem; }
+  .pill { display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .9rem; border-radius: 999px; font-size: .82rem; font-weight: 700; border: 1px solid; cursor: pointer; text-decoration: none; transition: opacity .15s; }
+  .pill:hover { opacity: .8; }
+  .pill-admin    { background: rgba(167,139,250,.12); color: var(--purple); border-color: rgba(167,139,250,.35); }
+  .pill-manager  { background: rgba(56,189,248,.12);  color: var(--accent); border-color: rgba(56,189,248,.35); }
+  .pill-service  { background: rgba(251,191,36,.10);  color: var(--amber);  border-color: rgba(251,191,36,.3); }
+  .pill-installer{ background: rgba(52,211,153,.10);  color: var(--green);  border-color: rgba(52,211,153,.3); }
 
-  /* TOC strip */
-  .toc { background: var(--surface); border-bottom: 1px solid var(--hairline); padding: .6rem 1rem; display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-  .toc::-webkit-scrollbar { display: none; }
-  .toc a { white-space: nowrap; font-size: .75rem; font-weight: 600; color: var(--muted); text-decoration: none; padding: .25rem .6rem; border-radius: 20px; border: 1px solid var(--hairline); flex-shrink: 0; }
-  .toc a:hover { color: var(--accent); border-color: var(--accent); }
+  /* ── SECTION WRAPPER ── */
+  .section {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .section:last-child { border-bottom: none; }
 
-  /* Content */
-  .panel { display: none; }
-  .panel.active { display: block; }
-  .content { max-width: 680px; margin: 0 auto; padding: 1.5rem 1.25rem 5rem; }
+  /* Role header */
+  .role-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .role-icon { font-size: 2rem; flex-shrink: 0; }
+  .role-label { font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .2rem; }
+  .role-title { font-size: 1.4rem; font-weight: 800; line-height: 1.2; }
+  .role-desc { color: var(--muted); font-size: .9rem; margin-bottom: 2rem; line-height: 1.6; }
 
-  h2 { font-size: 1.2rem; font-weight: 700; color: var(--accent); margin: 2.25rem 0 .6rem; padding-top: .5rem; border-top: 1px solid var(--hairline); scroll-margin-top: 120px; }
-  h2:first-child { border-top: none; margin-top: .5rem; }
-  h3 { font-size: .95rem; font-weight: 700; color: var(--text); margin: 1.4rem 0 .35rem; scroll-margin-top: 120px; }
-  p { color: var(--muted); margin-bottom: .5rem; font-size: .9rem; }
-  p strong { color: var(--text); }
+  /* Screen mock */
+  .screen-mock {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .mock-bar {
+    background: var(--surface-2);
+    padding: .55rem 1rem;
+    font-size: .72rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--hairline);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .mock-bar .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .mock-bar .url { font-family: monospace; font-size: .72rem; color: var(--accent); }
+  .mock-nav {
+    background: var(--surface-2);
+    padding: .6rem 1rem;
+    display: flex;
+    gap: .5rem;
+    border-bottom: 1px solid var(--hairline);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .mock-nav-brand { font-weight: 800; font-size: .85rem; color: var(--accent); }
+  .mock-nav-links { display: flex; gap: .35rem; }
+  .mock-nav-link { font-size: .72rem; padding: .25rem .55rem; border-radius: 5px; color: var(--muted); font-weight: 500; }
+  .mock-nav-link.active { background: var(--accent-soft); color: var(--accent); }
+  .mock-body { padding: 1rem; }
+  .mock-row { display: flex; gap: .65rem; margin-bottom: .65rem; flex-wrap: wrap; }
 
-  /* Step list */
-  .steps { list-style: none; padding: 0; margin: .5rem 0; }
-  .steps li { display: flex; gap: .7rem; align-items: flex-start; padding: .5rem 0; border-bottom: 1px solid var(--hairline); }
-  .steps li:last-child { border-bottom: none; }
-  .step-n { background: var(--accent); color: #000; font-size: .68rem; font-weight: 800; border-radius: 50%; width: 1.35rem; height: 1.35rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .15rem; }
-  .step-t { color: var(--text); font-size: .88rem; flex: 1; }
-  .step-t .note { display: block; color: var(--muted); font-size: .78rem; margin-top: .1rem; }
+  /* Stat card */
+  .mock-stat { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 8px; padding: .6rem .8rem; min-width: 90px; flex: 1; }
+  .mock-stat-val { font-size: 1.4rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .mock-stat-lbl { font-size: .65rem; color: var(--muted); margin-top: .2rem; }
 
-  /* Checklist */
-  .checks { list-style: none; padding: 0; margin: .4rem 0; }
-  .checks li { display: flex; align-items: flex-start; gap: .55rem; padding: .3rem 0; font-size: .85rem; color: var(--text); border-bottom: 1px solid var(--hairline); }
-  .checks li:last-child { border-bottom: none; }
-  .checks li::before { content: '☐'; color: var(--accent); font-size: .95rem; flex-shrink: 0; line-height: 1.35; }
+  /* Action card */
+  .mock-action { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 8px; padding: .65rem .85rem; flex: 1; min-width: 200px; }
+  .mock-action-title { font-size: .78rem; font-weight: 700; margin-bottom: .25rem; }
+  .mock-action-sub { font-size: .7rem; color: var(--muted); }
+  .mock-action-badge { display: inline-block; font-size: .65rem; font-weight: 700; padding: .1rem .4rem; border-radius: 4px; margin-left: .35rem; }
 
-  /* Card */
-  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: .9rem 1rem; margin: .6rem 0; }
-  .card-title { font-weight: 700; font-size: .9rem; margin-bottom: .3rem; display: flex; align-items: center; gap: .4rem; }
-  .card p { margin: 0; font-size: .82rem; }
+  /* Table row */
+  .mock-table { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 8px; overflow: hidden; }
+  .mock-tr { display: flex; align-items: center; gap: .75rem; padding: .55rem .85rem; border-bottom: 1px solid var(--hairline); font-size: .78rem; }
+  .mock-tr:last-child { border-bottom: none; }
+  .mock-tr-name { flex: 1; font-weight: 600; }
+  .mock-tr-sub { color: var(--muted); font-size: .7rem; }
+  .mock-btn { font-size: .68rem; padding: .2rem .55rem; border-radius: 5px; border: 1px solid var(--hairline); color: var(--muted); background: none; white-space: nowrap; }
+  .mock-btn-primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .mock-btn-green { border-color: var(--green); color: var(--green); background: rgba(52,211,153,.1); }
 
-  /* Callouts */
-  .tip { background: var(--accent-soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
-  .warn { background: rgba(251,191,36,.08); border-left: 3px solid var(--amber); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
-  .info { background: rgba(52,211,153,.07); border-left: 3px solid var(--green); border-radius: 0 6px 6px 0; padding: .55rem .85rem; margin: .65rem 0; font-size: .84rem; color: var(--text); }
+  /* Mobile mock */
+  .mobile-mock {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 340px;
+    margin: 0 auto 2rem;
+  }
+  .mobile-topbar {
+    background: var(--surface-2);
+    padding: .6rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .mobile-topbar-brand { font-weight: 800; font-size: .85rem; color: var(--accent); }
+  .mobile-topbar-name { font-size: .72rem; color: var(--muted); }
+  .mobile-body { padding: .85rem; }
+  .day-chips { display: flex; gap: .35rem; margin-bottom: .85rem; overflow: hidden; }
+  .day-chip { flex: 1; background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 8px; padding: .4rem .2rem; text-align: center; }
+  .day-chip-name { font-size: .6rem; color: var(--muted); display: block; }
+  .day-chip-num { font-size: .9rem; font-weight: 700; display: block; }
+  .day-chip.today { border-color: var(--accent); }
+  .day-chip.today .day-chip-num { color: var(--accent); }
+  .job-card { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 8px; padding: .65rem .8rem; margin-bottom: .5rem; }
+  .job-card-name { font-size: .82rem; font-weight: 700; margin-bottom: .15rem; }
+  .job-card-addr { font-size: .72rem; color: var(--muted); }
+  .job-card-time { font-size: .68rem; color: var(--accent); margin-top: .25rem; }
+  .mobile-bottomnav { background: var(--surface-2); border-top: 1px solid var(--hairline); display: flex; }
+  .mobile-nav-btn { flex: 1; padding: .5rem .25rem .4rem; text-align: center; font-size: .6rem; color: var(--muted); }
+  .mobile-nav-btn.active { color: var(--accent); }
+  .mobile-nav-btn .nav-icon { font-size: 1.1rem; display: block; line-height: 1.2; }
 
-  /* URL box */
-  .url { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 7px; padding: .5rem .9rem; font-family: monospace; font-size: .82rem; color: var(--accent); word-break: break-all; margin: .4rem 0; display: flex; align-items: center; gap: .5rem; }
-  .url-label { color: var(--muted); font-family: inherit; font-size: .75rem; white-space: nowrap; }
+  /* Reports tab mock */
+  .mock-tabs { display: flex; gap: .35rem; border-bottom: 1px solid var(--hairline); padding: 0 .85rem; margin-bottom: .85rem; }
+  .mock-tab { font-size: .72rem; padding: .45rem .6rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500; white-space: nowrap; }
+  .mock-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-  /* Setup box */
-  .setup-box { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 1rem 1.1rem; margin: 1rem 0; }
-  .setup-box h3 { margin-top: 0; color: var(--accent); font-size: .95rem; }
+  /* Feature list */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; margin-bottom: 1.5rem; }
+  @media (max-width: 480px) { .feature-grid { grid-template-columns: 1fr; } }
+  .feature-item { background: var(--surface); border: 1px solid var(--hairline); border-radius: 9px; padding: .75rem .9rem; }
+  .feature-item-icon { font-size: 1.2rem; margin-bottom: .3rem; }
+  .feature-item-title { font-size: .82rem; font-weight: 700; margin-bottom: .15rem; }
+  .feature-item-desc { font-size: .76rem; color: var(--muted); line-height: 1.45; }
 
-  /* Feedback box */
-  .feedback-box { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 1rem 1.1rem; margin-top: 1.5rem; }
-  .feedback-box h3 { margin-top: 0; font-size: .95rem; }
+  /* Steps */
+  .steps { list-style: none; margin: .75rem 0 1.5rem; }
+  .step { display: flex; gap: .8rem; align-items: flex-start; padding: .6rem 0; border-bottom: 1px solid var(--hairline); }
+  .step:last-child { border-bottom: none; }
+  .step-n { width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent); color: #000; font-size: .7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: .1rem; }
+  .step-body { flex: 1; font-size: .88rem; color: var(--text); }
+  .step-body .note { display: block; font-size: .78rem; color: var(--muted); margin-top: .1rem; }
+
+  /* Access box */
+  .access-box { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: .9rem 1.1rem; margin: .75rem 0; display: flex; align-items: flex-start; gap: .85rem; }
+  .access-box-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: .1rem; }
+  .access-box-title { font-size: .82rem; font-weight: 700; margin-bottom: .2rem; }
+  .access-box-url { font-family: monospace; font-size: .78rem; color: var(--accent); word-break: break-all; }
+  .access-box-note { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+
+  /* Callout */
+  .callout { border-radius: 0 8px 8px 0; padding: .6rem .9rem; margin: .75rem 0; font-size: .84rem; }
+  .callout-tip  { background: var(--accent-soft); border-left: 3px solid var(--accent); color: var(--text); }
+  .callout-warn { background: rgba(251,191,36,.08); border-left: 3px solid var(--amber); color: var(--text); }
+  .callout-info { background: rgba(52,211,153,.07); border-left: 3px solid var(--green); color: var(--text); }
+
+  /* Color helpers */
+  .c-purple { color: var(--purple); }
+  .c-accent  { color: var(--accent); }
+  .c-amber   { color: var(--amber); }
+  .c-green   { color: var(--green); }
+
+  /* Divider */
+  .divider { height: 1px; background: var(--hairline); margin: 2rem 0; }
+
+  /* Footer */
+  .footer { text-align: center; padding: 2.5rem 1rem; color: var(--muted); font-size: .78rem; border-top: 1px solid var(--hairline); }
 
   @media (min-width: 600px) {
-    .content { padding: 1.75rem 2rem 5rem; }
-    .portal-tab { font-size: .88rem; }
+    .hero { padding: 4rem 2rem 3.5rem; }
+    .hero-logo { font-size: 2.4rem; }
+    .section { padding: 3.5rem 2rem; }
   }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-brand">Armor Vue</div>
-  <div class="header-sub">Beta Testing Guide — All Portals</div>
-</div>
-
-<!-- PORTAL SWITCHER -->
-<div class="portal-tabs">
-  <button class="portal-tab active" onclick="showPanel('setup')">🚀 Setup</button>
-  <button class="portal-tab" onclick="showPanel('admin')">⚙️ Admin</button>
-  <button class="portal-tab" onclick="showPanel('reports')">📊 Reports</button>
-  <button class="portal-tab" onclick="showPanel('installer')">📱 Installer</button>
-  <button class="portal-tab" onclick="showPanel('feedback')">📝 Feedback</button>
-</div>
-
-<!-- ============================================================ -->
-<!-- SETUP PANEL -->
-<!-- ============================================================ -->
-<div class="panel active" id="panel-setup">
-  <div class="content">
-
-    <h2 id="s-overview">What You're Testing</h2>
-    <p>Armor Vue is a job management platform for window film installers. There are <strong>three separate portals</strong>, each for a different role:</p>
-
-    <div class="card" style="margin:.75rem 0">
-      <div class="card-title">⚙️ Admin Portal</div>
-      <p>Full system control — manage installers, configure settings, review flagged items. Desktop browser, email/password login.</p>
-    </div>
-    <div class="card" style="margin:.75rem 0">
-      <div class="card-title">📊 Reports Dashboard</div>
-      <p>Management view for Finance, Service, and Operations teams — job financials, service follow-ups, analytics, material orders. Desktop or tablet, email/password login.</p>
-    </div>
-    <div class="card" style="margin:.75rem 0">
-      <div class="card-title">📱 Installer Portal</div>
-      <p>Mobile-first app for field installers — daily schedule, job sign-off, photos, earnings, compliance docs. Phone browser, magic link login.</p>
-    </div>
-
-    <h2 id="s-access">Your Access</h2>
-    <p>You'll need three things before you can start. Your admin (the person who sent you this guide) needs to set these up for you first.</p>
-
-    <div class="setup-box">
-      <h3>Admin Portal</h3>
-      <p style="font-size:.85rem;color:var(--muted)">Shared admin login — your admin will give you the email and password directly. Open on a desktop browser:</p>
-      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/index.html</div>
-    </div>
-
-    <div class="setup-box">
-      <h3>Reports Dashboard</h3>
-      <p style="font-size:.85rem;color:var(--muted)">Your own staff account — admin creates it in the Admin Portal under <strong>System → Staff</strong>. You'll set your own password. Open on desktop or tablet:</p>
-      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/reports.html</div>
-    </div>
-
-    <div class="setup-box">
-      <h3>Installer Portal</h3>
-      <p style="font-size:.85rem;color:var(--muted)">Magic link login — admin sends a sign-in link to your email. Open on your phone (Safari or Chrome, not Gmail's in-app browser):</p>
-      <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/installer.html</div>
-    </div>
-
-    <h2 id="s-order">Recommended Testing Order</h2>
-    <ol class="steps">
-      <li><span class="step-n">1</span><span class="step-t">Start with the <strong>Admin Portal</strong> — it's the control center. Explore all four sections to understand how the system is configured before testing the downstream portals.<span class="note">Takes ~20 min. Desktop only.</span></span></li>
-      <li><span class="step-n">2</span><span class="step-t">Move to the <strong>Reports Dashboard</strong> — log in with your own staff credentials and review the management views.<span class="note">Takes ~15 min. Desktop or tablet.</span></span></li>
-      <li><span class="step-n">3</span><span class="step-t">Finish with the <strong>Installer Portal</strong> — experience it exactly as a field installer would, on your phone.<span class="note">Takes ~20 min. Phone only.</span></span></li>
-    </ol>
-
-    <div class="tip" style="margin-top:1rem">
-      <strong>Important:</strong> Test the Admin Portal and Installer Portal in <strong>different browsers</strong> (or one in a private/incognito window). Using the same browser for both can mix up the login sessions.
-    </div>
-
+<!-- ═══════════════════════════════════ HERO ══════════════════════════════════ -->
+<div class="hero">
+  <div class="hero-logo">Armor Vue</div>
+  <div class="hero-tagline">Installer Management Platform</div>
+  <p class="hero-intro">
+    Welcome. This is a guided tour of the Armor Vue platform — a system built to manage
+    window film installation jobs from the office all the way to the field.
+    There are <strong>four roles</strong>, each with their own view.
+    This page walks through all of them.
+  </p>
+  <div class="role-pills">
+    <a class="pill pill-admin"     href="#admin">⚙️ Admin</a>
+    <a class="pill pill-manager"   href="#manager">📊 Manager</a>
+    <a class="pill pill-service"   href="#service">🔧 Service / Finance</a>
+    <a class="pill pill-installer" href="#installer">📱 Installer</a>
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- ADMIN PORTAL PANEL -->
-<!-- ============================================================ -->
-<div class="panel" id="panel-admin">
-  <div class="toc">
-    <a href="#a-login">Login</a>
-    <a href="#a-dashboard">Dashboard</a>
-    <a href="#a-installers">Installers</a>
-    <a href="#a-system">System</a>
-    <a href="#a-teamup">TeamUp</a>
-    <a href="#a-checklist">Checklist</a>
+<!-- ═══════════════════════════════════ ADMIN ════════════════════════════════ -->
+<div class="section" id="admin">
+  <div class="role-header">
+    <div class="role-icon">⚙️</div>
+    <div>
+      <div class="role-label c-purple">Role 1</div>
+      <div class="role-title">Admin Portal</div>
+    </div>
   </div>
-  <div class="content">
+  <p class="role-desc">
+    The control center. The admin manages all installer accounts, configures the system, reviews flagged items,
+    and monitors the TeamUp sync. This is where new installers are set up and given access to the field app.
+  </p>
 
-    <h2 id="a-login">Signing In</h2>
-    <p>Open the admin portal on a desktop browser. Use the shared admin email and password your admin gave you.</p>
-    <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/index.html</div>
-    <ul class="checks">
-      <li>Login screen appears and accepts credentials</li>
-      <li>Dashboard loads with stat cards at the top</li>
-    </ul>
-
-    <h2 id="a-dashboard">Dashboard Section</h2>
-    <p>The landing page after login. Shows a real-time snapshot of items needing attention.</p>
-
-    <h3>Stat Cards (top row)</h3>
-    <div class="card">
-      <div class="card-title">Three always-visible counters</div>
-      <p><strong>Pending Provisioning</strong> — installers in the system but not yet activated.<br>
-      <strong>Blackout Requests</strong> — days-off requests from installers awaiting approval.<br>
-      <strong>Active Installers</strong> — total currently active in the system.</p>
+  <div class="access-box">
+    <div class="access-box-icon">🔐</div>
+    <div>
+      <div class="access-box-title">Admin Portal</div>
+      <div class="access-box-url">https://installer-portal-6000.web.app/index.html</div>
+      <div class="access-box-note">Email + password login. Desktop browser.</div>
     </div>
-    <ul class="checks">
-      <li>All three stat cards load with numbers (not spinners)</li>
-      <li>Clicking "View →" on Pending Provisioning navigates to the Installers section</li>
-    </ul>
+  </div>
 
-    <h3>Action Cards (collapsible)</h3>
-    <p>These only appear when there's something to act on. Each is collapsible — click the header to expand.</p>
-    <div class="card">
-      <div class="card-title">🚨 Installer Compliance Issues</div>
-      <p>Installers with missing or expired required documents (insurance, licenses, etc.).</p>
+  <!-- Dashboard mock -->
+  <div class="screen-mock">
+    <div class="mock-bar">
+      <div class="dot" style="background:#38BDF8"></div>
+      <span class="url">installer-portal-6000.web.app/index.html</span>
     </div>
-    <div class="card">
-      <div class="card-title">⚠ Unmatched Failed Inspections</div>
-      <p>Municipal inspection failures that couldn't be automatically linked to a job record.</p>
+    <div class="mock-nav">
+      <div class="mock-nav-brand">AV Armor Vue Admin</div>
+      <div class="mock-nav-links">
+        <div class="mock-nav-link active">Dashboard</div>
+        <div class="mock-nav-link">Installers</div>
+        <div class="mock-nav-link">System</div>
+        <div class="mock-nav-link">TeamUp Status</div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">📅 Blackout Requests — Pending Approval</div>
-      <p>Time-off requests from installers. Review and approve or deny each one.</p>
+    <div class="mock-body">
+      <div class="mock-row">
+        <div class="mock-stat"><div class="mock-stat-val">3</div><div class="mock-stat-lbl">Pending Provisioning</div></div>
+        <div class="mock-stat"><div class="mock-stat-val">2</div><div class="mock-stat-lbl">Blackout Requests</div></div>
+        <div class="mock-stat"><div class="mock-stat-val">14</div><div class="mock-stat-lbl">Active Installers</div></div>
+      </div>
+      <div class="mock-row">
+        <div class="mock-action">
+          <div class="mock-action-title">📅 Blackout Requests <span class="mock-action-badge" style="background:rgba(56,189,248,.15);color:var(--accent)">2 pending</span></div>
+          <div class="mock-action-sub">Installer time-off requests awaiting approval</div>
+        </div>
+      </div>
+      <div class="mock-row">
+        <div class="mock-action">
+          <div class="mock-action-title">🔧 Extra Work Requests <span class="mock-action-badge" style="background:rgba(251,191,36,.15);color:var(--amber)">1 pending</span></div>
+          <div class="mock-action-sub">Out-of-scope work requests needing review</div>
+        </div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">🔧 Extra Work Requests</div>
-      <p>Installers requesting additional pay for out-of-scope work on a job.</p>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-item-icon">👥</div>
+      <div class="feature-item-title">Installer Management</div>
+      <div class="feature-item-desc">Provision new installers, send sign-in links, manage active/inactive status, set pay rates.</div>
     </div>
-    <div class="card">
-      <div class="card-title">⚠ Incomplete Walkthroughs</div>
-      <p>Jobs where the installer completed the COC but hasn't finished the walkthrough checklist.</p>
+    <div class="feature-item">
+      <div class="feature-item-icon">⚙️</div>
+      <div class="feature-item-title">System Config</div>
+      <div class="feature-item-desc">Configure job statuses, required photos, compliance document types, and staff accounts.</div>
     </div>
-    <div class="card">
-      <div class="card-title">💳 Missing Payment Info</div>
-      <p>Jobs missing financial data needed for installer pay calculation. Collapsed by default.</p>
+    <div class="feature-item">
+      <div class="feature-item-icon">🔄</div>
+      <div class="feature-item-title">TeamUp Sync</div>
+      <div class="feature-item-desc">Jobs pull automatically from TeamUp. The sync status page shows the last run time and counts.</div>
     </div>
-    <ul class="checks">
-      <li>Expand at least one action card and confirm the contents load</li>
-      <li>If blackout requests exist — try approving or denying one</li>
-      <li>Cards that have no items should stay hidden (not show empty)</li>
-    </ul>
+    <div class="feature-item">
+      <div class="feature-item-icon">🚩</div>
+      <div class="feature-item-title">Flagged Items</div>
+      <div class="feature-item-desc">Dashboard surfaces blackout requests, extra work approvals, incomplete walkthroughs, and compliance issues.</div>
+    </div>
+  </div>
 
-    <h2 id="a-installers">Installers Section</h2>
-    <p>Manage all installer accounts. Click <strong>Installers</strong> in the top nav to open.</p>
+  <!-- Installer table mock -->
+  <p style="font-size:.88rem;color:var(--muted);margin-bottom:.75rem">Under <strong style="color:var(--text)">Installers</strong>, each person in the system is listed with quick-action buttons. New installers from TeamUp appear in the <em>Pending</em> list until provisioned.</p>
+  <div class="screen-mock">
+    <div class="mock-bar">
+      <div class="dot" style="background:#38BDF8"></div>
+      <span style="color:var(--text);font-size:.72rem">Installers → Active</span>
+    </div>
+    <div class="mock-body" style="padding:.65rem">
+      <div class="mock-table">
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">Marcus T.</div><div class="mock-tr-sub">marcus@example.com</div></div>
+          <div class="mock-btn">Details</div>
+          <div class="mock-btn mock-btn-primary">⟳ Link</div>
+          <div class="mock-btn" style="color:var(--red);border-color:rgba(248,113,113,.35)">Deactivate</div>
+        </div>
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">Sofia R.</div><div class="mock-tr-sub">sofia@example.com</div></div>
+          <div class="mock-btn">Details</div>
+          <div class="mock-btn mock-btn-primary">⟳ Link</div>
+          <div class="mock-btn" style="color:var(--red);border-color:rgba(248,113,113,.35)">Deactivate</div>
+        </div>
+        <div class="mock-tr" style="opacity:.5">
+          <div style="flex:1"><div class="mock-tr-name">Jordan K.</div><div class="mock-tr-sub">jordan@example.com · inactive</div></div>
+          <div class="mock-btn">Details</div>
+          <div class="mock-btn mock-btn-green">Activate</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <h3>Pending List</h3>
-    <p>Installers synced from TeamUp who haven't been provisioned yet (no login access). Each row has a <strong>Provision</strong> button.</p>
-    <ul class="checks">
-      <li>Pending list loads and shows installer names from TeamUp</li>
-      <li>Click <strong>Provision</strong> on a pending installer — the modal opens</li>
-      <li>Fill in display name and email, click <strong>Provision &amp; Send Link</strong> — confirm success message and link sent</li>
-    </ul>
-
-    <h3>Active / Inactive Installers</h3>
-    <p>Three collapsible groups: <strong>Installers</strong>, <strong>FT Field Techs</strong>, and <strong>Inspection</strong> (based on TeamUp calendar type). Each row has Details, Resend Link, and Activate/Deactivate buttons.</p>
-    <ul class="checks">
-      <li>At least one installer group expands and shows a table</li>
-      <li>Click <strong>Details</strong> on an installer — the detail modal opens with editable fields</li>
-      <li>Edit the display name and save — confirm "Installer updated" flash</li>
-      <li>Click <strong>⟳ Link</strong> on an active installer — confirm "New sign-in link sent" flash</li>
-      <li>Deactivate an installer, confirm status changes, then re-activate them</li>
-    </ul>
-
-    <h3>Installer Detail Modal (tabs)</h3>
-    <p>When you open Details, there are sub-tabs: Info, Payment, Compliance, History.</p>
-    <ul class="checks">
-      <li>Switch through all tabs and confirm each loads without error</li>
-      <li>Payment tab — verify pay rate fields are editable</li>
-      <li>Compliance tab — shows document upload status per required doc type</li>
-      <li>History tab — shows a log of changes made to this installer</li>
-    </ul>
-
-    <h2 id="a-system">System Section</h2>
-    <p>Configuration for the entire platform. Click <strong>System</strong> in the top nav.</p>
-
-    <h3>TeamUp / Sync Settings</h3>
-    <p>API key, calendar ID, and sync interval for pulling jobs from TeamUp into the portal.</p>
-    <ul class="checks">
-      <li>Settings load with existing values (fields not empty)</li>
-      <li>Do not change the API key or calendar ID — just verify they're populated</li>
-    </ul>
-
-    <h3>Job Statuses</h3>
-    <p>The status options installers can set on a job (e.g., "In Progress", "Complete"). Configurable per-role visibility.</p>
-    <ul class="checks">
-      <li>List of statuses loads</li>
-      <li>Add a test status, confirm it appears, then delete it</li>
-    </ul>
-
-    <h3>Photo Requirements</h3>
-    <p>Required photos installers must capture per job (e.g., "Before" shot of each opening).</p>
-    <ul class="checks">
-      <li>List loads with existing requirements</li>
-      <li>Verify each requirement shows its name and whether it applies to all openings or specific types</li>
-    </ul>
-
-    <h3>Document Types</h3>
-    <p>Compliance documents installers must keep on file (insurance, license, etc.).</p>
-    <ul class="checks">
-      <li>List of required document types loads</li>
-      <li>Each shows name, expiry tracking setting, and whether it's required</li>
-    </ul>
-
-    <h3>Staff Accounts</h3>
-    <p>Manage accounts for management portal users (Finance, Service, Manager roles).</p>
-    <ul class="checks">
-      <li>Staff list loads showing existing accounts</li>
-      <li>Try creating a test staff account — confirm credentials are generated</li>
-      <li>Edit an existing staff account's display name</li>
-    </ul>
-
-    <h2 id="a-teamup">TeamUp Status Section</h2>
-    <p>Shows the health of the TeamUp calendar sync. Click <strong>TeamUp Status</strong> in the nav.</p>
-    <ul class="checks">
-      <li>Last sync time is shown and recent (not hours ago)</li>
-      <li>Job count and installer count in DB are non-zero</li>
-      <li>No sync errors displayed</li>
-      <li>Try clicking <strong>Sync Now</strong> (if present) — confirm it runs without error</li>
-    </ul>
-
-    <h2 id="a-checklist">Admin Portal — Full Checklist</h2>
-    <ul class="checks">
-      <li>Login with admin credentials works</li>
-      <li>All three dashboard stat cards load</li>
-      <li>At least one collapsible action card can be expanded</li>
-      <li>Installer pending list loads</li>
-      <li>Provision flow sends a magic link without error</li>
-      <li>Installer detail modal opens and all tabs load</li>
-      <li>Detail edit saves successfully</li>
-      <li>System section loads all config lists</li>
-      <li>Staff account creation works</li>
-      <li>TeamUp Status shows a recent sync time</li>
-      <li>Logout button signs out cleanly</li>
-    </ul>
-
+  <div class="callout callout-tip">
+    <strong>Sending an installer their login:</strong> Click the <strong>⟳ Link</strong> button next to their name. They'll receive a magic sign-in link by email — no password needed. Links are one-time use.
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- REPORTS DASHBOARD PANEL -->
-<!-- ============================================================ -->
-<div class="panel" id="panel-reports">
-  <div class="toc">
-    <a href="#r-login">Login</a>
-    <a href="#r-daily">Daily Review</a>
-    <a href="#r-finance">Finance</a>
-    <a href="#r-analytics">Analytics</a>
-    <a href="#r-service">Service</a>
-    <a href="#r-materials">Materials</a>
-    <a href="#r-checklist">Checklist</a>
+<!-- ══════════════════════════════════ MANAGER ═══════════════════════════════ -->
+<div class="section" id="manager">
+  <div class="role-header">
+    <div class="role-icon">📊</div>
+    <div>
+      <div class="role-label c-accent">Role 2</div>
+      <div class="role-title">Manager Dashboard</div>
+    </div>
   </div>
-  <div class="content">
+  <p class="role-desc">
+    The management view for operations oversight. Managers see everything — daily job review, financials,
+    analytics, service follow-ups, and material orders. Finance and Service roles see their relevant tabs only.
+  </p>
 
-    <h2 id="r-login">Signing In</h2>
-    <p>Open the reports portal on a desktop or tablet browser. Use the staff credentials your admin created for you in <strong>System → Staff</strong>.</p>
-    <div class="url"><span class="url-label">URL</span>https://installer-portal-6000.web.app/reports.html</div>
-    <div class="info">As a <strong>Manager</strong>, you'll see all five tabs: Daily Review, Finance, Analytics, Service, and Materials. Finance and Service roles only see their relevant tabs.</div>
-    <ul class="checks">
-      <li>Login screen loads and accepts your staff credentials</li>
-      <li>After login, your name and role (Manager) appear in the top bar</li>
-      <li>All five tabs are visible in the tab bar</li>
-      <li>"Forgot password?" link works if you need to reset</li>
-    </ul>
-
-    <h2 id="r-daily">📋 Daily Review Tab</h2>
-    <p>Manager-only tab. A live view of today's jobs — who's on what job, COC and walkthrough completion status, and quick-action check-offs for each job.</p>
-    <div class="card">
-      <div class="card-title">What's on this screen</div>
-      <p>Job cards grouped by date/installer. Each card shows job status, installer name, address, and whether the COC and walkthrough have been completed. Managers can mark items reviewed with a check-off button.</p>
+  <div class="access-box">
+    <div class="access-box-icon">📋</div>
+    <div>
+      <div class="access-box-title">Reports Dashboard</div>
+      <div class="access-box-url">https://installer-portal-6000.web.app/reports.html</div>
+      <div class="access-box-note">Email + password login. Staff account created by admin in System → Staff.</div>
     </div>
-    <ul class="checks">
-      <li>Tab loads with job cards (may be empty if no jobs today — check tomorrow's date too using the date filter)</li>
-      <li>Job cards show installer name, address, and status</li>
-      <li>COC / walkthrough completion badges are visible on each card</li>
-      <li>Try clicking a job card to expand its detail</li>
-      <li>Mark a job as reviewed — confirm the check-off saves</li>
-      <li>Use the date range filter to view a different day's jobs</li>
-    </ul>
+  </div>
 
-    <h2 id="r-finance">💰 Finance Tab</h2>
-    <p>Shows completed job records filtered by financial status. Used by Finance to process installer pay.</p>
-    <div class="card">
-      <div class="card-title">What's on this screen</div>
-      <p>Job records with installer pay amounts, job details, and payment status. Two views: <strong>Active</strong> (pending payment) and <strong>Archived</strong> (processed). Totals shown at the top.</p>
+  <!-- Reports mock -->
+  <div class="screen-mock">
+    <div class="mock-bar">
+      <div class="dot" style="background:#38BDF8"></div>
+      <span class="url">installer-portal-6000.web.app/reports.html</span>
     </div>
-    <ul class="checks">
-      <li>Finance tab loads with job records</li>
-      <li>Pay amounts are shown per job — confirm no "contract amount" or customer pricing is visible</li>
-      <li>Toggle between Active and Archived views</li>
-      <li>Expand a job record to see full detail</li>
-      <li>Archive a record (if any active ones exist) and confirm it moves to the Archived view</li>
-      <li>Date range filter adjusts the results correctly</li>
-    </ul>
-
-    <h2 id="r-analytics">📊 Analytics Tab</h2>
-    <p>Summary statistics and trends — jobs completed, installer performance, revenue trends over time.</p>
-    <ul class="checks">
-      <li>Tab loads without error</li>
-      <li>Charts or stat totals are displayed</li>
-      <li>Date range controls (if present) update the data</li>
-      <li>Installer breakdown shows individual performance stats</li>
-    </ul>
-
-    <h2 id="r-service">🔧 Service Tab</h2>
-    <p>Follow-up queue for jobs that need service attention (call-backs, defects, customer complaints). Used by the Service team.</p>
-    <div class="card">
-      <div class="card-title">What's on this screen</div>
-      <p>Job records needing follow-up, grouped by status. Service team can add reminders, schedule follow-up calls, and mark items resolved. Archive view for completed service work.</p>
+    <div class="mock-nav" style="justify-content:flex-start;gap:.75rem">
+      <div class="mock-nav-brand">Armor Vue</div>
+      <div style="font-size:.72rem;color:var(--muted)">Jane Smith · Manager</div>
     </div>
-    <ul class="checks">
-      <li>Service tab loads with any open service records</li>
-      <li>Toggle between Active and Archived views</li>
-      <li>Add a reminder to a record — confirm it saves</li>
-      <li>Mark a reminder as complete</li>
-      <li>Schedule an inspection on a job (if the flow is present)</li>
-    </ul>
-
-    <h2 id="r-materials">📦 Materials Tab</h2>
-    <p>Material re-order requests — when a defect job needs replacement parts, service staff log them here for the materials team to order.</p>
-    <div class="card">
-      <div class="card-title">What's on this screen</div>
-      <p>A list of pending material orders with part details, quantity, and status. Items can be marked as ordered or fulfilled.</p>
+    <div class="mock-body">
+      <div class="mock-tabs">
+        <div class="mock-tab active">📋 Daily Review</div>
+        <div class="mock-tab">💰 Finance</div>
+        <div class="mock-tab">📊 Analytics</div>
+        <div class="mock-tab">🔧 Service</div>
+        <div class="mock-tab">📦 Materials</div>
+      </div>
+      <div class="mock-row">
+        <div class="mock-stat" style="min-width:70px"><div class="mock-stat-val" style="font-size:1.1rem">8</div><div class="mock-stat-lbl">Jobs Today</div></div>
+        <div class="mock-stat" style="min-width:70px"><div class="mock-stat-val" style="font-size:1.1rem">6</div><div class="mock-stat-lbl">COC Signed</div></div>
+        <div class="mock-stat" style="min-width:70px"><div class="mock-stat-val" style="font-size:1.1rem;color:var(--amber)">2</div><div class="mock-stat-lbl">Incomplete</div></div>
+      </div>
+      <div class="mock-table" style="margin-top:.5rem">
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">123 Oak St — Retrofit</div><div class="mock-tr-sub">Marcus T. · In Progress</div></div>
+          <div style="font-size:.68rem;color:var(--green)">✓ COC</div>
+        </div>
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">456 Pine Ave — New Const.</div><div class="mock-tr-sub">Sofia R. · Complete</div></div>
+          <div style="font-size:.68rem;color:var(--green)">✓ COC</div>
+        </div>
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">789 Elm Blvd — Service Call</div><div class="mock-tr-sub">Jordan K. · Scheduled</div></div>
+          <div style="font-size:.68rem;color:var(--amber)">⏳ Pending</div>
+        </div>
+      </div>
     </div>
-    <ul class="checks">
-      <li>Materials tab loads (may be empty if no orders pending)</li>
-      <li>If orders exist — confirm part name, quantity, and status are shown</li>
-      <li>Status can be updated on an existing order</li>
-    </ul>
+  </div>
 
-    <h2 id="r-checklist">Reports Dashboard — Full Checklist</h2>
-    <ul class="checks">
-      <li>Login with staff credentials works</li>
-      <li>Name and "Manager" role shown in header</li>
-      <li>All five tabs visible and load without error</li>
-      <li>Daily Review shows jobs for today or a selected date</li>
-      <li>Finance tab shows job records with pay amounts (no contract totals)</li>
-      <li>Analytics tab loads charts or stats</li>
-      <li>Service tab loads and allows adding a reminder</li>
-      <li>Materials tab loads</li>
-      <li>Date range filter works across tabs</li>
-      <li>Logout signs out cleanly</li>
-    </ul>
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-item-icon">📋</div>
+      <div class="feature-item-title">Daily Review</div>
+      <div class="feature-item-desc">Live view of today's jobs — who's where, COC and walkthrough status, check-off actions.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">💰</div>
+      <div class="feature-item-title">Finance</div>
+      <div class="feature-item-desc">Completed job records with installer pay amounts. Archive processed payments. Date-range filtering.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">📊</div>
+      <div class="feature-item-title">Analytics</div>
+      <div class="feature-item-desc">Job completion trends, installer performance, revenue summaries over configurable time ranges.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">🔧</div>
+      <div class="feature-item-title">Service + Materials</div>
+      <div class="feature-item-desc">Follow-up queue for service jobs. Material re-order requests from defect repairs, tracked to fulfillment.</div>
+    </div>
+  </div>
 
+  <div class="callout callout-info">
+    <strong>Finance privacy:</strong> The full contract amount is never visible to installers — only their own pay portion. Managers and Finance see the full breakdown.
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- INSTALLER PORTAL PANEL -->
-<!-- ============================================================ -->
-<div class="panel" id="panel-installer">
-  <div class="toc">
-    <a href="#i-setup">Getting In</a>
-    <a href="#i-onboarding">First Login</a>
-    <a href="#i-schedule">Schedule</a>
-    <a href="#i-job">Job Detail</a>
-    <a href="#i-daysoff">Days Off</a>
-    <a href="#i-inspections">Inspections</a>
-    <a href="#i-earnings">Earnings</a>
-    <a href="#i-docs">Docs</a>
-    <a href="#i-checklist">Checklist</a>
+<!-- ════════════════════════════════ SERVICE / FINANCE ═══════════════════════ -->
+<div class="section" id="service">
+  <div class="role-header">
+    <div class="role-icon">🔧</div>
+    <div>
+      <div class="role-label c-amber">Role 3</div>
+      <div class="role-title">Service &amp; Finance</div>
+    </div>
   </div>
-  <div class="content">
+  <p class="role-desc">
+    Same dashboard as the Manager, but scoped to their domain. Finance staff see the Finance and Analytics tabs.
+    Service staff see Service and Materials. Each role logs in with their own staff credentials.
+  </p>
 
-    <h2 id="i-setup">Getting In</h2>
-    <p>The installer portal uses <strong>magic link login</strong> — no password. The admin provisions your account and the system emails you a one-time sign-in link.</p>
-    <ol class="steps">
-      <li><span class="step-n">1</span><span class="step-t">Admin provisions your account in the Admin Portal → Installers → Provision.<span class="note">You'll receive an email with a "Sign in to installer-portal-6000" link.</span></span></li>
-      <li><span class="step-n">2</span><span class="step-t"><strong>Open the email on your phone.</strong> If using Gmail, tap ⋮ → "Open in Chrome" or "Open in Safari" — don't use Gmail's built-in browser.<span class="note">The link is single-use. Opening it in the wrong browser wastes it.</span></span></li>
-      <li><span class="step-n">3</span><span class="step-t">A confirmation screen appears. Tap <strong>Sign In to Portal →</strong> to proceed.</span></li>
-    </ol>
-    <div class="warn"><strong>Link expired?</strong> Ask the admin to resend via the ⟳ Link button next to your name in the Installers section.</div>
+  <div class="access-box">
+    <div class="access-box-icon">🔐</div>
+    <div>
+      <div class="access-box-title">Same Reports Dashboard</div>
+      <div class="access-box-url">https://installer-portal-6000.web.app/reports.html</div>
+      <div class="access-box-note">Role is set when the admin creates the staff account. Finance sees Finance + Analytics. Service sees Service + Materials.</div>
+    </div>
+  </div>
 
-    <h2 id="i-onboarding">First Login — Onboarding</h2>
-    <h3>Signature Pad</h3>
-    <p>You'll be asked to draw your signature before anything else. It's stored on your account and printed on completed job records.</p>
-    <ul class="checks">
-      <li>Signature pad appears immediately after sign-in</li>
-      <li>Draw a signature with your finger — it renders clearly</li>
-      <li>Clear button erases and lets you redo</li>
-      <li>Save Signature advances to the tutorial</li>
-    </ul>
-    <h3>Tutorial</h3>
-    <p>A short walkthrough highlights the key features. It runs once on first login.</p>
-    <ul class="checks">
-      <li>Tutorial runs through all steps without freezing</li>
-      <li>Completing the tutorial loads the main portal</li>
-      <li>Top nav (your name) and bottom nav (5 tabs) are visible</li>
-    </ul>
+  <div class="screen-mock">
+    <div class="mock-bar">
+      <div class="dot" style="background:#FBBF24"></div>
+      <span class="url">installer-portal-6000.web.app/reports.html</span>
+    </div>
+    <div class="mock-nav" style="justify-content:flex-start;gap:.75rem">
+      <div class="mock-nav-brand">Armor Vue</div>
+      <div style="font-size:.72rem;color:var(--muted)">Alex M. · Finance</div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-tabs">
+        <div class="mock-tab active">💰 Finance</div>
+        <div class="mock-tab">📊 Analytics</div>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.65rem">Showing: Active jobs · Past 30 days</div>
+      <div class="mock-table">
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">123 Oak St — Marcus T.</div><div class="mock-tr-sub">Complete · Oct 14</div></div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--green)">$420</div>
+        </div>
+        <div class="mock-tr">
+          <div style="flex:1"><div class="mock-tr-name">456 Pine Ave — Sofia R.</div><div class="mock-tr-sub">Complete · Oct 15</div></div>
+          <div style="font-size:.72rem;font-weight:700;color:var(--green)">$310</div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <h2 id="i-schedule">📅 Schedule Tab</h2>
-    <p>Home screen. Shows a week view — tap any day chip (Mon–Fri) to see that day's jobs.</p>
-    <ul class="checks">
-      <li>All 5 day chips load, today's chip is highlighted</li>
-      <li>Tapping a chip updates the job list below</li>
-      <li>Job cards show customer name, address, job type, and time window</li>
-      <li>Forward/back arrows navigate to other weeks</li>
-      <li>"↩ Today" link appears when you've navigated away from the current week</li>
-    </ul>
-
-    <h2 id="i-job">Job Detail</h2>
-    <p>Tap any job card on the schedule to open it. This is where installers do their main work on site.</p>
-    <h3>Status</h3>
-    <ul class="checks">
-      <li>Status dropdown shows configured options (e.g., In Progress, Complete)</li>
-      <li>Changing status and leaving/returning to the job keeps the new status</li>
-    </ul>
-    <h3>Photos</h3>
-    <ul class="checks">
-      <li>Photo upload slots are shown for required photo types</li>
-      <li>Tapping a slot opens camera / photo picker</li>
-      <li>Uploaded photo appears in the slot</li>
-    </ul>
-    <h3>Certificate of Completion (COC)</h3>
-    <ul class="checks">
-      <li>COC section lists the job openings</li>
-      <li>Tapping Sign &amp; Complete prompts for a finger signature</li>
-      <li>Signed COC can be viewed and shared</li>
-    </ul>
-    <ul class="checks">
-      <li>← Back button returns to the schedule without data loss</li>
-    </ul>
-
-    <h2 id="i-daysoff">🗓 Days Off Tab</h2>
-    <p>Request unavailable dates. Management reviews and approves/denies each request.</p>
-    <ul class="checks">
-      <li>Calendar date picker works on mobile</li>
-      <li>Submit a request with a reason — confirmation shows</li>
-      <li>Request appears in the list with "Pending" status</li>
-    </ul>
-
-    <h2 id="i-inspections">⚠️ Inspections / Quality Tab</h2>
-    <p>Any failed inspection reports or quality flags linked to this installer's jobs.</p>
-    <ul class="checks">
-      <li>Tab loads — empty state looks correct if no flags</li>
-      <li>If flags exist — expand one and add an installer note</li>
-      <li>Nav icon shows a badge count when flags are unresolved</li>
-    </ul>
-
-    <h2 id="i-earnings">💰 Earnings Tab</h2>
-    <p>Installer's pay breakdown by job. Shows their portion only — full contract amounts are never visible.</p>
-    <ul class="checks">
-      <li>Job entries and pay amounts load correctly</li>
-      <li>No customer-facing contract pricing visible anywhere</li>
-      <li>Total at top matches the sum of entries</li>
-    </ul>
-
-    <h2 id="i-docs">📋 Docs Tab</h2>
-    <p>Compliance document uploads — insurance certificates, licenses, etc. Admin verifies them.</p>
-    <ul class="checks">
-      <li>Required document types are listed</li>
-      <li>Upload a PDF or photo to one slot — it shows "pending review"</li>
-      <li>Cannot self-verify — verified status is admin-only</li>
-    </ul>
-
-    <h2 id="i-checklist">Installer Portal — Full Checklist</h2>
-    <ul class="checks">
-      <li>Magic link email received within ~1 minute</li>
-      <li>Link opened in Chrome/Safari (not Gmail in-app)</li>
-      <li>Tap-to-sign-in screen appeared before auto-login</li>
-      <li>Signature pad accepted a drawn signature</li>
-      <li>Tutorial ran start-to-finish without issues</li>
-      <li>Main portal loaded with top and bottom nav visible</li>
-      <li>All 5 day chips work on the schedule</li>
-      <li>Job card opens detail view correctly</li>
-      <li>Status change saves and persists</li>
-      <li>At least one photo uploads successfully</li>
-      <li>COC section is present and signable</li>
-      <li>Days Off request submits without error</li>
-      <li>Inspections tab loads (empty state OK)</li>
-      <li>Earnings tab shows pay amounts only (no contract totals)</li>
-      <li>Docs tab shows required types and accepts an upload</li>
-      <li>Closing and reopening the browser tab keeps you logged in</li>
-      <li>Logout button signs out cleanly</li>
-    </ul>
-
+  <div class="callout callout-tip">
+    Staff accounts are created by the admin under <strong>System → Staff Accounts</strong>. Each person gets their own email + password and sees only what their role allows.
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- FEEDBACK PANEL -->
-<!-- ============================================================ -->
-<div class="panel" id="panel-feedback">
-  <div class="content">
-
-    <h2 id="f-how">How to Report Issues</h2>
-    <p>For every issue you find, capture these five things:</p>
-    <ol class="steps">
-      <li><span class="step-n">1</span><span class="step-t"><strong>Portal</strong> — Admin, Reports, or Installer</span></li>
-      <li><span class="step-n">2</span><span class="step-t"><strong>What you were doing</strong> — which section/tab, what action you took</span></li>
-      <li><span class="step-n">3</span><span class="step-t"><strong>What you expected</strong> — what should have happened</span></li>
-      <li><span class="step-n">4</span><span class="step-t"><strong>What actually happened</strong> — error message, blank screen, wrong data</span></li>
-      <li><span class="step-n">5</span><span class="step-t"><strong>Screenshot</strong> — always helpful, especially for layout issues<span class="note">Device + browser: e.g., "iPhone 15 / Safari" or "Windows Chrome"</span></span></li>
-    </ol>
-
-    <h2 id="f-scope">What We're Specifically Looking For</h2>
-
-    <div class="card" style="margin:.5rem 0">
-      <div class="card-title">🐛 Bugs</div>
-      <p>Anything that errors, crashes, shows a blank screen, or doesn't save correctly.</p>
+<!-- ═══════════════════════════════════ INSTALLER ════════════════════════════ -->
+<div class="section" id="installer">
+  <div class="role-header">
+    <div class="role-icon">📱</div>
+    <div>
+      <div class="role-label c-green">Role 4</div>
+      <div class="role-title">Installer Portal</div>
     </div>
-    <div class="card" style="margin:.5rem 0">
-      <div class="card-title">📱 Mobile Experience</div>
-      <p>Buttons too small to tap, text overflowing, keyboards covering inputs, slow loading on cellular.</p>
-    </div>
-    <div class="card" style="margin:.5rem 0">
-      <div class="card-title">🤔 Confusing Flows</div>
-      <p>Anything that's unclear about what to do next, missing labels, ambiguous buttons.</p>
-    </div>
-    <div class="card" style="margin:.5rem 0">
-      <div class="card-title">🔒 Data / Privacy</div>
-      <p>Any place where an installer can see data they shouldn't (especially financial data).</p>
-    </div>
+  </div>
+  <p class="role-desc">
+    The field app. Installers use this on their phone every day — to see their schedule, log job status,
+    upload photos, sign off completed jobs, request time off, check their earnings, and manage compliance docs.
+    No app install needed. It runs in the phone's browser.
+  </p>
 
-    <h2 id="f-intentional">Things That Are Intentional</h2>
-    <div class="info">Installers never see the full job contract amount — only their own pay portion. This is by design.</div>
-    <div class="info">The magic link is single-use and expires. If it doesn't work, the admin resends a fresh one.</div>
-    <div class="info">The tutorial only runs on first login. It can be replayed from the profile menu — it won't re-run automatically.</div>
-    <div class="info">The admin portal only works in one browser at a time with the admin account. Testing the installer portal in the same browser will log out the admin session.</div>
+  <div class="access-box">
+    <div class="access-box-icon">📲</div>
+    <div>
+      <div class="access-box-title">Installer Portal</div>
+      <div class="access-box-url">https://installer-portal-6000.web.app/installer.html</div>
+      <div class="access-box-note">Magic link login — no password. Admin sends a sign-in link by email. Opens on phone in Safari or Chrome.</div>
+    </div>
+  </div>
 
+  <!-- Mobile mock -->
+  <div class="mobile-mock">
+    <div class="mobile-topbar">
+      <div class="mobile-topbar-brand">Armor Vue</div>
+      <div class="mobile-topbar-name">Marcus T.</div>
+    </div>
+    <div class="mobile-body">
+      <div class="day-chips">
+        <div class="day-chip"><span class="day-chip-name">Mon</span><span class="day-chip-num">14</span></div>
+        <div class="day-chip today"><span class="day-chip-name">Tue</span><span class="day-chip-num">15</span></div>
+        <div class="day-chip"><span class="day-chip-name">Wed</span><span class="day-chip-num">16</span></div>
+        <div class="day-chip"><span class="day-chip-name">Thu</span><span class="day-chip-num">17</span></div>
+        <div class="day-chip"><span class="day-chip-name">Fri</span><span class="day-chip-num">18</span></div>
+      </div>
+      <div class="job-card">
+        <div class="job-card-name">123 Oak Street</div>
+        <div class="job-card-addr">Retrofit · 6-window pkg</div>
+        <div class="job-card-time">8:00 AM – 12:00 PM</div>
+      </div>
+      <div class="job-card">
+        <div class="job-card-name">456 Pine Avenue</div>
+        <div class="job-card-addr">New Construction · Full house</div>
+        <div class="job-card-time">1:00 PM – 5:00 PM</div>
+      </div>
+    </div>
+    <div class="mobile-bottomnav">
+      <div class="mobile-nav-btn active"><span class="nav-icon">📅</span>Schedule</div>
+      <div class="mobile-nav-btn"><span class="nav-icon">🗓</span>Days Off</div>
+      <div class="mobile-nav-btn"><span class="nav-icon">⚠️</span>Quality</div>
+      <div class="mobile-nav-btn"><span class="nav-icon">💰</span>Earnings</div>
+      <div class="mobile-nav-btn"><span class="nav-icon">📋</span>Docs</div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-item">
+      <div class="feature-item-icon">📅</div>
+      <div class="feature-item-title">Schedule</div>
+      <div class="feature-item-desc">Weekly view with day chips. Tap a job to open its full detail — status, photos, COC sign-off.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">✍️</div>
+      <div class="feature-item-title">Job Sign-Off</div>
+      <div class="feature-item-desc">Upload required photos, complete a walkthrough checklist, and sign a Certificate of Completion.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">🗓</div>
+      <div class="feature-item-title">Days Off</div>
+      <div class="feature-item-desc">Request unavailable dates. Management reviews and approves or denies each request.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">💰</div>
+      <div class="feature-item-title">Earnings</div>
+      <div class="feature-item-desc">Pay breakdown by job. Installers see their portion only — contract amounts are never shown.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">⚠️</div>
+      <div class="feature-item-title">Inspections / Quality</div>
+      <div class="feature-item-desc">Failed inspection alerts and quality flags linked to their jobs. Installers can add notes and respond.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-item-icon">📋</div>
+      <div class="feature-item-title">Compliance Docs</div>
+      <div class="feature-item-desc">Upload and track required documents — insurance, licenses, certifications. Admin verifies them.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <p style="font-size:.9rem;color:var(--text);font-weight:700;margin-bottom:.5rem">How an installer gets access:</p>
+  <ol class="steps">
+    <li>
+      <span class="step-n">1</span>
+      <span class="step-body">Admin provisions the installer in the Admin Portal → Installers. A magic sign-in link is automatically emailed to them.
+        <span class="note">No password is ever created. The link is their key.</span>
+      </span>
+    </li>
+    <li>
+      <span class="step-n">2</span>
+      <span class="step-body">Installer opens the email on their phone and taps the sign-in link.
+        <span class="note">Should open in Safari or Chrome — not Gmail's built-in browser.</span>
+      </span>
+    </li>
+    <li>
+      <span class="step-n">3</span>
+      <span class="step-body">A confirmation screen appears. Installer taps <strong>Sign In to Portal →</strong>.</span>
+    </li>
+    <li>
+      <span class="step-n">4</span>
+      <span class="step-body">First login: draw a signature, complete a short tutorial. Portal is ready to use.
+        <span class="note">Signature is stored and printed on all completed job records.</span>
+      </span>
+    </li>
+  </ol>
+
+  <div class="callout callout-warn">
+    <strong>Magic links are one-time use.</strong> If an installer's link stops working, the admin can resend a fresh one from the ⟳ Link button in the Installers section.
   </div>
 </div>
 
-<script>
-function showPanel(id) {
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.portal-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('panel-' + id).classList.add('active');
-  event.currentTarget.classList.add('active');
-  window.scrollTo(0, 0);
-}
-</script>
+<div class="footer">
+  Armor Vue Installer Portal · <a href="https://installer-portal-6000.web.app" style="color:var(--accent);text-decoration:none">installer-portal-6000.web.app</a>
+</div>
+
 </body>
 </html>
