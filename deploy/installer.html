@@ -978,8 +978,7 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
                 if (previewId) loadPortalAsInstaller(previewId);
                 else {
                     // Management users must use an explicit ?preview=installerId link.
-                    // Sign them out so the normal installer login screen is shown.
-                    await auth.signOut();
+                    // Do NOT sign out — that would kill their session on other tabs (admin/reports).
                     showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
                 }
             } else {
