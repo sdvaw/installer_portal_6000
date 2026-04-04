@@ -1386,6 +1386,8 @@ async function fetchWeekJobs(offset) {
         jobCache[key] = jobs;
         return jobs;
     } catch(err) {
+        // Permission errors won't be fixed by the fallback — bail immediately
+        if (err.code === 'permission-denied') throw err;
         // Fallback: fetch all and filter in memory (no composite index yet)
         const snap = await db.collection('jobs').get();
         const jobs = snap.docs
@@ -1404,6 +1406,8 @@ async function fetchWeekJobs(offset) {
 const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
 async function renderSchedule() {
+    // Proactively refresh the auth token to prevent stale-token permission errors on Firestore queries
+    if (auth.currentUser) await auth.currentUser.getIdToken(true).catch(() => {});
     const el = document.getElementById('page-schedule');
     const { monday, sunday } = getWeekRange(weekOffset);
     const fmtWeek = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
