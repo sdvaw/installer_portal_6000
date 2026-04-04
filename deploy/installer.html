@@ -1151,6 +1151,7 @@ async function loadPortal(user) {
 
 function handleLogout() {
     if (isPreviewMode) { window.close(); return; }
+    window.localStorage.removeItem('installerEmail');
     auth.signOut().then(() => {
         currentInstaller = null;
         jobCache = {};
@@ -2163,7 +2164,9 @@ function renderStatusBar(job, rec) {
                 <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
                 ${note}
             </div>
-            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" onclick="showStatusPicker('${recJobId}','${status}')">Change</button>`;
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" id="status-change-btn">Change</button>`;
+        const _scBtn = document.getElementById('status-change-btn');
+        if (_scBtn) _scBtn.addEventListener('click', () => showStatusPicker(recJobId, status));
     }
 }
 
@@ -3196,6 +3199,16 @@ async function renderOpenings(jobId, rec) {
     }
 
     el.innerHTML = openings.map(op => buildOpeningCardHtml(jobId, op)).join('');
+
+    // Event delegation — no user data in onclick attributes
+    el.addEventListener('click', e => {
+        const defectBtn = e.target.closest('[data-action="defect"]');
+        if (defectBtn) { showDefectModal(defectBtn.dataset.jobId, defectBtn.dataset.openingId, defectBtn.dataset.label); return; }
+        const photoBtn = e.target.closest('[data-action="add-photo"]');
+        if (photoBtn) { openPhotoCapture(photoBtn.dataset.jobId, photoBtn.dataset.openingId); return; }
+        const photoThumb = e.target.closest('[data-action="view-photo"]');
+        if (photoThumb) { viewPhoto(photoThumb.dataset.url); return; }
+    });
 }
 
 function buildOpeningCardHtml(jobId, op) {
@@ -3203,17 +3216,17 @@ function buildOpeningCardHtml(jobId, op) {
     const photos      = op.photos || [];
 
     const photosHtml = photos.slice(0, 5).map(p =>
-        `<img class="photo-thumb" src="${esc(p.url)}" alt="${esc(p.category || 'photo')}" onclick="viewPhoto('${esc(p.url)}')">`
+        `<img class="photo-thumb" src="${esc(p.url)}" alt="${esc(p.category || 'photo')}" data-action="view-photo" data-url="${esc(p.url)}" style="cursor:pointer">`
     ).join('');
 
     const addBtn = `
-        <button class="photo-add-btn" onclick="openPhotoCapture('${jobId}','${op.id}')">
+        <button class="photo-add-btn" data-action="add-photo" data-job-id="${esc(jobId)}" data-opening-id="${esc(op.id)}">
             <span class="cam-icon">📷</span>
             <span>Photo</span>
         </button>`;
 
     return `
-        <div class="opening-card" id="opening-${op.id}">
+        <div class="opening-card" id="opening-${esc(op.id)}">
             <div class="opening-card-header">
                 <span class="opening-label">${esc(op.label)}</span>
                 <span class="opening-type-badge">${esc(op.type || 'opening')}</span>
@@ -3224,7 +3237,7 @@ function buildOpeningCardHtml(jobId, op) {
             </div>
             ${defectCount > 0 ? `<div class="text-xs mb-2" style="color:var(--bad)">⚠️ ${defectCount} defect${defectCount > 1 ? 's' : ''} reported</div>` : ''}
             <button class="btn btn-ghost btn-sm w-full" style="border-color:var(--bad);color:var(--bad)"
-                    onclick="showDefectModal('${jobId}','${op.id}','${esc(op.label).replace(/'/g, "\\'")}')">
+                    data-action="defect" data-job-id="${esc(jobId)}" data-opening-id="${esc(op.id)}" data-label="${esc(op.label)}">
                 ⚠️ Report Defect
             </button>
         </div>`;

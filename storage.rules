@@ -9,22 +9,37 @@ service firebase.storage {
       allow write: if request.auth != null;
     }
 
-    // Installer profile signatures — stored by Firebase UID, no Firestore lookup needed
+    // Installer profile signatures — stored by Firebase UID
+    // Read: own UID, admin, or any management user (reports/admin portals display signatures)
     match /installer_signatures/{uid}/{allPaths=**} {
-      allow read:  if request.auth != null;
+      allow read:  if request.auth != null && (
+        request.auth.uid == uid ||
+        request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2' ||
+        firestore.exists(/databases/(default)/documents/management_users/$(request.auth.uid))
+      );
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Installer compliance documents — stored by Firebase UID, no Firestore lookup needed
+    // Installer compliance documents — stored by Firebase UID
+    // Read: own UID, admin, or any management user (compliance review)
     match /installer_documents/{uid}/{allPaths=**} {
-      allow read:  if request.auth != null;
+      allow read:  if request.auth != null && (
+        request.auth.uid == uid ||
+        request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2' ||
+        firestore.exists(/databases/(default)/documents/management_users/$(request.auth.uid))
+      );
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Installer files (compliance docs, legacy signatures) — read: any auth user
+    // Installer files (compliance docs, legacy signatures)
+    // Read: own installer record, admin, or management users
     // Write: admin, or the owning installer (matched by firebaseUid or email)
     match /installers/{installerId}/{allPaths=**} {
-      allow read:  if request.auth != null;
+      allow read:  if request.auth != null && (
+        request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2' ||
+        firestore.get(/databases/(default)/documents/installers/$(installerId)).data.get('firebaseUid', null) == request.auth.uid ||
+        firestore.exists(/databases/(default)/documents/management_users/$(request.auth.uid))
+      );
       allow write: if request.auth != null && (
         request.auth.uid == 'yKCWdsUceONZJtysdweYW2vamFV2' ||
         firestore.get(/databases/(default)/documents/installers/$(installerId)).data.get('firebaseUid', null) == request.auth.uid ||
