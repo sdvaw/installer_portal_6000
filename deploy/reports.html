@@ -303,8 +303,21 @@ let archiveFrom    = '';
 let archiveTo      = '';
 
 // ── Auth ──────────────────────────────────────────────────────
+let _portalShown = false;
+
 auth.onAuthStateChanged(async user => {
-    if (!user) { showLogin(); return; }
+    if (!user) {
+        if (_portalShown) {
+            // Only tear down if the portal was actually showing (genuine sign-out)
+            _portalShown = false;
+            clearInterval(window._tokenRefreshInterval);
+            showLogin();
+        } else {
+            // Never logged in — show login immediately
+            showLogin();
+        }
+        return;
+    }
     try {
         const snap = await db.collection('management_users').doc(user.uid).get();
         if (!snap.exists || snap.data().status !== 'active') {
@@ -312,7 +325,12 @@ auth.onAuthStateChanged(async user => {
         }
         currentUser = { uid: user.uid, email: user.email, ...snap.data() };
         currentRole = currentUser.role;
+        clearInterval(window._tokenRefreshInterval);
+        window._tokenRefreshInterval = setInterval(() => {
+            auth.currentUser?.getIdToken(true).catch(() => {});
+        }, 30 * 60 * 1000);
         await loadStatusConfig();
+        _portalShown = true;
         showPortal();
     } catch(err) { showLogin('Could not verify your account. Please try again.'); }
 });
@@ -420,7 +438,7 @@ function showPortal() {
             <div class="admin-nav-brand"><span>AV</span> Dashboard</div>
             <div style="font-size:.8rem;color:var(--muted)">${esc(currentUser.displayName || currentUser.email)} · ${roleLabel}</div>
             <div class="admin-nav-actions">
-                <button class="btn btn-ghost btn-sm" onclick="auth.signOut()">Logout</button>
+                <button class="btn btn-ghost btn-sm" onclick="_portalShown=false;auth.signOut()">Logout</button>
             </div>
         </nav>
         <main class="admin-content">
@@ -647,6 +665,7 @@ async function loadDailyReview() {
     const content = document.getElementById('report-content');
     content.innerHTML = weekControlsHtml() + '<div class="text-center p-6"><span class="spinner"></span> Loading jobs…</div>';
 
+    if (!auth.currentUser) { showLogin(); return; }
     try {
         const mon = getWeekMonday(_weekOffset);
         const sun = new Date(mon); sun.setDate(sun.getDate() + 6); sun.setHours(23,59,59,999);
@@ -997,6 +1016,7 @@ async function loadFinanceReport() {
     const content = document.getElementById('report-content');
     content.innerHTML = viewControlsHtml() + '<div class="text-center p-6"><span class="spinner"></span></div>';
 
+    if (!auth.currentUser) { showLogin(); return; }
     try {
         if (_financeStats.length === 0) {
             content.innerHTML = viewControlsHtml() + '<div class="empty-state">No finance statuses configured.</div>';
@@ -1193,6 +1213,7 @@ async function loadServiceReport() {
     const content = document.getElementById('report-content');
     content.innerHTML = viewControlsHtml() + '<div class="text-center p-6"><span class="spinner"></span></div>';
 
+    if (!auth.currentUser) { showLogin(); return; }
     try {
         const today = new Date().toISOString().slice(0, 10);
         const queries = [
@@ -1520,6 +1541,7 @@ async function loadMaterialsTab() {
     const content = document.getElementById('report-content');
     content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
 
+    if (!auth.currentUser) { showLogin(); return; }
     try {
         const snap = await db.collection('material_orders').orderBy('createdAt', 'desc').get();
         const orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2096,6 +2118,7 @@ async function runAnalytics() {
     if (!el) return;
     el.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
 
+    if (!auth.currentUser) { showLogin(); return; }
     const fromStr = document.getElementById('analytics-from')?.value;
     const toStr   = document.getElementById('analytics-to')?.value;
     if (!fromStr || !toStr) return;
