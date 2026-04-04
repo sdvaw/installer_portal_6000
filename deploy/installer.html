@@ -1510,8 +1510,17 @@ async function renderSchedule() {
 
     try {
         let jobs;
-        try { jobs = await fetchWeekJobs(weekOffset); }
-        catch(e) { throw new Error('jobs query: ' + e.message); }
+        try {
+            jobs = await fetchWeekJobs(weekOffset);
+        } catch(e) {
+            if (e.code === 'permission-denied' && auth.currentUser) {
+                await auth.currentUser.getIdToken(true);
+                try { jobs = await fetchWeekJobs(weekOffset); }
+                catch(e2) { throw new Error('jobs query: ' + e2.message); }
+            } else {
+                throw new Error('jobs query: ' + e.message);
+            }
+        }
 
         let jobRecords;
         try { jobRecords = await loadJobRecords(jobs.map(j => j.id)); }
@@ -2566,18 +2575,36 @@ async function checkComplianceBlock() {
 }
 
 async function renderDocuments() {
+    const el = document.getElementById('page-documents');
     if (!_docTypes.length) {
-        // Load if not already cached from compliance check
-        const [typesSnap, docsSnap] = await Promise.all([
-            db.collection('document_types').get(),
-            db.collection('installer_documents').where('installerId', '==', currentInstaller.id).get()
-        ]);
-        _docTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-                                  .sort((a, b) => (a.order || 0) - (b.order || 0));
-        _installerDocs = {};
-        docsSnap.docs.forEach(d => { _installerDocs[d.data().documentTypeId] = { id: d.id, ...d.data() }; });
+        try {
+            await _loadDocumentData();
+        } catch(e) {
+            if (e.code === 'permission-denied' && auth.currentUser) {
+                await auth.currentUser.getIdToken(true);
+                try { await _loadDocumentData(); }
+                catch(e2) {
+                    if (el) el.innerHTML = `<div class="alert alert-error" style="margin:1rem">Could not load documents. Please try again.</div>`;
+                    return;
+                }
+            } else {
+                if (el) el.innerHTML = `<div class="alert alert-error" style="margin:1rem">Could not load documents. Please try again.</div>`;
+                return;
+            }
+        }
     }
     renderDocumentsPage(false);
+}
+
+async function _loadDocumentData() {
+    const [typesSnap, docsSnap] = await Promise.all([
+        db.collection('document_types').get(),
+        db.collection('installer_documents').where('installerId', '==', currentInstaller.id).get()
+    ]);
+    _docTypes = typesSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+                              .sort((a, b) => (a.order || 0) - (b.order || 0));
+    _installerDocs = {};
+    docsSnap.docs.forEach(d => { _installerDocs[d.data().documentTypeId] = { id: d.id, ...d.data() }; });
 }
 
 function renderDocumentsPage(blockingMode) {
