@@ -965,6 +965,8 @@ if (auth.isSignInWithEmailLink(window.location.href)) {
 } else {
     auth.onAuthStateChanged(async user => {
         if (!user) { showNoAccess('Access your portal using the link sent to your email.'); return; }
+        // Refresh token before any Firestore queries — prevents stale-token permission errors on reload
+        await user.getIdToken(true).catch(() => {});
         try {
             // Admin or active management users get installer preview mode
             const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
