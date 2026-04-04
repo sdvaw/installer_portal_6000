@@ -3200,15 +3200,15 @@ async function renderOpenings(jobId, rec) {
 
     el.innerHTML = openings.map(op => buildOpeningCardHtml(jobId, op)).join('');
 
-    // Event delegation — no user data in onclick attributes
-    el.addEventListener('click', e => {
+    // Use onclick property (not addEventListener) so re-renders don't stack listeners
+    el.onclick = e => {
         const defectBtn = e.target.closest('[data-action="defect"]');
         if (defectBtn) { showDefectModal(defectBtn.dataset.jobId, defectBtn.dataset.openingId, defectBtn.dataset.label); return; }
         const photoBtn = e.target.closest('[data-action="add-photo"]');
         if (photoBtn) { openPhotoCapture(photoBtn.dataset.jobId, photoBtn.dataset.openingId); return; }
         const photoThumb = e.target.closest('[data-action="view-photo"]');
         if (photoThumb) { viewPhoto(photoThumb.dataset.url); return; }
-    });
+    };
 }
 
 function buildOpeningCardHtml(jobId, op) {
