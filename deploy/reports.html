@@ -323,7 +323,6 @@ auth.onAuthStateChanged(async user => {
         } else {
             const snap = await db.collection('management_users').doc(user.uid).get();
             if (!snap.exists || snap.data().status !== 'active') {
-                await auth.signOut();
                 showLogin('Your account does not have dashboard access.'); return;
             }
             currentUser = { uid: user.uid, email: user.email, ...snap.data() };

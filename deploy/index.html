@@ -142,7 +142,10 @@ function showLogin(errorMsg) {
         btn.innerHTML = '<span class="spinner"></span> Signing in…';
         err.classList.add('hidden');
         auth.signInWithEmailAndPassword(email, pw).catch((e) => {
-            err.textContent = 'Login failed: ' + (e.code || e.message);
+            const msg = (e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+                ? 'Incorrect email or password. If you use Google to sign in, use the button above.'
+                : 'Login failed: ' + (e.code || e.message);
+            err.textContent = msg;
             err.classList.remove('hidden');
             btn.disabled = false;
             btn.textContent = 'Sign In';
