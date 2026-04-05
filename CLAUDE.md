@@ -39,7 +39,7 @@ Run from project root (`C:\Users\sdvjs\projects\Installer_Portal`).
 ## Versioning
 
 - Semantic versioning: `vMAJOR.MINOR.PATCH`
-- Current: v2.3.0 (unreleased as of 2026-03-19)
+- Current: v2.5.0 (released 2026-04-05)
 - Tag after each deploy of a logical feature group
 - `RELEASE_NOTES.md` must have an entry before tagging
 

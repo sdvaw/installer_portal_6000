@@ -2,6 +2,67 @@
 
 ---
 
+## v2.5.0 — Security Hardening & Auth Reliability
+**Released:** 2026-04-05
+
+### Overview
+Full security audit and auth reliability release. Eliminates XSS vectors, tightens Firebase Storage rules, fixes cross-portal session interference, and resolves the magic link sign-in flow that was leaving installers stuck on "Signing in…" — especially on mobile.
+
+---
+
+### Security Fixes
+
+#### XSS — Firestore Data in Inline Event Handlers
+- Opening card HTML was injecting user-writable strings (opening type, notes) directly into `onclick="..."` attribute strings. A malicious value could execute arbitrary JS.
+- Fix: Replaced inline `onclick=` attributes with `data-*` attribute delegation using `el.onclick` property assignment. Data never touches HTML attribute strings.
+
+#### XSS — Status Bar Button
+- `renderStatusBar` built its button with `onclick="showStatusPicker('${recJobId}', '${status}')"`, injecting the `status` field from Firestore directly into an attribute string.
+- Fix: Removed the status value from the inline string; button now uses a direct `addEventListener`.
+
+#### Firebase Storage Rules — Cross-Installer Read Access
+- `installer_signatures`, `installer_documents`, and `installers` storage paths had overly broad read rules (any authenticated user could read any installer's files).
+- Fix: Read restricted to own UID, admin UID, or verified management user (Firestore cross-check).
+
+#### Camera Policy Blocking Mobile Camera
+- `Permissions-Policy: camera=()` blocked camera access on Android Chrome, preventing photo capture.
+- Fix: Changed to `camera=(self)`.
+
+#### localStorage — Email After Sign-In
+- `installerEmail` was not cleared from localStorage on logout, leaving PII in browser storage.
+- Fix: `handleLogout` now clears it explicitly.
+
+---
+
+### Auth Reliability Fixes
+
+#### Magic Link Hanging on "Signing in…" (Mobile)
+- Root cause: Firebase fires `onAuthStateChanged` *during* `signInWithEmailLink` with intermediate states. The handler saw the oobCode still in the URL and returned early; after URL cleanup, no further event fired. Portal hung indefinitely.
+- Fix: URL is cleaned *before* calling `signInWithEmailLink`. A `_magicLinkInProgress` flag blocks `onAuthStateChanged` for the duration. Routing logic extracted into `handleSignedInUser()` and called directly after sign-in resolves — no dependency on event timing.
+
+#### Cross-Portal Session Interference
+- `auth.signOut()` called in `index.html` and `reports.html` when a non-admin user was detected. Since all portals share the same Firebase Auth session on the same origin, this silently killed the installer's session mid-use.
+- Fix: Removed `auth.signOut()` from non-admin branches in both management portals. Each portal now shows its own "no access" state without terminating other sessions.
+
+#### "This Portal Is for Installers Only" on Magic Link Click
+- When an admin had an active session, `onAuthStateChanged` fired with the admin user before the confirm screen could render, triggering the management-user guard.
+- Fix: Magic link URL detection runs before `onAuthStateChanged` registration. If a link is present, confirm screen shows immediately and `onAuthStateChanged` is blocked until sign-in completes.
+
+#### Firestore Permission-Denied on Page Reload
+- Reloading the installer portal sometimes produced `Missing or insufficient permissions` on the jobs query because Firestore's internal auth listener hadn't propagated the restored token yet.
+- Fix: `loadPortal` force-refreshes the token on `permission-denied` and retries once.
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — installer.html, index.html changes
+- [x] `firebase deploy --only storage` — storage.rules tightened
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.4.0 — Bug Fix & UX Polish: Auth Security, Series Jobs, Photo Wizard, Status Picker
 **Released:** 2026-03-21
 
