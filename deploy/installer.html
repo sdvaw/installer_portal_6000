@@ -957,32 +957,25 @@ let ewCurrentPhotoSlot = 0;
 // ============================================================
 // AUTH
 // ============================================================
-// Always register onAuthStateChanged — this is the single entry point for all auth states.
-// completeMagicLink() just calls signInWithEmailLink and stops; onAuthStateChanged fires
-// once Firebase Auth AND the Firestore SDK have both processed the new session, so all
-// Firestore queries inside loadPortal have a valid token from the very first call.
-// If the URL is a magic link, show the confirm screen immediately — before onAuthStateChanged
-// fires. This handles the case where an admin/management user opens the link while already
-// signed into another portal: we need to complete the installer sign-in, not use their session.
+// _magicLinkInProgress: true while completeMagicLink() is running.
+// Prevents onAuthStateChanged from acting on the intermediate auth state
+// changes that Firebase fires during signInWithEmailLink.
+let _magicLinkInProgress = false;
+
+// Magic link path: show confirm screen immediately so the installer taps a
+// button to consume the oobCode — prevents email scanners consuming it first.
+// This runs before onAuthStateChanged so it works even when admin is signed in.
 if (auth.isSignInWithEmailLink(window.location.href)) {
     showSignInConfirmScreen();
 }
 
-auth.onAuthStateChanged(async user => {
-    // If the URL still contains a magic link oobCode, wait — completeMagicLink() will
-    // sign in and re-trigger this handler with the correct installer session.
-    if (auth.isSignInWithEmailLink(window.location.href)) return;
-
-    if (!user) {
-        showNoAccess('Access your portal using the link sent to your email.');
-        return;
-    }
-
-    // User is signed in. Refresh token before any Firestore queries.
+// Reload / existing session path: onAuthStateChanged handles users who are
+// already signed in (e.g. page refresh). Ignored during magic link sign-in.
+// Shared routing logic — called from onAuthStateChanged (reload path)
+// and directly from completeMagicLink (magic link path).
+async function handleSignedInUser(user) {
     await user.getIdToken(true).catch(() => {});
-
     try {
-        // Admin or active management users get installer preview mode
         const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
         const isAdmin   = user.uid === ADMIN_UID;
         const mgmtSnap  = isAdmin ? null : await db.collection('management_users').doc(user.uid).get();
@@ -990,17 +983,28 @@ auth.onAuthStateChanged(async user => {
         if (isMgmt) {
             const previewId = new URLSearchParams(window.location.search).get('preview');
             if (previewId) loadPortalAsInstaller(previewId);
-            else {
-                // Management users must use an explicit ?preview=installerId link.
-                // Do NOT sign out — that would kill their session on other tabs.
-                showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
-            }
+            else showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
         } else {
             loadPortal(user);
         }
     } catch(e) {
         loadPortal(user);
     }
+}
+
+auth.onAuthStateChanged(async user => {
+    if (_magicLinkInProgress) return;
+
+    if (!user) {
+        // Only show access error if this isn't a magic link page
+        // (confirm screen is already showing in that case)
+        if (!auth.isSignInWithEmailLink(window.location.href)) {
+            showNoAccess('Access your portal using the link sent to your email.');
+        }
+        return;
+    }
+
+    await handleSignedInUser(user);
 });
 
 function resetToUnauthState() {
@@ -1058,13 +1062,20 @@ async function completeMagicLink() {
     const magicLinkUrl = window.location.href;
     window.history.replaceState({}, document.title, window.location.pathname);
 
+    // Block onAuthStateChanged for the entire sign-in operation.
+    // Firebase fires it mid-call with intermediate state; we call
+    // handleSignedInUser directly once sign-in resolves instead.
+    _magicLinkInProgress = true;
     try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         await auth.signInWithEmailLink(email, magicLinkUrl);
         window.localStorage.removeItem('installerEmail');
-        // onAuthStateChanged fires with the installer's session.
-        // URL is already clean so the handler proceeds normally.
+        _magicLinkInProgress = false;
+        const user = auth.currentUser;
+        if (user) await handleSignedInUser(user);
+        else showNoAccess('Sign-in succeeded but session not found. Please try again.');
     } catch(err) {
+        _magicLinkInProgress = false;
         window.localStorage.removeItem('installerEmail');
         showLinkExpiredScreen(email);
     }
@@ -1101,7 +1112,7 @@ function confirmEmail() {
     completeMagicLink();
 }
 
-async function loadPortal(user) {
+async function loadPortal(user, _retry) {
     try {
         // Find installer by uid first, then by email (first login)
         let snap = await db.collection('installers')
@@ -1162,6 +1173,12 @@ async function loadPortal(user) {
             }
         }
     } catch(err) {
+        // permission-denied immediately after sign-in means Firestore's internal
+        // auth listener hasn't propagated the new token yet — refresh and retry once.
+        if (!_retry && err.code === 'permission-denied') {
+            await user.getIdToken(true).catch(() => {});
+            return loadPortal(user, true);
+        }
         showNoAccess('Could not load your portal. Please try again.');
         console.error(err);
     }
