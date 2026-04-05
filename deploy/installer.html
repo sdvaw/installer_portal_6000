@@ -1050,17 +1050,21 @@ async function completeMagicLink() {
         return;
     }
 
+    // Save the magic link URL then immediately clean it from the address bar.
+    // This must happen BEFORE signInWithEmailLink because Firebase fires
+    // onAuthStateChanged DURING that call — if the oobCode is still in the URL
+    // at that moment, our handler bails out thinking it's an unconsumed link,
+    // the URL then gets cleaned, and nothing ever fires again (portal hangs).
+    const magicLinkUrl = window.location.href;
+    window.history.replaceState({}, document.title, window.location.pathname);
+
     try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        await auth.signInWithEmailLink(email, window.location.href);
+        await auth.signInWithEmailLink(email, magicLinkUrl);
         window.localStorage.removeItem('installerEmail');
-        window.history.replaceState({}, document.title, window.location.pathname);
-        // Do NOT call loadPortal here. onAuthStateChanged will fire once Firebase Auth
-        // AND the Firestore SDK have both registered the new session — that's when
-        // Firestore queries will actually work.
+        // onAuthStateChanged fires with the installer's session.
+        // URL is already clean so the handler proceeds normally.
     } catch(err) {
-        // Clear stale oobCode from URL so a page refresh won't re-trigger this flow
-        window.history.replaceState({}, document.title, window.location.pathname);
         window.localStorage.removeItem('installerEmail');
         showLinkExpiredScreen(email);
     }
