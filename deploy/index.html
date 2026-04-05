@@ -68,10 +68,10 @@ auth.onAuthStateChanged(user => {
             showDashboard();
         }
     } else if (user) {
-        // Non-admin signed in (e.g. installer tested in same browser) — always eject
+        // Non-admin signed in — show login without signing out (signOut would kill other portal sessions)
         clearInterval(window._tokenRefreshInterval);
         _dashboardActive = false;
-        auth.signOut().then(() => showLogin('This account does not have admin access.'));
+        showLogin('This account does not have admin access.');
     } else if (!_dashboardActive) {
         // No user and dashboard never shown — show login
         clearInterval(window._tokenRefreshInterval);
@@ -141,15 +141,17 @@ function showLogin(errorMsg) {
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span> Signing in…';
         err.classList.add('hidden');
-        auth.signInWithEmailAndPassword(email, pw).catch((e) => {
-            const msg = (e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
-                ? 'Incorrect email or password. If you use Google to sign in, use the button above.'
-                : 'Login failed: ' + (e.code || e.message);
-            err.textContent = msg;
-            err.classList.remove('hidden');
-            btn.disabled = false;
-            btn.textContent = 'Sign In';
-        });
+        auth.signInWithEmailAndPassword(email, pw)
+            .then(() => { /* onAuthStateChanged handles success */ })
+            .catch((e) => {
+                const msg = (e.code === 'auth/invalid-login-credentials' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found')
+                    ? 'Incorrect email or password. If you use Google to sign in, use the button above.'
+                    : 'Login failed: ' + (e.code || e.message);
+                err.textContent = msg;
+                err.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+            });
     });
 }
 

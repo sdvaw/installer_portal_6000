@@ -1084,11 +1084,25 @@ function confirmEmail() {
 
 async function loadPortal(user) {
     try {
+        // Ensure token is fresh before querying — stale tokens cause permission-denied
+        try { await user.getIdToken(true); } catch(_) {}
+
         // Find installer by uid first, then by email (first login)
-        let snap = await db.collection('installers')
-            .where('firebaseUid', '==', user.uid)
-            .where('status', '==', 'active')
-            .limit(1).get();
+        let snap;
+        try {
+            snap = await db.collection('installers')
+                .where('firebaseUid', '==', user.uid)
+                .where('status', '==', 'active')
+                .limit(1).get();
+        } catch(e) {
+            if (e.code === 'permission-denied') {
+                await user.getIdToken(true);
+                snap = await db.collection('installers')
+                    .where('firebaseUid', '==', user.uid)
+                    .where('status', '==', 'active')
+                    .limit(1).get();
+            } else { throw e; }
+        }
 
         // Guard against stale UIDs: if the UID matches but the email doesn't,
         // clear the stale binding and re-look up by email instead.
