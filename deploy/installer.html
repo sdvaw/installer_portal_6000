@@ -961,15 +961,20 @@ let ewCurrentPhotoSlot = 0;
 // completeMagicLink() just calls signInWithEmailLink and stops; onAuthStateChanged fires
 // once Firebase Auth AND the Firestore SDK have both processed the new session, so all
 // Firestore queries inside loadPortal have a valid token from the very first call.
+// If the URL is a magic link, show the confirm screen immediately — before onAuthStateChanged
+// fires. This handles the case where an admin/management user opens the link while already
+// signed into another portal: we need to complete the installer sign-in, not use their session.
+if (auth.isSignInWithEmailLink(window.location.href)) {
+    showSignInConfirmScreen();
+}
+
 auth.onAuthStateChanged(async user => {
+    // If the URL still contains a magic link oobCode, wait — completeMagicLink() will
+    // sign in and re-trigger this handler with the correct installer session.
+    if (auth.isSignInWithEmailLink(window.location.href)) return;
+
     if (!user) {
-        // No session — if the URL is a magic link show the tap-to-sign-in screen
-        // (prevents email security scanners from consuming the one-time oobCode).
-        if (auth.isSignInWithEmailLink(window.location.href)) {
-            showSignInConfirmScreen();
-        } else {
-            showNoAccess('Access your portal using the link sent to your email.');
-        }
+        showNoAccess('Access your portal using the link sent to your email.');
         return;
     }
 
