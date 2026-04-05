@@ -957,38 +957,46 @@ let ewCurrentPhotoSlot = 0;
 // ============================================================
 // AUTH
 // ============================================================
-if (auth.isSignInWithEmailLink(window.location.href)) {
-    // Show a tap-to-sign-in screen instead of auto-consuming the link on page load.
-    // This prevents email security scanners that pre-fetch URLs from consuming the
-    // one-time oobCode before the real user arrives.
-    showSignInConfirmScreen();
-} else {
-    auth.onAuthStateChanged(async user => {
-        if (!user) { showNoAccess('Access your portal using the link sent to your email.'); return; }
-        // Refresh token before any Firestore queries — prevents stale-token permission errors on reload
-        await user.getIdToken(true).catch(() => {});
-        try {
-            // Admin or active management users get installer preview mode
-            const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
-            const isAdmin   = user.uid === ADMIN_UID;
-            const mgmtSnap  = isAdmin ? null : await db.collection('management_users').doc(user.uid).get();
-            const isMgmt    = isAdmin || (mgmtSnap && mgmtSnap.exists && mgmtSnap.data().status === 'active');
-            if (isMgmt) {
-                const previewId = new URLSearchParams(window.location.search).get('preview');
-                if (previewId) loadPortalAsInstaller(previewId);
-                else {
-                    // Management users must use an explicit ?preview=installerId link.
-                    // Do NOT sign out — that would kill their session on other tabs (admin/reports).
-                    showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
-                }
-            } else {
-                loadPortal(user);
+// Always register onAuthStateChanged — this is the single entry point for all auth states.
+// completeMagicLink() just calls signInWithEmailLink and stops; onAuthStateChanged fires
+// once Firebase Auth AND the Firestore SDK have both processed the new session, so all
+// Firestore queries inside loadPortal have a valid token from the very first call.
+auth.onAuthStateChanged(async user => {
+    if (!user) {
+        // No session — if the URL is a magic link show the tap-to-sign-in screen
+        // (prevents email security scanners from consuming the one-time oobCode).
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            showSignInConfirmScreen();
+        } else {
+            showNoAccess('Access your portal using the link sent to your email.');
+        }
+        return;
+    }
+
+    // User is signed in. Refresh token before any Firestore queries.
+    await user.getIdToken(true).catch(() => {});
+
+    try {
+        // Admin or active management users get installer preview mode
+        const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
+        const isAdmin   = user.uid === ADMIN_UID;
+        const mgmtSnap  = isAdmin ? null : await db.collection('management_users').doc(user.uid).get();
+        const isMgmt    = isAdmin || (mgmtSnap && mgmtSnap.exists && mgmtSnap.data().status === 'active');
+        if (isMgmt) {
+            const previewId = new URLSearchParams(window.location.search).get('preview');
+            if (previewId) loadPortalAsInstaller(previewId);
+            else {
+                // Management users must use an explicit ?preview=installerId link.
+                // Do NOT sign out — that would kill their session on other tabs.
+                showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
             }
-        } catch(e) {
+        } else {
             loadPortal(user);
         }
-    });
-}
+    } catch(e) {
+        loadPortal(user);
+    }
+});
 
 function resetToUnauthState() {
     document.querySelectorAll('.installer-page').forEach(p => {
@@ -1039,10 +1047,12 @@ async function completeMagicLink() {
 
     try {
         await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-        const result = await auth.signInWithEmailLink(email, window.location.href);
+        await auth.signInWithEmailLink(email, window.location.href);
         window.localStorage.removeItem('installerEmail');
         window.history.replaceState({}, document.title, window.location.pathname);
-        loadPortal(result.user);
+        // Do NOT call loadPortal here. onAuthStateChanged will fire once Firebase Auth
+        // AND the Firestore SDK have both registered the new session — that's when
+        // Firestore queries will actually work.
     } catch(err) {
         // Clear stale oobCode from URL so a page refresh won't re-trigger this flow
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -1084,25 +1094,11 @@ function confirmEmail() {
 
 async function loadPortal(user) {
     try {
-        // Ensure token is fresh before querying — stale tokens cause permission-denied
-        try { await user.getIdToken(true); } catch(_) {}
-
         // Find installer by uid first, then by email (first login)
-        let snap;
-        try {
-            snap = await db.collection('installers')
-                .where('firebaseUid', '==', user.uid)
-                .where('status', '==', 'active')
-                .limit(1).get();
-        } catch(e) {
-            if (e.code === 'permission-denied') {
-                await user.getIdToken(true);
-                snap = await db.collection('installers')
-                    .where('firebaseUid', '==', user.uid)
-                    .where('status', '==', 'active')
-                    .limit(1).get();
-            } else { throw e; }
-        }
+        let snap = await db.collection('installers')
+            .where('firebaseUid', '==', user.uid)
+            .where('status', '==', 'active')
+            .limit(1).get();
 
         // Guard against stale UIDs: if the UID matches but the email doesn't,
         // clear the stale binding and re-look up by email instead.
@@ -1530,9 +1526,13 @@ async function renderSchedule() {
             if (e.code === 'permission-denied' && auth.currentUser) {
                 await auth.currentUser.getIdToken(true);
                 try { jobs = await fetchWeekJobs(weekOffset); }
-                catch(e2) { throw new Error('jobs query: ' + e2.message); }
+                catch(e2) {
+                    const uid = auth.currentUser?.uid || 'no-user';
+                    throw new Error(`jobs query: ${e2.message} [uid:${uid}]`);
+                }
             } else {
-                throw new Error('jobs query: ' + e.message);
+                const uid = auth.currentUser?.uid || 'no-user';
+                throw new Error(`jobs query: ${e.message} [uid:${uid}, code:${e.code}]`);
             }
         }
 
