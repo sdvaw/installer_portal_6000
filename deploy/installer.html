@@ -626,6 +626,7 @@
   <div class="flex items-center gap-2">
     <span class="text-sm" style="font-weight:600;color:var(--text)" id="nav-installer-name"></span>
     <button class="btn btn-ghost btn-sm" id="tut-help-btn" onclick="startTutorial()" title="Replay tutorial" style="font-size:1.1rem;padding:.3rem .55rem;line-height:1">?</button>
+    <button class="btn btn-ghost btn-sm" id="lang-toggle" onclick="toggleLang()" style="font-size:.75rem;padding:.3rem .55rem;letter-spacing:.03em;font-weight:700">EN | ES</button>
     <button class="btn btn-ghost btn-sm" id="nav-logout-btn" onclick="handleLogout()">Logout</button>
   </div>
 </nav>
@@ -676,6 +677,7 @@
       <button class="btn btn-secondary w-full" style="font-size:.95rem;padding:.85rem" onclick="jasViewDetails()">📋 View Details</button>
       <button class="btn btn-primary w-full btn-start-job" style="font-size:.95rem;padding:.85rem" onclick="jasStartJob()">📷 Start Job</button>
       <button class="btn btn-secondary w-full btn-inventory" style="font-size:.95rem;padding:.85rem" onclick="jasInventory()">📦 Receive Inventory</button>
+      <button class="btn btn-ghost w-full btn-inv-override" style="font-size:.9rem;padding:.75rem;display:none;border:1px solid #f97316;color:#f97316" onclick="jasOverride()">🔓 Override Inventory Block</button>
     </div>
     <button class="btn btn-ghost w-full mt-3" style="color:var(--muted)" onclick="closeModal()">Cancel</button>
   </div>
@@ -903,6 +905,542 @@
 // ARMOR VUE INSTALLER PORTAL — Phase 3
 // ============================================================
 
+// ============================================================
+// i18n — EN / ES
+// ============================================================
+const STRINGS = {
+  en: {
+    // Auth
+    loading_portal:        'Loading your portal…',
+    access_via_email:      'Access your portal using the link sent to your email.',
+    link_ready:            'Your sign-in link is ready. Tap the button below to access your portal.',
+    sign_in_btn:           'Sign In to Portal →',
+    enter_email_prompt:    'Enter the email address this link was sent to.',
+    email_invalid:         'Please enter your full email address (e.g. name@gmail.com).',
+    continue_btn:          'Continue',
+    link_expired_title:    'This link has already been used or has expired.',
+    send_new_link:         'Send Me a New Link',
+    session_not_found:     'Sign-in succeeded but session not found. Please try again.',
+    mgmt_no_access:        'This portal is for installers only. Use the magic link sent to your email to access your account.',
+    account_not_active:    'Your account is not active. Contact your administrator.',
+    portal_load_error:     'Could not load your portal. Please try again.',
+    // Nav
+    logout:                'Logout',
+    nav_schedule:          'Schedule',
+    nav_daysoff:           'Days Off',
+    nav_inspections:       'Inspections/Quality',
+    nav_earnings:          'Earnings',
+    nav_docs:              'Docs',
+    logged_in_as:          'Logged in as',
+    // Schedule
+    week_pay:              'Week Pay',
+    this_week:             'This Week',
+    today_label:           '— Today',
+    btn_prev:              '← Prev',
+    btn_next:              'Next →',
+    btn_today:             '↩ Today',
+    no_jobs_day:           'No jobs scheduled',
+    job_singular:          '{n} job',
+    job_plural:            '{n} jobs',
+    could_not_load_sched:  'Could not load schedule: {err}',
+    doc_attention:         '{n} document{s} need{s2} attention — tap to view',
+    // Job action sheet
+    view_details:          'View Details',
+    start_job:             '📷 Start Job',
+    receive_inventory:     'Receive Inventory',
+    cancel:                'Cancel',
+    receive_product_first: '🔒 Receive Product First',
+    receive_before_start:  'Receive product before starting the job',
+    inv_override_btn:      '🔓 Override Inventory Block',
+    inv_override_confirm:  'Allow this installer to start without receiving any inventory?',
+    inv_override_granted:  'Override granted — installer can now start',
+    inv_received_of:       '{n} of {total} received',
+    // Job detail
+    job_label:             'Job',
+    phone_label:           'Phone',
+    date_label:            'Date',
+    time_label:            'Time',
+    windows_label:         'Windows',
+    doors_label:           'Doors',
+    sliders_label:         'Sliders',
+    balance_due:           'Balance Due',
+    payment_label:         'Payment',
+    your_pay:              'Your Pay',
+    job_notes:             'Job Notes',
+    open_in_maps:          '📍 Open in Maps',
+    office_comments:       'Office Comments',
+    start_photos:          'Start Photos',
+    pre_existing:          'Pre-existing Conditions',
+    job_modules:           'Job Modules',
+    progress_photos:       'Progress Photos',
+    progress_photos_meta:  'Openings, photo capture & defects',
+    coc_label:             'Certificate of Completion',
+    signed_label:          '✓ Signed',
+    not_signed:            'Not yet signed',
+    walkthrough_label:     'Walkthrough Checklist',
+    extra_work_label:      'Extra Work Requests',
+    loading_ellipsis:      'Loading…',
+    start_job_btn:         '▶ Start Job',
+    change_btn:            'Change',
+    status_label:          'Status',
+    no_comments:           'No office comments.',
+    back_btn:              '← Back',
+    // Status picker
+    update_job_status:     'Update Job Status',
+    save_status:           'Save Status',
+    requires_sigs:         'Requires walkthrough & COC to be signed',
+    reason_required:       'Reason (required)',
+    reason_not_complete:   'Describe why the job is not complete…',
+    amount_collected:      'Amount Collected ($)',
+    enter_amount:          'Enter amount collected',
+    // Validation
+    alert_complete_sigs:   'Please complete the Walkthrough Checklist and Certificate of Completion before marking this job as complete.',
+    alert_enter_reason:    'Please enter a reason before saving.',
+    alert_enter_amount:    'Please enter the amount collected before saving.',
+    alert_status_error:    'Could not update status: {err}',
+    alert_please_sign:     'Please sign before saving.',
+    alert_customer_sign:   'Please have the customer sign before continuing.',
+    alert_upload_failed:   'Upload failed: {err}',
+    alert_submit_error:    'Could not submit request: {err}',
+    alert_select_date:     'Please select a date.',
+    alert_select_status:   'Please select a status.',
+    alert_save_error:      'Could not save: {err}',
+    alert_expiry_required: 'Please enter the expiration date.',
+    // Blackout
+    daysoff_title:         'Days Off Requests',
+    daysoff_info:          'Request dates you are unavailable. Your administrator will be notified.',
+    select_date:           'Select Date',
+    reason_optional:       'Reason (optional)',
+    reason_placeholder:    'e.g. Family commitment',
+    request_dayoff_btn:    'Request Day Off',
+    my_requests:           'My Requests',
+    no_requests:           'No requests yet.',
+    load_requests_error:   'Could not load requests.',
+    // Documents
+    my_documents:          'My Documents',
+    doc_required:          'Required',
+    doc_optional:          'Optional',
+    doc_expires:           'Expires:',
+    doc_verified:          '✓ Verified',
+    doc_awaiting:          'Awaiting verification',
+    doc_view:              'View',
+    doc_replace:           'Replace',
+    doc_upload:            'Upload Document',
+    doc_none_configured:   'No document requirements have been configured yet.',
+    doc_enter_expiry:      'Enter the expiration date on this document.',
+    expiry_date:           'Expiration Date',
+    choose_file:           'Choose File →',
+    uploading:             'Uploading…',
+    doc_status_missing:    'Missing',
+    doc_status_review:     'Pending Review',
+    doc_status_valid:      'Valid',
+    doc_status_expiring:   'Expiring Soon',
+    doc_status_expired:    'Expired',
+    // Defects / Performance
+    my_performance:        'My Performance',
+    kudos_section:         'Kudos & Positive Feedback',
+    complaints_section:    'Complaints & Issues',
+    inspections_section:   'Failed Inspections',
+    defects_section:       'Reported Job Defects',
+    no_kudos:              'No kudos on record yet. Keep up the great work!',
+    kudos_received:        '{n} kudos received',
+    kudos_label:           'Kudos',
+    no_complaints:         'No complaints on record.',
+    major_issue:           '🔴 Major Issue',
+    minor_issue:           '🟡 Minor Issue',
+    no_inspections:        'No failed inspections.',
+    insp_fixed:            'Fixed',
+    insp_not_fixed:        'Not Fixed',
+    insp_pending:          'Pending',
+    reason_label:          'Reason:',
+    fee_label:             'Fee: $',
+    update_status_btn:     'Update Status',
+    mark_status_btn:       'Mark Status',
+    no_defects:            'No job defects reported yet.',
+    insp_update_title:     'Update Inspection Status',
+    status_label2:         'Status',
+    note_label:            'Note',
+    insp_note_placeholder: 'What was done, or why it\'s pending…',
+    save_btn:              'Save',
+    // Earnings
+    earnings_title:        'Earnings Report',
+    from_label:            'From',
+    to_label:              'To',
+    run_report:            'Run Report',
+    no_jobs_range:         'No jobs in this date range.',
+    extra_work_line:       '+ Extra work: {desc}',
+    earnings_error:        'Could not load earnings: {err}',
+    days_suffix:           '{n} days',
+    // COC legal text (use \n for line breaks)
+    coc_agreement:         'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.',
+    // Tutorial — main tour
+    tut_next:              'Next →',
+    tut_back:              '← Back',
+    tut_done:              'Got it ✓',
+    tut_progress:          '{{current}} of {{total}}',
+    tut_welcome_title:     '👋 Welcome to Armor Vue',
+    tut_welcome_desc:      'This quick tour walks you through the app in about 30 seconds. Use the arrows to go forward and back, or click anywhere outside to skip.',
+    tut_weeknav_title:     '📆 Week Navigation',
+    tut_weeknav_desc:      'Use the ‹ and › arrows to move between weeks. The heading shows the week you\'re currently viewing.',
+    tut_daysel_title:      '📅 Day Selector',
+    tut_daysel_desc:       'Tap any day to see your jobs for that day. The number badge shows how many jobs are scheduled. Today is highlighted in blue.',
+    tut_jobs_title:        '🏠 Your Jobs',
+    tut_jobs_desc:         'Jobs for the selected day appear here. Each card shows the job number, customer name, time, and address. <strong>Tap a card</strong> to open it.',
+    tut_start_title:       '▶ Starting a Job',
+    tut_start_desc:        'When you open a job, tap <strong>Start Job</strong>. You\'ll be prompted to take a wide shot of the property and photograph any pre-existing conditions. Enter the amount collected from the customer and you\'re in.',
+    tut_working_title:     '🔧 Working a Job',
+    tut_working_desc:      'Once started, four tools become available on the job screen:<br><br>📷 <strong>Progress Photos</strong> — document your work as you go<br>🚶 <strong>Walkthrough Checklist</strong> — confirm quality checks with the customer<br>✅ <strong>Certificate of Completion</strong> — get customer sign-off when done<br>🔧 <strong>Extra Work Requests</strong> — request approval for anything outside the original scope',
+    tut_complete_title:    '✅ Completing a Job',
+    tut_complete_desc:     'Walk the customer through the <strong>Certificate of Completion</strong>. Rate the job, collect the customer\'s signature, then add your own to close it out. The job status updates automatically.',
+    tut_daysoff_title:     '🗓 Days Off',
+    tut_daysoff_desc:      'Need time off? Submit a date and reason here. Management will be notified and it\'ll be noted on the schedule.',
+    tut_insp_title:        '⚠️ Inspections/Quality',
+    tut_insp_desc:         'This is where you\'ll see any failed inspections and any customer or company concerns.',
+    tut_earnings_title:    '💰 Earnings',
+    tut_earnings_desc:     'View your pay summary for any date range — total jobs completed and earnings broken down by job.',
+    tut_docs_title:        '📄 Documents',
+    tut_docs_desc:         'Upload and manage your required documents here — things like your driver\'s license, insurance, and certifications. If a document is expired or missing you\'ll be notified.',
+    tut_help_title:        '❓ Need a refresher?',
+    tut_help_desc:         'Tap the <strong>?</strong> button in the top bar any time to replay this tour.',
+    // Tutorial — job detail
+    tut_jd_title:          '📋 Your Job Page',
+    tut_jd_desc:           'This is where you\'ll work a job from start to finish. Here\'s a quick rundown of how it all flows.',
+    tut_jd_details_title:  '📍 Job Details',
+    tut_jd_details_desc:   'Customer name, address, time, product count, balance due, and your pay are all here. Tap the address to open it in Maps.',
+    tut_jd_product_title:  '📦 Receive Product First',
+    tut_jd_product_desc:   'Before you can start a job, you may need to confirm product receipt. When you tap a job card on the schedule you\'ll see a <strong>Receive Inventory</strong> button if product is assigned. Confirm it before heading to site — <strong>Start Job</strong> won\'t unlock until that\'s done.',
+    tut_jd_startjob_title: '▶ Start Job',
+    tut_jd_startjob_desc:  'Once product is received, tap <strong>Start Job</strong>. You\'ll take exterior photos of the property and document any pre-existing conditions before work begins.',
+    tut_jd_tools_title:    '🔧 Once Started',
+    tut_jd_tools_desc:     'Four tools unlock on this page:<br><br>📷 <strong>Progress Photos</strong> — photo each opening as you install<br>🚶 <strong>Walkthrough Checklist</strong> — walk the customer through a quality check<br>✅ <strong>Certificate of Completion</strong> — collect the customer\'s signature to close out<br>🔧 <strong>Extra Work Requests</strong> — flag anything outside the original scope for approval',
+    tut_jd_close_title:    '✅ Closing Out',
+    tut_jd_close_desc:     'Complete the <strong>Certificate of Completion</strong> last — it captures the customer\'s signature and your sign-off, and locks the job as done.',
+    // Tutorial — progress photos
+    tut_pp_title:          '📷 Progress Photos',
+    tut_pp_desc:           'This is where you document your installation opening by opening.',
+    tut_pp_add_title:      '➕ Add an Opening',
+    tut_pp_add_desc:       'Tap <strong>+ Add Opening</strong> to register each window, door, or slider you\'re installing. Add one for each unit on the job.',
+    tut_pp_list_title:     '📋 Opening List',
+    tut_pp_list_desc:      'Each opening you add appears here. Tap one to open the photo wizard — you\'ll work through the required shots one by one (before install, during, and final).',
+    tut_pp_issues_title:   '⚠️ Reporting Issues',
+    tut_pp_issues_desc:    'Inside each opening you can also report a defect if something is wrong with the unit — damaged, missing, wrong specs, etc. That gets flagged to the office automatically.',
+    // Tutorial — walkthrough
+    tut_wf_title:          '🚶 Walkthrough Checklist',
+    tut_wf_desc:           'Do this with the customer present before you close out. Walk them through each quality item and confirm it together.',
+    tut_wf_check_title:    '✅ Check Off Each Item',
+    tut_wf_check_desc:     'Tap each circle to mark it done. Work through the full list with the customer — every item needs to be acknowledged before you can continue.',
+    tut_wf_sigs_title:     '✍️ Signatures',
+    tut_wf_sigs_desc:      'Once the checklist is complete, you\'ll collect the <strong>customer\'s signature</strong> first, then add <strong>your own</strong> to sign off. Both are required.',
+    // Tutorial — COC
+    tut_coc_title:         '✅ Certificate of Completion',
+    tut_coc_desc:          'This is the final step to close out a job. Do this with the customer present.',
+    tut_coc_rate_title:    '⭐ Step 1 — Rate the Job',
+    tut_coc_rate_desc:     'Start by rating the product quality, sales experience, and installation. These ratings help us improve.',
+    tut_coc_agree_title:   '📄 Step 2 — Agreement & Summary',
+    tut_coc_agree_desc:    'The customer reviews the completion agreement and a summary of the work done.',
+    tut_coc_sigs_title:    '✍️ Step 3 — Signatures',
+    tut_coc_sigs_desc:     'The customer signs first, then you add your signature. Once both are captured the job is locked as complete and the status updates automatically.',
+    // Tutorial — extra work
+    tut_ew_title:          '🔧 Extra Work Requests',
+    tut_ew_desc:           'Use this if you discover work that\'s outside the original scope — additional damage, extra units, anything that wasn\'t in the original job.',
+    tut_ew_submit_title:   '➕ Submit a Request',
+    tut_ew_submit_desc:    'Tap <strong>+ New Request</strong> to describe what\'s needed, add photos if you have them, and enter the amount. The office will review and approve, deny, or counter.',
+    tut_ew_wait_title:     '⏳ Waiting on Approval',
+    tut_ew_wait_desc:      'Once submitted, your request shows as <strong>Pending</strong>. If management counters with a different amount, you\'ll be able to accept or decline it here.',
+  },
+  es: {
+    // Auth
+    loading_portal:        'Cargando su portal…',
+    access_via_email:      'Acceda a su portal usando el enlace enviado a su correo.',
+    link_ready:            'Su enlace está listo. Toque el botón para acceder a su portal.',
+    sign_in_btn:           'Ingresar al Portal →',
+    enter_email_prompt:    'Ingrese el correo al que se envió este enlace.',
+    email_invalid:         'Por favor ingrese su correo completo (ej. nombre@gmail.com).',
+    continue_btn:          'Continuar',
+    link_expired_title:    'Este enlace ya fue usado o ha expirado.',
+    send_new_link:         'Enviarme un Nuevo Enlace',
+    session_not_found:     'Sesión iniciada pero no encontrada. Por favor intente de nuevo.',
+    mgmt_no_access:        'Este portal es solo para instaladores. Use el enlace enviado a su correo.',
+    account_not_active:    'Su cuenta no está activa. Contacte a su administrador.',
+    portal_load_error:     'Error al cargar su portal. Por favor intente de nuevo.',
+    // Nav
+    logout:                'Cerrar Sesión',
+    nav_schedule:          'Horario',
+    nav_daysoff:           'Días Libres',
+    nav_inspections:       'Inspecciones/Calidad',
+    nav_earnings:          'Ganancias',
+    nav_docs:              'Docs',
+    logged_in_as:          'Conectado como',
+    // Schedule
+    week_pay:              'Pago Semanal',
+    this_week:             'Esta Semana',
+    today_label:           '— Hoy',
+    btn_prev:              '← Ant.',
+    btn_next:              'Sig. →',
+    btn_today:             '↩ Hoy',
+    no_jobs_day:           'Sin trabajos programados',
+    job_singular:          '{n} trabajo',
+    job_plural:            '{n} trabajos',
+    could_not_load_sched:  'Error al cargar horario: {err}',
+    doc_attention:         '{n} documento{s} necesita{s2} atención — toque para ver',
+    // Job action sheet
+    view_details:          'Ver Detalles',
+    start_job:             '📷 Iniciar Trabajo',
+    receive_inventory:     'Recibir Inventario',
+    cancel:                'Cancelar',
+    receive_product_first: '🔒 Recibir Producto Primero',
+    receive_before_start:  'Reciba el producto antes de iniciar el trabajo',
+    inv_override_btn:      '🔓 Omitir Bloqueo de Inventario',
+    inv_override_confirm:  '¿Permitir que el instalador empiece sin recibir ningún inventario?',
+    inv_override_granted:  'Permiso otorgado — el instalador ya puede iniciar',
+    inv_received_of:       '{n} de {total} recibidos',
+    // Job detail
+    job_label:             'Trabajo',
+    phone_label:           'Teléfono',
+    date_label:            'Fecha',
+    time_label:            'Hora',
+    windows_label:         'Ventanas',
+    doors_label:           'Puertas',
+    sliders_label:         'Corredizas',
+    balance_due:           'Saldo Pendiente',
+    payment_label:         'Pago',
+    your_pay:              'Tu Pago',
+    job_notes:             'Notas del Trabajo',
+    open_in_maps:          '📍 Abrir en Mapas',
+    office_comments:       'Comentarios de Oficina',
+    start_photos:          'Fotos de Inicio',
+    pre_existing:          'Condiciones Previas',
+    job_modules:           'Módulos del Trabajo',
+    progress_photos:       'Fotos de Progreso',
+    progress_photos_meta:  'Aperturas, fotos y defectos',
+    coc_label:             'Certificado de Finalización',
+    signed_label:          '✓ Firmado',
+    not_signed:            'Sin firmar',
+    walkthrough_label:     'Lista de Verificación',
+    extra_work_label:      'Solicitudes de Trabajo Extra',
+    loading_ellipsis:      'Cargando…',
+    start_job_btn:         '▶ Iniciar Trabajo',
+    change_btn:            'Cambiar',
+    status_label:          'Estado',
+    no_comments:           'Sin comentarios de oficina.',
+    back_btn:              '← Volver',
+    // Status picker
+    update_job_status:     'Actualizar Estado del Trabajo',
+    save_status:           'Guardar Estado',
+    requires_sigs:         'Requiere lista de verificación y COC firmados',
+    reason_required:       'Motivo (requerido)',
+    reason_not_complete:   'Describa por qué el trabajo no está completo…',
+    amount_collected:      'Monto Cobrado ($)',
+    enter_amount:          'Ingresar monto cobrado',
+    // Validation
+    alert_complete_sigs:   'Complete la Lista de Verificación y el Certificado de Finalización antes de marcar este trabajo como completo.',
+    alert_enter_reason:    'Por favor ingrese un motivo antes de guardar.',
+    alert_enter_amount:    'Por favor ingrese el monto cobrado antes de guardar.',
+    alert_status_error:    'Error al actualizar estado: {err}',
+    alert_please_sign:     'Por favor firme antes de guardar.',
+    alert_customer_sign:   'Por favor haga que el cliente firme antes de continuar.',
+    alert_upload_failed:   'Error al subir: {err}',
+    alert_submit_error:    'Error al enviar solicitud: {err}',
+    alert_select_date:     'Por favor seleccione una fecha.',
+    alert_select_status:   'Por favor seleccione un estado.',
+    alert_save_error:      'Error al guardar: {err}',
+    alert_expiry_required: 'Por favor ingrese la fecha de vencimiento.',
+    // Blackout
+    daysoff_title:         'Solicitudes de Días Libres',
+    daysoff_info:          'Solicite fechas en que no esté disponible. Su administrador será notificado.',
+    select_date:           'Seleccionar Fecha',
+    reason_optional:       'Motivo (opcional)',
+    reason_placeholder:    'ej. Compromiso familiar',
+    request_dayoff_btn:    'Solicitar Día Libre',
+    my_requests:           'Mis Solicitudes',
+    no_requests:           'Sin solicitudes aún.',
+    load_requests_error:   'Error al cargar solicitudes.',
+    // Documents
+    my_documents:          'Mis Documentos',
+    doc_required:          'Requerido',
+    doc_optional:          'Opcional',
+    doc_expires:           'Vence:',
+    doc_verified:          '✓ Verificado',
+    doc_awaiting:          'En espera de verificación',
+    doc_view:              'Ver',
+    doc_replace:           'Reemplazar',
+    doc_upload:            'Subir Documento',
+    doc_none_configured:   'Aún no se han configurado requisitos de documentos.',
+    doc_enter_expiry:      'Ingrese la fecha de vencimiento de este documento.',
+    expiry_date:           'Fecha de Vencimiento',
+    choose_file:           'Elegir Archivo →',
+    uploading:             'Subiendo…',
+    doc_status_missing:    'Faltante',
+    doc_status_review:     'En Revisión',
+    doc_status_valid:      'Válido',
+    doc_status_expiring:   'Por Vencer',
+    doc_status_expired:    'Vencido',
+    // Defects / Performance
+    my_performance:        'Mi Desempeño',
+    kudos_section:         'Reconocimientos y Feedback Positivo',
+    complaints_section:    'Quejas y Problemas',
+    inspections_section:   'Inspecciones Fallidas',
+    defects_section:       'Defectos Reportados',
+    no_kudos:              'Sin reconocimientos aún. ¡Sigue con el gran trabajo!',
+    kudos_received:        '{n} reconocimientos recibidos',
+    kudos_label:           'Reconocimiento',
+    no_complaints:         'Sin quejas en registro.',
+    major_issue:           '🔴 Problema Mayor',
+    minor_issue:           '🟡 Problema Menor',
+    no_inspections:        'Sin inspecciones fallidas.',
+    insp_fixed:            'Corregido',
+    insp_not_fixed:        'No Corregido',
+    insp_pending:          'Pendiente',
+    reason_label:          'Motivo:',
+    fee_label:             'Cargo: $',
+    update_status_btn:     'Actualizar Estado',
+    mark_status_btn:       'Marcar Estado',
+    no_defects:            'Sin defectos de trabajo reportados aún.',
+    insp_update_title:     'Actualizar Estado de Inspección',
+    status_label2:         'Estado',
+    note_label:            'Nota',
+    insp_note_placeholder: 'Qué se hizo o por qué está pendiente…',
+    save_btn:              'Guardar',
+    // Earnings
+    earnings_title:        'Reporte de Ganancias',
+    from_label:            'Desde',
+    to_label:              'Hasta',
+    run_report:            'Generar Reporte',
+    no_jobs_range:         'Sin trabajos en este rango de fechas.',
+    extra_work_line:       '+ Trabajo extra: {desc}',
+    earnings_error:        'Error al cargar ganancias: {err}',
+    days_suffix:           '{n} días',
+    // COC legal text
+    coc_agreement:         'Al firmar este Certificado de Finalización, usted declara estar satisfecho con el producto y la mano de obra realizada.\n\nCon su firma, autoriza a Armor Vue a cobrar el saldo restante del proyecto, actualmente en {AMOUNT}.\n\nLa familia Armor Vue le agradece su confianza y espera que nos considere para cualquier necesidad futura.',
+    // Tutorial — main tour
+    tut_next:              'Siguiente →',
+    tut_back:              '← Atrás',
+    tut_done:              'Entendido ✓',
+    tut_progress:          '{{current}} de {{total}}',
+    tut_welcome_title:     '👋 Bienvenido a Armor Vue',
+    tut_welcome_desc:      'Este recorrido rápido le muestra la app en unos 30 segundos. Use las flechas para avanzar y retroceder, o toque fuera para omitir.',
+    tut_weeknav_title:     '📆 Navegación Semanal',
+    tut_weeknav_desc:      'Use las flechas ‹ y › para moverse entre semanas. El encabezado muestra la semana que está viendo.',
+    tut_daysel_title:      '📅 Selector de Día',
+    tut_daysel_desc:       'Toque cualquier día para ver sus trabajos de ese día. El badge muestra cuántos trabajos hay programados. Hoy aparece resaltado en azul.',
+    tut_jobs_title:        '🏠 Sus Trabajos',
+    tut_jobs_desc:         'Los trabajos del día seleccionado aparecen aquí. Cada tarjeta muestra el número, cliente, hora y dirección. <strong>Toque una tarjeta</strong> para abrirla.',
+    tut_start_title:       '▶ Iniciar un Trabajo',
+    tut_start_desc:        'Cuando abra un trabajo, toque <strong>Iniciar Trabajo</strong>. Se le pedirá tomar fotos exteriores de la propiedad y documentar condiciones previas. Ingrese el monto cobrado al cliente.',
+    tut_working_title:     '🔧 Trabajando',
+    tut_working_desc:      'Una vez iniciado, cuatro herramientas estarán disponibles:<br><br>📷 <strong>Fotos de Progreso</strong> — documente su trabajo paso a paso<br>🚶 <strong>Lista de Verificación</strong> — confirme los puntos de calidad con el cliente<br>✅ <strong>Certificado de Finalización</strong> — obtenga la firma del cliente al terminar<br>🔧 <strong>Solicitudes de Trabajo Extra</strong> — solicite aprobación para trabajo fuera del alcance',
+    tut_complete_title:    '✅ Completar un Trabajo',
+    tut_complete_desc:     'Lleve al cliente por el <strong>Certificado de Finalización</strong>. Evalúe el trabajo, obtenga la firma del cliente y agregue la suya para cerrar. El estado se actualiza automáticamente.',
+    tut_daysoff_title:     '🗓 Días Libres',
+    tut_daysoff_desc:      '¿Necesita tiempo libre? Envíe una fecha y motivo aquí. La administración será notificada.',
+    tut_insp_title:        '⚠️ Inspecciones/Calidad',
+    tut_insp_desc:         'Aquí verá las inspecciones fallidas y cualquier inquietud de clientes o la empresa.',
+    tut_earnings_title:    '💰 Ganancias',
+    tut_earnings_desc:     'Vea su resumen de pagos para cualquier rango de fechas — trabajos completados y ganancias desglosadas por trabajo.',
+    tut_docs_title:        '📄 Documentos',
+    tut_docs_desc:         'Suba y gestione sus documentos requeridos — como licencia de conducir, seguro y certificaciones. Se le notificará si un documento está vencido o faltante.',
+    tut_help_title:        '❓ ¿Necesita repasar?',
+    tut_help_desc:         'Toque el botón <strong>?</strong> en la barra superior para repetir este recorrido.',
+    // Tutorial — job detail
+    tut_jd_title:          '📋 Su Página de Trabajo',
+    tut_jd_desc:           'Aquí trabajará un trabajo de principio a fin. Este es un resumen rápido de cómo fluye todo.',
+    tut_jd_details_title:  '📍 Detalles del Trabajo',
+    tut_jd_details_desc:   'Nombre del cliente, dirección, hora, cantidad de productos, saldo y su pago están aquí. Toque la dirección para abrirla en Mapas.',
+    tut_jd_product_title:  '📦 Recibir Producto Primero',
+    tut_jd_product_desc:   'Antes de iniciar, puede necesitar confirmar la recepción del producto. Si hay producto asignado verá el botón <strong>Recibir Inventario</strong>. Confírmelo antes de ir al sitio — <strong>Iniciar Trabajo</strong> no se desbloqueará hasta entonces.',
+    tut_jd_startjob_title: '▶ Iniciar Trabajo',
+    tut_jd_startjob_desc:  'Una vez recibido el producto, toque <strong>Iniciar Trabajo</strong>. Tomará fotos exteriores y documentará condiciones previas antes de comenzar.',
+    tut_jd_tools_title:    '🔧 Una Vez Iniciado',
+    tut_jd_tools_desc:     'Cuatro herramientas se desbloquean:<br><br>📷 <strong>Fotos de Progreso</strong> — fotografie cada apertura al instalar<br>🚶 <strong>Lista de Verificación</strong> — lleve al cliente por el control de calidad<br>✅ <strong>Certificado de Finalización</strong> — obtenga la firma del cliente para cerrar<br>🔧 <strong>Solicitudes de Trabajo Extra</strong> — marque cualquier trabajo fuera del alcance para aprobación',
+    tut_jd_close_title:    '✅ Cierre del Trabajo',
+    tut_jd_close_desc:     'Complete el <strong>Certificado de Finalización</strong> al final — captura la firma del cliente y la suya, y cierra el trabajo.',
+    // Tutorial — progress photos
+    tut_pp_title:          '📷 Fotos de Progreso',
+    tut_pp_desc:           'Aquí documenta su instalación apertura por apertura.',
+    tut_pp_add_title:      '➕ Agregar una Apertura',
+    tut_pp_add_desc:       'Toque <strong>+ Agregar Apertura</strong> para registrar cada ventana, puerta o corrediza que instala. Agregue una por cada unidad del trabajo.',
+    tut_pp_list_title:     '📋 Lista de Aperturas',
+    tut_pp_list_desc:      'Cada apertura agregada aparece aquí. Toque una para abrir el asistente de fotos — trabajará los encuadres requeridos uno a uno (antes, durante y final).',
+    tut_pp_issues_title:   '⚠️ Reportar Problemas',
+    tut_pp_issues_desc:    'Dentro de cada apertura también puede reportar un defecto si algo está mal con la unidad. Eso se notifica automáticamente a la oficina.',
+    // Tutorial — walkthrough
+    tut_wf_title:          '🚶 Lista de Verificación',
+    tut_wf_desc:           'Haga esto con el cliente presente antes de cerrar. Repase cada punto de calidad juntos.',
+    tut_wf_check_title:    '✅ Marcar Cada Punto',
+    tut_wf_check_desc:     'Toque cada círculo para marcarlo como hecho. Trabaje toda la lista con el cliente — cada punto debe ser reconocido antes de continuar.',
+    tut_wf_sigs_title:     '✍️ Firmas',
+    tut_wf_sigs_desc:      'Una vez completada la lista, obtendrá la <strong>firma del cliente</strong> primero, luego agregará <strong>la suya</strong>. Ambas son requeridas.',
+    // Tutorial — COC
+    tut_coc_title:         '✅ Certificado de Finalización',
+    tut_coc_desc:          'Este es el último paso para cerrar un trabajo. Hágalo con el cliente presente.',
+    tut_coc_rate_title:    '⭐ Paso 1 — Evaluar el Trabajo',
+    tut_coc_rate_desc:     'Comience evaluando la calidad del producto, la experiencia de ventas y la instalación. Estas evaluaciones nos ayudan a mejorar.',
+    tut_coc_agree_title:   '📄 Paso 2 — Acuerdo y Resumen',
+    tut_coc_agree_desc:    'El cliente revisa el acuerdo de finalización y el resumen del trabajo realizado.',
+    tut_coc_sigs_title:    '✍️ Paso 3 — Firmas',
+    tut_coc_sigs_desc:     'El cliente firma primero, luego usted agrega su firma. Una vez capturadas ambas, el trabajo queda cerrado y el estado se actualiza automáticamente.',
+    // Tutorial — extra work
+    tut_ew_title:          '🔧 Solicitudes de Trabajo Extra',
+    tut_ew_desc:           'Úselo si descubre trabajo fuera del alcance original — daños adicionales, unidades extra, cualquier cosa que no estaba en el trabajo original.',
+    tut_ew_submit_title:   '➕ Enviar una Solicitud',
+    tut_ew_submit_desc:    'Toque <strong>+ Nueva Solicitud</strong> para describir lo necesario, agregar fotos y el monto. La oficina revisará y aprobará, rechazará o contraofertará.',
+    tut_ew_wait_title:     '⏳ Esperando Aprobación',
+    tut_ew_wait_desc:      'Una vez enviada, su solicitud aparece como <strong>Pendiente</strong>. Si la administración ofrece un monto diferente, podrá aceptarlo o rechazarlo aquí.',
+  }
+};
+
+let _lang = localStorage.getItem('arv_lang') || 'en';
+
+// t('key') — returns translated string. t('key', {var: val}) — substitutes {var} in string.
+function t(key, vars) {
+    let s = (STRINGS[_lang] || STRINGS.en)[key];
+    if (s === undefined) s = STRINGS.en[key];
+    if (s === undefined) return key;
+    if (vars) Object.entries(vars).forEach(([k, v]) => { s = s.split(`{${k}}`).join(v); });
+    return s;
+}
+
+function toggleLang() {
+    _lang = _lang === 'en' ? 'es' : 'en';
+    localStorage.setItem('arv_lang', _lang);
+    document.documentElement.lang = _lang;
+    const btn = document.getElementById('lang-toggle');
+    if (btn) btn.textContent = _lang === 'es' ? 'ES | EN' : 'EN | ES';
+    // Re-render the current page and static nav
+    renderBottomNav();
+    const active = document.querySelector('.installer-page.active');
+    if (!active) return;
+    const pageId = active.id.replace('page-', '');
+    switch (pageId) {
+        case 'schedule':   renderSchedule();  break;
+        case 'blackout':   renderBlackout();  break;
+        case 'defects':    renderDefects();   break;
+        case 'earnings':   renderEarnings();  break;
+        case 'documents':  renderDocuments(); break;
+        case 'job-detail': if (currentJobId) openJobDetail(currentJobId); break;
+    }
+}
+
+function renderBottomNav() {
+    const map = {
+        'nav-schedule':  'nav_schedule',
+        'nav-blackout':  'nav_daysoff',
+        'nav-defects':   'nav_inspections',
+        'nav-earnings':  'nav_earnings',
+        'nav-documents': 'nav_docs',
+    };
+    Object.entries(map).forEach(([id, key]) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        // Preserve the icon span, replace only the text node
+        const icon = btn.querySelector('.icon');
+        btn.textContent = t(key);
+        if (icon) btn.insertBefore(icon, btn.firstChild);
+    });
+    const logoutBtn = document.getElementById('nav-logout-btn');
+    if (logoutBtn) logoutBtn.textContent = t('logout');
+}
+
 let currentInstaller  = null;
 let isPreviewMode     = false;  // true when management user is previewing an installer's portal
 let weekOffset        = 0;      // 0 = current week, -1 = last, +1 = next
@@ -983,7 +1521,7 @@ async function handleSignedInUser(user) {
         if (isMgmt) {
             const previewId = new URLSearchParams(window.location.search).get('preview');
             if (previewId) loadPortalAsInstaller(previewId);
-            else showNoAccess('This portal is for installers only. Use the magic link sent to your email to access your account.');
+            else showNoAccess(t('mgmt_no_access'));
         } else {
             loadPortal(user);
         }
@@ -999,7 +1537,7 @@ auth.onAuthStateChanged(async user => {
         // Only show access error if this isn't a magic link page
         // (confirm screen is already showing in that case)
         if (!auth.isSignInWithEmailLink(window.location.href)) {
-            showNoAccess('Access your portal using the link sent to your email.');
+            showNoAccess(t('access_via_email'));
         }
         return;
     }
@@ -1026,9 +1564,9 @@ function showSignInConfirmScreen() {
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
             </div>
-            <p class="text-sm text-muted mb-6">Your sign-in link is ready. Tap the button below to access your portal.</p>
+            <p class="text-sm text-muted mb-6">${t('link_ready')}</p>
             <button class="btn btn-primary w-full" id="confirm-signin-btn" onclick="completeMagicLink()">
-                Sign In to Portal →
+                ${t('sign_in_btn')}
             </button>
         </div>`;
     pg.style.display  = 'block';
@@ -1049,7 +1587,7 @@ async function completeMagicLink() {
         }
     }
     if (!email) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Sign In to Portal →'; }
+        if (btn) { btn.disabled = false; btn.textContent = t('sign_in_btn'); }
         showEmailPrompt();
         return;
     }
@@ -1073,7 +1611,7 @@ async function completeMagicLink() {
         _magicLinkInProgress = false;
         const user = auth.currentUser;
         if (user) await handleSignedInUser(user);
-        else showNoAccess('Sign-in succeeded but session not found. Please try again.');
+        else showNoAccess(t('session_not_found'));
     } catch(err) {
         _magicLinkInProgress = false;
         window.localStorage.removeItem('installerEmail');
@@ -1091,12 +1629,12 @@ function showEmailPrompt() {
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
             </div>
-            <p class="text-sm text-muted mb-4">Enter the email address this link was sent to.</p>
+            <p class="text-sm text-muted mb-4">${t('enter_email_prompt')}</p>
             <div class="form-group">
                 <input class="form-input" type="email" id="confirm-email" placeholder="your@email.com" autocomplete="off">
             </div>
             <div id="email-err" class="hidden alert alert-error mb-4"></div>
-            <button class="btn btn-primary w-full" onclick="confirmEmail()">Continue</button>
+            <button class="btn btn-primary w-full" onclick="confirmEmail()">${t('continue_btn')}</button>
         </div>`;
 }
 
@@ -1104,7 +1642,7 @@ function confirmEmail() {
     const email = (document.getElementById('confirm-email').value || '').trim();
     const err   = document.getElementById('email-err');
     if (!email || !email.includes('@')) {
-        err.textContent = 'Please enter your full email address (e.g. name@gmail.com).';
+        err.textContent = t('email_invalid');
         err.classList.remove('hidden');
         return;
     }
@@ -1138,7 +1676,7 @@ async function loadPortal(user, _retry) {
                 .limit(1).get();
 
             if (snap.empty) {
-                showNoAccess('Your account is not active. Contact your administrator.');
+                showNoAccess(t('account_not_active'));
                 return;
             }
             // Bind uid on first login
@@ -1166,6 +1704,11 @@ async function loadPortal(user, _retry) {
             // Show chrome only after we know the installer is ready
             document.getElementById('top-nav').style.display    = '';
             document.getElementById('bottom-nav').style.display = '';
+            // Apply stored language preference to nav labels
+            const _langBtn = document.getElementById('lang-toggle');
+            if (_langBtn) _langBtn.textContent = _lang === 'es' ? 'ES | EN' : 'EN | ES';
+            document.getElementById('nav-logout-btn').textContent = t('logout');
+            renderBottomNav();
             const blocked = await checkComplianceBlock();
             if (!blocked) {
                 showPage('schedule');
@@ -1179,7 +1722,7 @@ async function loadPortal(user, _retry) {
             await user.getIdToken(true).catch(() => {});
             return loadPortal(user, true);
         }
-        showNoAccess('Could not load your portal. Please try again.');
+        showNoAccess(t('portal_load_error'));
         console.error(err);
     }
 }
@@ -1330,8 +1873,8 @@ function showLinkExpiredScreen(knownEmail) {
                 <div class="brand">Armor Vue</div>
                 <div class="sub">Installer Portal</div>
             </div>
-            <div class="alert alert-error mb-4">This link has already been used or has expired.</div>
-            <p class="text-sm text-muted mb-4">Enter your email and we'll send you a fresh one.</p>
+            <div class="alert alert-error mb-4">${t('link_expired_title')}</div>
+            <p class="text-sm text-muted mb-4">${_lang === 'es' ? 'Ingrese su correo y le enviaremos uno nuevo.' : "Enter your email and we'll send you a fresh one."}</p>
             <div class="form-group">
                 <input class="form-input" type="email" id="resend-email"
                     value="${knownEmail || ''}" placeholder="your@email.com" autocomplete="off">
@@ -1339,7 +1882,7 @@ function showLinkExpiredScreen(knownEmail) {
             <div id="resend-err" class="hidden alert alert-error mb-3"></div>
             <div id="resend-ok"  class="hidden alert alert-ok  mb-3"></div>
             <button class="btn btn-primary w-full" id="resend-btn" onclick="resendMagicLink()">
-                Send Me a New Link
+                ${t('send_new_link')}
             </button>
         </div>`;
     pg.style.display = 'block';
@@ -1379,7 +1922,7 @@ async function resendMagicLink() {
         errEl.textContent = 'Could not send link: ' + err.message;
         errEl.classList.remove('hidden');
         btn.disabled = false;
-        btn.textContent = 'Send Me a New Link';
+        btn.textContent = t('send_new_link');
     }
 }
 
@@ -1488,7 +2031,7 @@ async function renderSchedule() {
         });
         const color = isBlocking ? 'var(--bad)' : 'var(--warn, #f59e0b)';
         return `<div onclick="showPage('documents')" style="background:${color};color:#fff;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">
-            ${isBlocking ? '🚫' : '⚠️'} ${issues.length} document${issues.length > 1 ? 's' : ''} need${issues.length === 1 ? 's' : ''} attention — tap to view
+            ${isBlocking ? '🚫' : '⚠️'} ${t('doc_attention', { n: issues.length, s: issues.length > 1 ? 's' : '', s2: issues.length === 1 ? 's' : '' })}
         </div>`;
     })();
 
@@ -1524,21 +2067,21 @@ async function renderSchedule() {
     el.innerHTML = `${complianceBanner}
         <div style="padding:.6rem 1rem .25rem;border-bottom:1px solid var(--hairline);display:flex;align-items:center;justify-content:space-between">
             <div>
-                <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Logged in as</div>
+                <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${t('logged_in_as')}</div>
                 <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${esc(currentInstaller.displayName || '')}${currentInstaller.company ? `<span style="font-size:.8rem;font-weight:400;color:var(--muted);margin-left:.5rem">${esc(currentInstaller.company)}</span>` : ''}</div>
                 <div id="sched-rating-badge" style="${_installerRating && _installerRating.count > 0 ? '' : 'display:none'}">${ratingBadge}</div>
             </div>
             <div id="week-pay-total" style="text-align:right"></div>
         </div>
         <div class="week-nav">
-            <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">← Prev</button>
+            <button class="btn btn-ghost btn-sm" onclick="changeWeek(-1)">${t('btn_prev')}</button>
             <div style="text-align:center">
                 <h2 style="margin:0">${fmtWeek(monday)} – ${fmtWeek(sunday)}</h2>
                 ${weekOffset === 0
-                    ? '<span style="color:var(--accent);font-size:.7rem;font-weight:600">This Week</span>'
-                    : '<button class="btn btn-sm" style="margin-top:.2rem;padding:.15rem .7rem;font-size:.75rem" onclick="goToCurrentWeek()">↩ Today</button>'}
+                    ? `<span style="color:var(--accent);font-size:.7rem;font-weight:600">${t('this_week')}</span>`
+                    : `<button class="btn btn-sm" style="margin-top:.2rem;padding:.15rem .7rem;font-size:.75rem" onclick="goToCurrentWeek()">${t('btn_today')}</button>`}
             </div>
-            <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">Next →</button>
+            <button class="btn btn-ghost btn-sm" onclick="changeWeek(1)">${t('btn_next')}</button>
         </div>
         <div class="week-strip">${chipsHtml}</div>
         <div id="day-selected-label" class="day-selected-label"></div>
@@ -1597,7 +2140,7 @@ async function renderSchedule() {
                         const combined = weekTotal + ewTotal;
                         const payEl = document.getElementById('week-pay-total');
                         if (payEl && combined > 0) {
-                            payEl.innerHTML = `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Week Pay</div>
+                            payEl.innerHTML = `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${t('week_pay')}</div>
                                <div style="font-size:1.1rem;font-weight:700;color:var(--ok)">$${combined.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`;
                         }
                     }
@@ -1606,7 +2149,7 @@ async function renderSchedule() {
         const payEl = document.getElementById('week-pay-total');
         if (payEl) {
             payEl.innerHTML = weekTotal > 0
-                ? `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Week Pay</div>
+                ? `<div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">${t('week_pay')}</div>
                    <div style="font-size:1.1rem;font-weight:700;color:var(--ok)">$${weekTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>`
                 : '';
         }
@@ -1620,13 +2163,13 @@ async function renderSchedule() {
                 return d && d.toDateString() === day.toDateString();
             }).length;
             const el = document.getElementById('chip-count-' + i);
-            if (el) el.textContent = count > 0 ? count + (count === 1 ? ' job' : ' jobs') : '·';
+            if (el) el.textContent = count > 0 ? t(count === 1 ? 'job_singular' : 'job_plural', { n: count }) : '·';
         });
 
         renderSelectedDay();
     } catch(err) {
         const dj = document.getElementById('day-jobs');
-        if (dj) dj.innerHTML = `<div class="alert alert-error">Could not load schedule: ${esc(err.message)}</div>`;
+        if (dj) dj.innerHTML = `<div class="alert alert-error">${t('could_not_load_sched', { err: esc(err.message) })}</div>`;
     }
 }
 
@@ -1644,10 +2187,10 @@ function renderSelectedDay() {
     day.setDate(monday.getDate() + selectedDayOffset);
     const isToday  = day.toDateString() === new Date().toDateString();
     const dateStr  = day.toISOString().slice(0, 10);
-    const dayLabel = day.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const dayLabel = day.toLocaleDateString(_lang === 'es' ? 'es-MX' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
     const labelEl = document.getElementById('day-selected-label');
-    if (labelEl) labelEl.textContent = dayLabel + (isToday ? ' — Today' : '');
+    if (labelEl) labelEl.textContent = dayLabel + (isToday ? t('today_label') : '');
 
     const dayJobs = jobs.filter(j => {
         const d = toDate(j.startDt);
@@ -1658,7 +2201,7 @@ function renderSelectedDay() {
     if (!jobsEl) return;
 
     if (dayJobs.length === 0) {
-        jobsEl.innerHTML = '<p class="no-jobs-day">No jobs scheduled</p>';
+        jobsEl.innerHTML = `<p class="no-jobs-day">${t('no_jobs_day')}</p>`;
         return;
     }
 
@@ -1725,26 +2268,42 @@ function showJobActions(jobId) {
     const startBtn = document.querySelector('#modal-job-actions .btn-start-job');
     if (startBtn) startBtn.style.display = status === 'not_started' ? '' : 'none';
 
-    // Show inventory button only if there are items AND not all received yet
-    const needsWindows = (job.windowCount > 0) && !inv.windows;
-    const needsDoors   = (job.doorCount   > 0) && !inv.doors;
-    const needsSgds    = (job.sgdCount    > 0) && !inv.sgds;
+    // Backward-compat: old records stored a Timestamp; treat any truthy non-number as fully received
+    const rcvW = invReceivedCount(inv.windows);
+    const rcvD = invReceivedCount(inv.doors);
+    const rcvS = invReceivedCount(inv.sgds);
+
+    const hasItemsToReceive = (job.windowCount > 0) || (job.doorCount > 0) || (job.sgdCount > 0);
+    const anyReceived  = rcvW > 0 || rcvD > 0 || rcvS > 0;
+    const override     = !!rec?.inventoryOverride;
+
+    // Show inventory button while any category is still short
+    const needsWindows = (job.windowCount > 0) && rcvW < job.windowCount;
+    const needsDoors   = (job.doorCount   > 0) && rcvD < job.doorCount;
+    const needsSgds    = (job.sgdCount    > 0) && rcvS < job.sgdCount;
     const showInvBtn   = needsWindows || needsDoors || needsSgds;
     const invBtn = document.querySelector('#modal-job-actions .btn-inventory');
     if (invBtn) invBtn.style.display = showInvBtn ? '' : 'none';
 
-    // Block Start Job if product hasn't been received yet
-    const hasItemsToReceive = (job.windowCount > 0) || (job.doorCount > 0) || (job.sgdCount > 0);
-    if (startBtn && status === 'not_started' && hasItemsToReceive && showInvBtn) {
-        startBtn.disabled = true;
-        startBtn.style.opacity = '0.45';
-        startBtn.title = 'Receive product before starting the job';
-        startBtn.textContent = '🔒 Receive Product First';
-    } else if (startBtn) {
-        startBtn.disabled = false;
-        startBtn.style.opacity = '';
-        startBtn.title = '';
-        startBtn.textContent = '📷 Start Job';
+    // Hard block: has items, nothing received yet, no manager override
+    const blockStart = hasItemsToReceive && !anyReceived && !override;
+
+    // Override button: only visible to managers in preview mode when blocked
+    const overrideBtn = document.querySelector('#modal-job-actions .btn-inv-override');
+    if (overrideBtn) overrideBtn.style.display = (blockStart && isPreviewMode) ? '' : 'none';
+
+    if (startBtn && status === 'not_started') {
+        if (blockStart) {
+            startBtn.disabled = true;
+            startBtn.style.opacity = '0.45';
+            startBtn.title = t('receive_before_start');
+            startBtn.textContent = t('receive_product_first');
+        } else {
+            startBtn.disabled = false;
+            startBtn.style.opacity = '';
+            startBtn.title = '';
+            startBtn.textContent = t('start_job');
+        }
     }
 
     showModal('modal-job-actions');
@@ -1765,6 +2324,40 @@ function jasInventory() {
     showInventoryModal(jasCurrentJobId);
 }
 
+function jasOverride() {
+    grantInventoryOverride(jasCurrentJobId);
+}
+
+async function grantInventoryOverride(jobId) {
+    if (!confirm(t('inv_override_confirm'))) return;
+    const mgmtUser   = firebase.auth().currentUser;
+    if (!mgmtUser) { showToast('No manager session.'); return; }
+    const installerId = new URLSearchParams(window.location.search).get('preview');
+    if (!installerId) { showToast('Override only available in preview mode.'); return; }
+    const recordId = `${jobId}_${installerId}`;
+    try {
+        const recRef = db.collection('job_records').doc(recordId);
+        const snap   = await recRef.get();
+        const overrideData = { inventoryOverride: true,
+                               inventoryOverrideBy: mgmtUser.uid,
+                               inventoryOverrideAt: firebase.firestore.FieldValue.serverTimestamp() };
+        if (!snap.exists) {
+            await recRef.set({ jobId, installerId, status: 'not_started',
+                               inventoryReceived: {}, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                               ...overrideData });
+        } else {
+            await recRef.update(overrideData);
+        }
+        if (!jobRecordCache[jobId]) jobRecordCache[jobId] = { status: 'not_started' };
+        jobRecordCache[jobId].inventoryOverride = true;
+        closeModal();
+        showToast(t('inv_override_granted'));
+        showJobActions(jobId);
+    } catch(e) {
+        showToast('Could not grant override: ' + e.message);
+    }
+}
+
 function closeInventoryModal() {
     closeModal();
     if (jasCurrentJobId) showJobActions(jasCurrentJobId);
@@ -1779,11 +2372,10 @@ async function showInventoryModal(jobId) {
     const rec = weekJobsData?.jobRecords?.[jobId] || jobRecordCache[jobId] || {};
     const inv = rec.inventoryReceived || {};
 
-    // Build list of items from job counts
     const items = [];
-    if (job.windowCount > 0) items.push({ key: 'windows', label: `Windows`, count: job.windowCount });
-    if (job.doorCount   > 0) items.push({ key: 'doors',   label: `Doors`,   count: job.doorCount });
-    if (job.sgdCount    > 0) items.push({ key: 'sgds',    label: `Sliders`, count: job.sgdCount });
+    if (job.windowCount > 0) items.push({ key: 'windows', label: t('windows_label'), count: job.windowCount });
+    if (job.doorCount   > 0) items.push({ key: 'doors',   label: t('doors_label'),   count: job.doorCount });
+    if (job.sgdCount    > 0) items.push({ key: 'sgds',    label: t('sliders_label'), count: job.sgdCount });
 
     if (!items.length) {
         contentEl.innerHTML = `<p style="color:var(--muted);font-size:.875rem;text-align:center;padding:1rem 0">
@@ -1797,26 +2389,42 @@ async function showInventoryModal(jobId) {
 
     contentEl.innerHTML = `
         <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
-            Check off each item when picked up. Report any problems before accepting.
+            Tap + to log units received. You can receive the rest on a later visit.
         </p>
-        <div id="inv-items" style="display:flex;flex-direction:column;gap:.75rem">
+        <div style="display:flex;flex-direction:column;gap:.75rem">
             ${items.map(item => {
-                const checked    = !!inv[item.key];
+                const rcv        = invReceivedCount(inv[item.key]);
+                const full       = rcv >= item.count;
                 const itemIssues = issues.filter(i => i.item === item.key);
                 const hasIssue   = itemIssues.length > 0;
+                const border     = hasIssue ? '#f97316' : full ? 'var(--accent)' : rcv > 0 ? '#f59e0b' : 'var(--hairline)';
                 return `
-                <div style="background:var(--surface-2);border-radius:10px;overflow:hidden;
-                            border:2px solid ${hasIssue ? '#f97316' : checked ? 'var(--accent)' : 'var(--hairline)'}">
-                    <label style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;cursor:pointer">
-                        <input type="checkbox" id="inv-${item.key}" ${checked ? 'checked' : ''}
-                               style="width:20px;height:20px;accent-color:var(--accent);flex-shrink:0"
-                               onchange="invToggle('${jobId}', '${item.key}', this)">
+                <div id="inv-row-${item.key}" style="background:var(--surface-2);border-radius:10px;overflow:hidden;border:2px solid ${border}">
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem">
                         <div style="flex:1">
                             <div style="font-weight:600">${item.label}</div>
-                            <div style="font-size:.78rem;color:var(--muted)">${item.count} unit${item.count !== 1 ? 's' : ''}</div>
+                            <div id="inv-label-${item.key}" style="font-size:.78rem;color:var(--muted)">
+                                ${full ? '✓ ' + t('inv_received_of', { n: rcv, total: item.count }) : t('inv_received_of', { n: rcv, total: item.count })}
+                            </div>
                         </div>
-                        <div style="font-size:1.3rem">${checked ? '✅' : '⬜'}</div>
-                    </label>
+                        <div style="display:flex;align-items:center;gap:.5rem">
+                            <button onclick="invAdjust('${jobId}','${item.key}',-1)"
+                                    id="inv-minus-${item.key}"
+                                    ${rcv <= 0 ? 'disabled' : ''}
+                                    style="width:36px;height:36px;border-radius:50%;border:2px solid var(--hairline);
+                                           background:var(--surface);font-size:1.2rem;font-weight:700;
+                                           display:flex;align-items:center;justify-content:center;
+                                           opacity:${rcv <= 0 ? '0.35' : '1'}">−</button>
+                            <span id="inv-count-${item.key}" style="font-size:1.25rem;font-weight:700;min-width:2rem;text-align:center">${rcv}</span>
+                            <button onclick="invAdjust('${jobId}','${item.key}',1)"
+                                    id="inv-plus-${item.key}"
+                                    ${rcv >= item.count ? 'disabled' : ''}
+                                    style="width:36px;height:36px;border-radius:50%;border:2px solid var(--hairline);
+                                           background:var(--surface);font-size:1.2rem;font-weight:700;
+                                           display:flex;align-items:center;justify-content:center;
+                                           opacity:${rcv >= item.count ? '0.35' : '1'}">+</button>
+                        </div>
+                    </div>
                     ${hasIssue ? itemIssues.map(iss => `
                         <div style="padding:.4rem 1rem .5rem;font-size:.78rem;
                                     background:#fff7ed;border-top:1px solid #fed7aa;color:#9a3412">
@@ -1831,56 +2439,75 @@ async function showInventoryModal(jobId) {
                 </div>`;
             }).join('')}
         </div>
-        <button class="btn btn-ghost w-full mt-3" style="color:var(--muted)" onclick="closeModal()">Done</button>
+        <button class="btn btn-ghost w-full mt-3" style="color:var(--muted)" onclick="closeInventoryModal()">Done</button>
     `;
 }
 
-async function invToggle(jobId, key, checkbox) {
-    const label = checkbox.closest('label');
-    const checked = checkbox.checked;
+// Returns numeric count of received units, handling old Timestamp-based records (backward compat)
+function invReceivedCount(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    return Infinity; // old record stored a Timestamp — treat as fully received
+}
 
-    // Update visual immediately
-    label.style.borderColor = checked ? 'var(--accent)' : 'var(--hairline)';
-    label.querySelector('div:last-child').textContent = checked ? '✅' : '⬜';
+async function invAdjust(jobId, key, delta) {
+    if (!currentInstaller?.id) { showToast('No installer session.'); return; }
+    const job   = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+    const total = key === 'windows' ? job.windowCount : key === 'doors' ? job.doorCount : job.sgdCount;
 
-    // Save to Firestore — record ID is jobId_installerId
-    if (!currentInstaller?.id) { showToast('No installer session.'); checkbox.checked = !checked; return; }
-    const recordId = `${jobId}_${currentInstaller.id}`;
+    const inv     = jobRecordCache[jobId]?.inventoryReceived || {};
+    const current = invReceivedCount(inv[key]);
+    if (current === Infinity) return; // old record, don't mutate
+    const newVal  = Math.max(0, Math.min(total, current + delta));
+    if (newVal === current) return;
+
+    // Update DOM immediately
+    const countEl = document.getElementById(`inv-count-${key}`);
+    const labelEl = document.getElementById(`inv-label-${key}`);
+    const rowEl   = document.getElementById(`inv-row-${key}`);
+    const minusEl = document.getElementById(`inv-minus-${key}`);
+    const plusEl  = document.getElementById(`inv-plus-${key}`);
+    if (countEl) countEl.textContent = newVal;
+    if (labelEl) labelEl.textContent = t('inv_received_of', { n: newVal, total });
+    if (rowEl)   rowEl.style.borderColor = newVal >= total ? 'var(--accent)' : newVal > 0 ? '#f59e0b' : 'var(--hairline)';
+    if (minusEl) { minusEl.disabled = newVal <= 0;    minusEl.style.opacity = newVal <= 0    ? '0.35' : '1'; }
+    if (plusEl)  { plusEl.disabled  = newVal >= total; plusEl.style.opacity  = newVal >= total ? '0.35' : '1'; }
 
     try {
-        const recRef = db.collection('job_records').doc(recordId);
-        // Create doc if it doesn't exist yet (inventory can be received before starting the job)
-        const snap = await recRef.get();
-        const update = { [`inventoryReceived.${key}`]: checked ? new Date() : firebase.firestore.FieldValue.delete(),
-                         updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+        const recordId = `${jobId}_${currentInstaller.id}`;
+        const recRef   = db.collection('job_records').doc(recordId);
+        const snap     = await recRef.get();
         if (!snap.exists) {
             await recRef.set({ jobId, installerId: currentInstaller.id, status: 'not_started',
                                inventoryReceived: {}, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
         }
-        await recRef.update(update);
-        // Refresh local cache
+        const fsVal = newVal > 0 ? newVal : firebase.firestore.FieldValue.delete();
+        await recRef.update({ [`inventoryReceived.${key}`]: fsVal,
+                              updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+        // Update cache
         if (!jobRecordCache[jobId]) jobRecordCache[jobId] = { status: 'not_started' };
         if (!jobRecordCache[jobId].inventoryReceived) jobRecordCache[jobId].inventoryReceived = {};
-        if (checked) jobRecordCache[jobId].inventoryReceived[key] = new Date();
+        if (newVal > 0) jobRecordCache[jobId].inventoryReceived[key] = newVal;
         else delete jobRecordCache[jobId].inventoryReceived[key];
 
-        // If all items are now received, close and celebrate
-        if (checked) {
-            const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
-            const updatedInv = jobRecordCache[jobId].inventoryReceived;
-            const allDone = (!(job.windowCount > 0) || updatedInv.windows)
-                         && (!(job.doorCount   > 0) || updatedInv.doors)
-                         && (!(job.sgdCount    > 0) || updatedInv.sgds);
-            if (allDone) {
-                closeInventoryModal();
-                showToast('All inventory received ✅');
-            }
+        // Close and toast when all categories fully received
+        const updInv = jobRecordCache[jobId].inventoryReceived;
+        const allDone = (!(job.windowCount > 0) || invReceivedCount(updInv.windows) >= job.windowCount)
+                     && (!(job.doorCount   > 0) || invReceivedCount(updInv.doors)   >= job.doorCount)
+                     && (!(job.sgdCount    > 0) || invReceivedCount(updInv.sgds)    >= job.sgdCount);
+        if (allDone) {
+            closeInventoryModal();
+            showToast('All inventory received ✅');
         }
     } catch(e) {
         showToast('Could not save: ' + e.message);
-        checkbox.checked = !checked;
-        label.style.borderColor = !checked ? 'var(--accent)' : 'var(--hairline)';
-        label.querySelector('div:last-child').textContent = !checked ? '✅' : '⬜';
+        // Revert DOM
+        if (countEl) countEl.textContent = current;
+        if (labelEl) labelEl.textContent = t('inv_received_of', { n: current, total });
+        if (rowEl)   rowEl.style.borderColor = current >= total ? 'var(--accent)' : current > 0 ? '#f59e0b' : 'var(--hairline)';
+        if (minusEl) { minusEl.disabled = current <= 0;    minusEl.style.opacity = current <= 0    ? '0.35' : '1'; }
+        if (plusEl)  { plusEl.disabled  = current >= total; plusEl.style.opacity  = current >= total ? '0.35' : '1'; }
     }
 }
 
@@ -2038,7 +2665,7 @@ function renderJobDetail(job, rec, recId) {
                 </div>
                 ${esc(c.message)}
             </div>`).join('')
-        : '<p class="text-muted text-sm">No office comments.</p>';
+        : `<p class="text-muted text-sm">${t('no_comments')}</p>`;
 
     el.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -2057,39 +2684,39 @@ function renderJobDetail(job, rec, recId) {
         <div class="detail-section" id="jd-details">
             <h3>Details</h3>
             ${job.address ? `<div class="detail-row"><span class="lbl">Address</span><span>${esc(job.address.replace(/\n/g,' '))}</span></div>` : ''}
-            ${job.customerPhone ? `<div class="detail-row"><span class="lbl">Phone</span><a href="tel:${esc(job.customerPhone)}" style="color:var(--accent)">${esc(job.customerPhone)}</a></div>` : ''}
-            <div class="detail-row"><span class="lbl">Date</span><span>${dateStr}</span></div>
-            <div class="detail-row"><span class="lbl">Time</span><span>${timeStr}</span></div>
-            ${job.windowCount != null ? `<div class="detail-row"><span class="lbl">Windows</span><span>${job.windowCount}</span></div>` : ''}
-            ${job.doorCount   != null ? `<div class="detail-row"><span class="lbl">Doors</span><span>${job.doorCount}</span></div>` : ''}
-            ${job.sgdCount    != null ? `<div class="detail-row"><span class="lbl">Sliders</span><span>${job.sgdCount}</span></div>` : ''}
-            ${job.financials?.balanceDue ? `<div class="detail-row"><span class="lbl">Balance Due</span><span>$${esc(job.financials.balanceDue)}</span></div>` : ''}
-            ${job.financials?.paymentMethod ? `<div class="detail-row"><span class="lbl">Payment</span><span>${esc(job.financials.paymentMethod)}</span></div>` : ''}
+            ${job.customerPhone ? `<div class="detail-row"><span class="lbl">${t('phone_label')}</span><a href="tel:${esc(job.customerPhone)}" style="color:var(--accent)">${esc(job.customerPhone)}</a></div>` : ''}
+            <div class="detail-row"><span class="lbl">${t('date_label')}</span><span>${dateStr}</span></div>
+            <div class="detail-row"><span class="lbl">${t('time_label')}</span><span>${timeStr}</span></div>
+            ${job.windowCount != null ? `<div class="detail-row"><span class="lbl">${t('windows_label')}</span><span>${job.windowCount}</span></div>` : ''}
+            ${job.doorCount   != null ? `<div class="detail-row"><span class="lbl">${t('doors_label')}</span><span>${job.doorCount}</span></div>` : ''}
+            ${job.sgdCount    != null ? `<div class="detail-row"><span class="lbl">${t('sliders_label')}</span><span>${job.sgdCount}</span></div>` : ''}
+            ${job.financials?.balanceDue ? `<div class="detail-row"><span class="lbl">${t('balance_due')}</span><span>$${esc(job.financials.balanceDue)}</span></div>` : ''}
+            ${job.financials?.paymentMethod ? `<div class="detail-row"><span class="lbl">${t('payment_label')}</span><span>${esc(job.financials.paymentMethod)}</span></div>` : ''}
             ${job.financials?.installerPay && parseFloat(job.financials.installerPay) > 0
-                ? `<div class="detail-row"><span class="lbl">Your Pay</span><span style="color:var(--ok);font-weight:700">$${esc(job.financials.installerPay)}</span></div>`
+                ? `<div class="detail-row"><span class="lbl">${t('your_pay')}</span><span style="color:var(--ok);font-weight:700">$${esc(job.financials.installerPay)}</span></div>`
                 : ''}
         </div>
 
         ${job.notes ? `
         <div class="detail-section">
-            <h3>Job Notes</h3>
+            <h3>${t('job_notes')}</h3>
             <div class="detail-notes">${esc(job.notes)}</div>
         </div>` : ''}
 
         ${job.address ? `
         <div class="detail-section">
             <a href="https://maps.google.com/?q=${encodeURIComponent(job.address)}" target="_blank"
-               class="btn btn-secondary w-full">📍 Open in Maps</a>
+               class="btn btn-secondary w-full">${t('open_in_maps')}</a>
         </div>` : ''}
 
         <div class="detail-section">
-            <h3>Office Comments</h3>
+            <h3>${t('office_comments')}</h3>
             ${commentsHtml}
         </div>
 
         ${(rec?.startPhotos?.length) ? `
         <div class="detail-section">
-            <h3>Start Photos</h3>
+            <h3>${t('start_photos')}</h3>
             <div class="start-photos-strip">
                 ${rec.startPhotos.map(p => `<img src="${p.url}" alt="${esc(p.requirementName||'')}" title="${esc(p.requirementName||'')}">`).join('')}
             </div>
@@ -2097,7 +2724,7 @@ function renderJobDetail(job, rec, recId) {
 
         ${(rec?.preExistingConditions?.length) ? `
         <div class="detail-section">
-            <h3>Pre-existing Conditions</h3>
+            <h3>${t('pre_existing')}</h3>
             ${rec.preExistingConditions.map(item => `
                 <div class="pec-item">
                     <div class="pec-item-note">${esc(item.note)}</div>
@@ -2107,36 +2734,36 @@ function renderJobDetail(job, rec, recId) {
 
         ${status !== 'not_started' ? `
         <div class="detail-section">
-            <h3>Job Modules</h3>
+            <h3>${t('job_modules')}</h3>
             <button class="module-btn" onclick="showProgressPhotos('${currentJobIdForCapture}')">
                 <span class="m-icon">📷</span>
                 <div class="m-body">
-                    <div class="m-label">Progress Photos</div>
-                    <div class="m-meta">Openings, photo capture &amp; defects</div>
+                    <div class="m-label">${t('progress_photos')}</div>
+                    <div class="m-meta">${t('progress_photos_meta')}</div>
                 </div>
                 <span class="m-arrow">›</span>
             </button>
             <button class="module-btn" onclick="showCertificateFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">✅</span>
                 <div class="m-body">
-                    <div class="m-label">Certificate of Completion</div>
-                    <div class="m-meta">${rec?.signatures?.completion?.installerAt ? '✓ Signed' : 'Not yet signed'}</div>
+                    <div class="m-label">${t('coc_label')}</div>
+                    <div class="m-meta">${rec?.signatures?.completion?.installerAt ? t('signed_label') : t('not_signed')}</div>
                 </div>
                 <span class="m-arrow">›</span>
             </button>
             <button class="module-btn" onclick="showWalkthroughFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">🚶</span>
                 <div class="m-body">
-                    <div class="m-label">Walkthrough Checklist</div>
-                    <div class="m-meta">${rec?.signatures?.walkthrough?.installerAt ? '✓ Signed' : 'Not yet signed'}</div>
+                    <div class="m-label">${t('walkthrough_label')}</div>
+                    <div class="m-meta">${rec?.signatures?.walkthrough?.installerAt ? t('signed_label') : t('not_signed')}</div>
                 </div>
                 <span class="m-arrow">›</span>
             </button>
             <button class="module-btn" onclick="showExtraWorkFlow('${currentJobIdForCapture}')">
                 <span class="m-icon">🔧</span>
                 <div class="m-body">
-                    <div class="m-label">Extra Work Requests</div>
-                    <div class="m-meta" id="ew-meta-${currentJobIdForCapture}">Loading…</div>
+                    <div class="m-label">${t('extra_work_label')}</div>
+                    <div class="m-meta" id="ew-meta-${currentJobIdForCapture}">${t('loading_ellipsis')}</div>
                 </div>
                 <span class="m-arrow">›</span>
             </button>
@@ -2203,29 +2830,29 @@ function renderStatusBar(job, rec) {
     // Use canonical record ID (currentJobIdForCapture) for all record-writing actions
     const recJobId = currentJobIdForCapture || job.id;
     if (status === 'not_started') {
-        el.innerHTML = `<button class="btn btn-primary" style="flex:1" onclick="startJobFlow('${recJobId}')">▶ Start Job</button>`;
+        el.innerHTML = `<button class="btn btn-primary" style="flex:1" onclick="startJobFlow('${recJobId}')">${t('start_job_btn')}</button>`;
     } else {
         const note = rec && rec.statusNote ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${esc(rec.statusNote)}</div>` : '';
         el.innerHTML = `
             <div style="flex:1;min-width:0">
-                <div style="font-size:.7rem;color:var(--muted)">Status</div>
+                <div style="font-size:.7rem;color:var(--muted)">${t('status_label')}</div>
                 <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${statusDotColor(status)}">${statusDisplay(status)}</div>
                 ${note}
             </div>
-            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" id="status-change-btn">Change</button>`;
+            <button class="btn btn-secondary btn-sm" style="white-space:nowrap" id="status-change-btn">${t('change_btn')}</button>`;
         const _scBtn = document.getElementById('status-change-btn');
         if (_scBtn) _scBtn.addEventListener('click', () => showStatusPicker(recJobId, status));
     }
 }
 
 let STATUS_OPTIONS = [
-    { val: 'in_progress',             label: 'In Progress',                                        color: '#94A3B8', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
-    { val: 'completed_collected',     label: 'Completed — Collected — Ready For Inspection',       color: '#22C55E', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
-    { val: 'completed_not_collected', label: 'Completed — Not Collected — Ready For Inspection',   color: '#22C55E', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Reason not collected (required)',     notePlaceholder: 'e.g. Customer not home, will follow up…',  countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
-    { val: 'completed_partial',       label: 'Complete — Partial Payment Collected',               color: '#60A5FA', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Partial payment details (required)',  notePlaceholder: 'e.g. $500 cash, balance to be collected…', countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
-    { val: 'not_complete_multiday',   label: 'Not Complete — Multiday',                           color: '#F59E0B', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
-    { val: 'not_complete',            label: 'Not Complete',                                       color: '#EF4444', requiresSignatures: false, requiresNote: true,  noteLabel: 'Reason (required)',                   notePlaceholder: 'Describe why the job is not complete…',    countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
-    { val: 'complete_need_service',   label: 'Complete — Need Service',                            color: '#EF4444', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   notePlaceholder: '',                                          countsAsComplete: true,  showInFinance: false, showInService: true,  isBuiltIn: true },
+    { val: 'in_progress',             label: 'In Progress',                                        label_es: 'En Progreso',                                          color: '#94A3B8', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   noteLabel_es: '',                                         notePlaceholder: '',                                          notePlaceholder_es: '',                                        countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'completed_collected',     label: 'Completed — Collected — Ready For Inspection',       label_es: 'Completado — Cobrado — Listo para Inspección',         color: '#22C55E', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   noteLabel_es: '',                                         notePlaceholder: '',                                          notePlaceholder_es: '',                                        countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_not_collected', label: 'Completed — Not Collected — Ready For Inspection',   label_es: 'Completado — No Cobrado — Listo para Inspección',      color: '#22C55E', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Reason not collected (required)',     noteLabel_es: 'Motivo no cobrado (requerido)',            notePlaceholder: 'e.g. Customer not home, will follow up…',  notePlaceholder_es: 'ej. Cliente no estaba, se hará seguimiento…', countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'completed_partial',       label: 'Complete — Partial Payment Collected',               label_es: 'Completado — Pago Parcial Cobrado',                    color: '#60A5FA', requiresSignatures: true,  requiresNote: true,  noteLabel: 'Partial payment details (required)',  noteLabel_es: 'Detalles del pago parcial (requerido)',    notePlaceholder: 'e.g. $500 cash, balance to be collected…', notePlaceholder_es: 'ej. $500 efectivo, saldo pendiente…',     countsAsComplete: true,  showInFinance: true,  showInService: false, isBuiltIn: true },
+    { val: 'not_complete_multiday',   label: 'Not Complete — Multiday',                           label_es: 'No Completado — Varios Días',                          color: '#F59E0B', requiresSignatures: false, requiresNote: false, noteLabel: '',                                   noteLabel_es: '',                                         notePlaceholder: '',                                          notePlaceholder_es: '',                                        countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'not_complete',            label: 'Not Complete',                                       label_es: 'No Completado',                                        color: '#EF4444', requiresSignatures: false, requiresNote: true,  noteLabel: 'Reason (required)',                   noteLabel_es: 'Motivo (requerido)',                       notePlaceholder: 'Describe why the job is not complete…',    notePlaceholder_es: 'Describa por qué el trabajo no está completo…', countsAsComplete: false, showInFinance: false, showInService: false, isBuiltIn: true },
+    { val: 'complete_need_service',   label: 'Complete — Need Service',                            label_es: 'Completado — Necesita Servicio',                       color: '#EF4444', requiresSignatures: true,  requiresNote: false, noteLabel: '',                                   noteLabel_es: '',                                         notePlaceholder: '',                                          notePlaceholder_es: '',                                        countsAsComplete: true,  showInFinance: false, showInService: true,  isBuiltIn: true },
 ];
 
 let POSITIVE_COMPLETION_STATUSES = [];
@@ -2264,8 +2891,8 @@ function showStatusPicker(jobId, currentStatus) {
              ${locked ? '' : `onclick="spPickStatus('${s.val}')"`}>
             <div class="status-option-dot" style="background:${statusDotColor(s.val)}"></div>
             <div>
-                <div style="font-size:.875rem;font-weight:600;color:${statusDotColor(s.val)}">${s.label}</div>
-                ${locked ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.1rem">Requires walkthrough &amp; COC to be signed</div>` : ''}
+                <div style="font-size:.875rem;font-weight:600;color:${statusDotColor(s.val)}">${statusDisplay(s.val)}</div>
+                ${locked ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.1rem">${t('requires_sigs')}</div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -2276,19 +2903,19 @@ function showStatusPicker(jobId, currentStatus) {
         <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9998" onclick="closeStatusPicker()"></div>
         <div class="status-picker-sheet">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <h3 style="margin:0;font-size:1rem">Update Job Status</h3>
+                <h3 style="margin:0;font-size:1rem">${t('update_job_status')}</h3>
                 <button class="btn btn-ghost btn-sm" onclick="closeStatusPicker()">✕</button>
             </div>
             <div id="sp-options">${optionsHtml}</div>
             <div id="sp-note-wrap" class="hidden" style="margin-top:.75rem">
-                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">Reason (required)</label>
-                <textarea class="form-input" id="sp-note" rows="3" placeholder="Describe why the job is not complete…"></textarea>
+                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">${t('reason_required')}</label>
+                <textarea class="form-input" id="sp-note" rows="3" placeholder="${t('reason_not_complete')}"></textarea>
             </div>
             <div id="sp-amount-wrap" class="hidden" style="margin-top:.75rem">
-                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">Amount Collected ($) <span style="color:var(--bad)">*</span></label>
-                <input type="number" class="form-input" id="sp-amount" min="0" step="0.01" placeholder="Enter amount collected">
+                <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.35rem">${t('amount_collected')} <span style="color:var(--bad)">*</span></label>
+                <input type="number" class="form-input" id="sp-amount" min="0" step="0.01" placeholder="${t('enter_amount')}">
             </div>
-            <button class="btn btn-primary w-full" style="margin-top:1rem" onclick="saveNewStatus()">Save Status</button>
+            <button class="btn btn-primary w-full" style="margin-top:1rem" onclick="saveNewStatus()">${t('save_status')}</button>
         </div>`;
     document.body.appendChild(overlay);
 }
@@ -2305,8 +2932,8 @@ function spPickStatus(val) {
         if (opt?.requiresNote) {
             const lbl = noteWrap.querySelector('label');
             const ta  = document.getElementById('sp-note');
-            if (lbl) lbl.textContent = opt.noteLabel;
-            if (ta)  ta.placeholder  = opt.notePlaceholder;
+            if (lbl) lbl.textContent = (_lang === 'es' && opt.noteLabel_es) ? opt.noteLabel_es : opt.noteLabel;
+            if (ta)  ta.placeholder  = (_lang === 'es' && opt.notePlaceholder_es) ? opt.notePlaceholder_es : opt.notePlaceholder;
         }
     }
     const amountWrap = document.getElementById('sp-amount-wrap');
@@ -2337,7 +2964,7 @@ async function saveNewStatus() {
         const walkthroughDone = !!(rec?.signatures?.walkthrough?.installerAt);
         const cocDone         = !!(rec?.signatures?.completion?.installerAt);
         if (!walkthroughDone || !cocDone) {
-            alert('Please complete the Walkthrough Checklist and Certificate of Completion before marking this job as complete.');
+            alert(t('alert_complete_sigs'));
             return;
         }
     }
@@ -2345,7 +2972,7 @@ async function saveNewStatus() {
     let note = '';
     if (opt?.requiresNote) {
         note = (document.getElementById('sp-note')?.value || '').trim();
-        if (!note) { alert('Please enter a reason before saving.'); return; }
+        if (!note) { alert(t('alert_enter_reason')); return; }
     }
     // Collect amountCollected for partial/collected statuses — required
     let amountCollected = null;
@@ -2356,7 +2983,7 @@ async function saveNewStatus() {
             if (!isNaN(parsed) && parsed >= 0) amountCollected = parsed;
         }
         if (amountCollected == null) {
-            alert('Please enter the amount collected before saving.');
+            alert(t('alert_enter_amount'));
             return;
         }
     }
@@ -2420,7 +3047,7 @@ async function updateJobStatus(jobId, newStatus, statusNote, amountCollected = n
         renderJobDetail(job, newRec, jobId);
 
     } catch(err) {
-        alert('Could not update status: ' + err.message);
+        alert(t('alert_status_error', { err: err.message }));
     }
 }
 
@@ -2464,21 +3091,21 @@ async function loadJobRecords(jobIds) {
 async function renderBlackout() {
     const el = document.getElementById('page-blackout');
     el.innerHTML = `
-        <h2 class="mb-4">Days Off Requests</h2>
+        <h2 class="mb-4">${t('daysoff_title')}</h2>
         <div class="detail-section">
-            <p class="text-sm text-muted mb-4">Request dates you are unavailable. Your administrator will be notified.</p>
+            <p class="text-sm text-muted mb-4">${t('daysoff_info')}</p>
             <div class="form-group">
-                <label class="form-label">Select Date</label>
+                <label class="form-label">${t('select_date')}</label>
                 <input class="form-input" type="date" id="blackout-date" min="${new Date().toISOString().slice(0,10)}">
             </div>
             <div class="form-group">
-                <label class="form-label">Reason (optional)</label>
-                <input class="form-input" type="text" id="blackout-reason" placeholder="e.g. Family commitment">
+                <label class="form-label">${t('reason_optional')}</label>
+                <input class="form-input" type="text" id="blackout-reason" placeholder="${t('reason_placeholder')}">
             </div>
-            <button class="btn btn-primary w-full" onclick="submitBlackout()">Request Day Off</button>
+            <button class="btn btn-primary w-full" onclick="submitBlackout()">${t('request_dayoff_btn')}</button>
         </div>
 
-        <h3 class="mb-3 mt-4">My Requests</h3>
+        <h3 class="mb-3 mt-4">${t('my_requests')}</h3>
         <div id="blackout-list"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
 
     await loadBlackoutList();
@@ -2493,7 +3120,7 @@ async function loadBlackoutList() {
             .get();
 
         if (snap.empty) {
-            el.innerHTML = '<p class="text-muted text-sm">No requests yet.</p>';
+            el.innerHTML = `<p class="text-muted text-sm">${t('no_requests')}</p>`;
             return;
         }
 
@@ -2512,14 +3139,14 @@ async function loadBlackoutList() {
                 </div>
             </div>`).join('');
     } catch(err) {
-        el.innerHTML = '<p class="text-muted text-sm">Could not load requests.</p>';
+        el.innerHTML = `<p class="text-muted text-sm">${t('load_requests_error')}</p>`;
     }
 }
 
 async function submitBlackout() {
     const dateVal  = document.getElementById('blackout-date').value;
     const reason   = document.getElementById('blackout-reason').value.trim();
-    if (!dateVal) { alert('Please select a date.'); return; }
+    if (!dateVal) { alert(t('alert_select_date')); return; }
 
     try {
         await db.collection('blackout_requests').add({
@@ -2533,7 +3160,7 @@ async function submitBlackout() {
         document.getElementById('blackout-date').value   = '';
         document.getElementById('blackout-reason').value = '';
         await loadBlackoutList();
-    } catch(err) { alert('Could not submit request: ' + err.message); }
+    } catch(err) { alert(t('alert_submit_error', { err: err.message })); }
 }
 
 // ============================================================
@@ -2557,8 +3184,15 @@ function computeDocStatus(doc) {
 }
 
 function docStatusLabel(status) {
-    return { missing: 'Missing', pending_review: 'Pending Review', valid: 'Valid',
-             expiring_soon: 'Expiring Soon', expiring_urgent: 'Expiring Soon', expired: 'Expired' }[status] || status;
+    const map = {
+        missing:         t('doc_status_missing'),
+        pending_review:  t('doc_status_review'),
+        valid:           t('doc_status_valid'),
+        expiring_soon:   t('doc_status_expiring'),
+        expiring_urgent: t('doc_status_expiring'),
+        expired:         t('doc_status_expired'),
+    };
+    return map[status] || status;
 }
 
 function docStatusColor(status) {
@@ -2658,7 +3292,7 @@ function renderDocumentsPage(blockingMode) {
         </div>` : '';
 
     if (!_docTypes.length) {
-        el.innerHTML = `<h2 class="mb-4">My Documents</h2>${blockBanner}<p class="text-muted text-sm">No document requirements have been configured yet.</p>`;
+        el.innerHTML = `<h2 class="mb-4">${t('my_documents')}</h2>${blockBanner}<p class="text-muted text-sm">${t('doc_none_configured')}</p>`;
         return;
     }
 
@@ -2668,7 +3302,7 @@ function renderDocumentsPage(blockingMode) {
         const color  = docStatusColor(status);
         const label  = docStatusLabel(status);
         const expStr = doc?.expiresAt
-            ? (doc.expiresAt?.toDate ? doc.expiresAt.toDate() : new Date(doc.expiresAt)).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+            ? (doc.expiresAt?.toDate ? doc.expiresAt.toDate() : new Date(doc.expiresAt)).toLocaleDateString(_lang === 'es' ? 'es-MX' : 'en-US',{month:'short',day:'numeric',year:'numeric'})
             : null;
 
         return `
@@ -2676,24 +3310,24 @@ function renderDocumentsPage(blockingMode) {
             <div class="flex justify-between items-start mb-2">
                 <div>
                     <div style="font-weight:600;font-size:.95rem">${esc(t.name)}</div>
-                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${t.required ? 'Required' : 'Optional'}</div>
+                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${t.required ? t('doc_required') : t('doc_optional')}</div>
                 </div>
                 <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${color};white-space:nowrap">${label}</span>
             </div>
             ${doc?.fileUrl ? `
             <div style="font-size:.8rem;color:var(--muted);margin-bottom:.65rem">
-                ${expStr ? `Expires: <strong>${expStr}</strong>` : ''}
-                ${doc.verifiedAt ? ' · ✓ Verified' : ' · Awaiting verification'}
+                ${expStr ? `${t('doc_expires')} <strong>${expStr}</strong>` : ''}
+                ${doc.verifiedAt ? ` · ${t('doc_verified')}` : ` · ${t('doc_awaiting')}`}
             </div>
             <div class="flex gap-2">
-                <a href="${esc(doc.fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">View</a>
-                <button class="btn btn-secondary btn-sm" onclick="startDocUpload('${t.id}')">Replace</button>
+                <a href="${esc(doc.fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">${t('doc_view')}</a>
+                <button class="btn btn-secondary btn-sm" onclick="startDocUpload('${t.id}')">${t('doc_replace')}</button>
             </div>` : `
-            <button class="btn btn-primary btn-sm w-full" onclick="startDocUpload('${t.id}')">Upload Document</button>`}
+            <button class="btn btn-primary btn-sm w-full" onclick="startDocUpload('${t.id}')">${t('doc_upload')}</button>`}
         </div>`;
     }).join('');
 
-    el.innerHTML = `<h2 class="mb-4">My Documents</h2>${blockBanner}${rows}`;
+    el.innerHTML = `<h2 class="mb-4">${t('my_documents')}</h2>${blockBanner}${rows}`;
 }
 
 function startDocUpload(documentTypeId) {
@@ -2718,14 +3352,14 @@ function showDocExpiryModal(documentTypeId) {
     overlay.innerHTML = `
         <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:1.25rem;width:100%;max-width:640px;margin:0 auto">
             <div style="font-weight:700;font-size:1rem;margin-bottom:.25rem">${esc(type?.name || 'Document')}</div>
-            <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Enter the expiration date on this document.</div>
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">${t('doc_enter_expiry')}</div>
             <div class="form-group">
-                <label class="form-label">Expiration Date</label>
+                <label class="form-label">${t('expiry_date')}</label>
                 <input type="date" class="form-input" id="doc-expiry-input" value="${existingExpiry}">
             </div>
             <div style="display:flex;gap:.65rem;margin-top:.75rem">
-                <button class="btn btn-secondary flex-1" onclick="document.getElementById('doc-upload-overlay').remove()">Cancel</button>
-                <button class="btn btn-primary flex-1" onclick="confirmDocExpiry()">Choose File →</button>
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('doc-upload-overlay').remove()">${t('cancel')}</button>
+                <button class="btn btn-primary flex-1" onclick="confirmDocExpiry()">${t('choose_file')}</button>
             </div>
         </div>`;
     document.body.appendChild(overlay);
@@ -2733,7 +3367,7 @@ function showDocExpiryModal(documentTypeId) {
 
 function confirmDocExpiry() {
     const val = document.getElementById('doc-expiry-input')?.value;
-    if (!val) { alert('Please enter the expiration date.'); return; }
+    if (!val) { alert(t('alert_expiry_required')); return; }
     _pendingDocExpiry = val;
     document.getElementById('doc-upload-overlay')?.remove();
     document.getElementById('doc-file-input').value = '';
@@ -2753,7 +3387,7 @@ async function handleDocFileSelected(input) {
     const overlay = document.createElement('div');
     overlay.id = 'doc-uploading-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:center;justify-content:center';
-    overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:1.5rem 2rem;text-align:center"><span class="spinner"></span><div style="margin-top:.75rem;font-size:.9rem">Uploading…</div></div>`;
+    overlay.innerHTML = `<div style="background:var(--surface);border-radius:12px;padding:1.5rem 2rem;text-align:center"><span class="spinner"></span><div style="margin-top:.75rem;font-size:.9rem">${t('uploading')}</div></div>`;
     document.body.appendChild(overlay);
 
     try {
@@ -2802,7 +3436,7 @@ async function handleDocFileSelected(input) {
         }
     } catch(err) {
         overlay.remove();
-        alert('Upload failed: ' + err.message);
+        alert(t('alert_upload_failed', { err: err.message }));
     }
 }
 
@@ -2812,18 +3446,18 @@ async function handleDocFileSelected(input) {
 async function renderDefects() {
     const el = document.getElementById('page-defects');
     el.innerHTML = `
-        <h2 class="mb-4">My Performance</h2>
+        <h2 class="mb-4">${t('my_performance')}</h2>
 
-        <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">Kudos & Positive Feedback</div>
+        <div class="text-xs text-muted font-medium mb-2" style="text-transform:uppercase;letter-spacing:.06em">${t('kudos_section')}</div>
         <div id="kudos-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
 
-        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Complaints & Issues</div>
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">${t('complaints_section')}</div>
         <div id="complaints-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
 
-        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Failed Inspections</div>
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">${t('inspections_section')}</div>
         <div id="failed-inspections-list"><div class="text-center p-3"><span class="spinner"></span></div></div>
 
-        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">Reported Job Defects</div>
+        <div class="text-xs text-muted font-medium mb-2 mt-5" style="text-transform:uppercase;letter-spacing:.06em">${t('defects_section')}</div>
         <div id="defects-list"><div class="text-center p-3"><span class="spinner"></span></div></div>`;
 
     // Load all in parallel
@@ -2848,7 +3482,7 @@ async function renderDefects() {
     const kudosEl = document.getElementById('kudos-list');
     if (kudosEl) {
         if (!kudos.length) {
-            kudosEl.innerHTML = '<p class="text-muted text-sm">No kudos on record yet. Keep up the great work!</p>';
+            kudosEl.innerHTML = `<p class="text-muted text-sm">${t('no_kudos')}</p>`;
         } else {
             const avgRating = kudos.reduce((s, r) => s + (r.rating || 5), 0) / kudos.length;
             const avgRounded = Math.round(avgRating * 10) / 10;
@@ -2857,7 +3491,7 @@ async function renderDefects() {
                     <div>${windowRatingHtml(avgRating, 5, '1.3rem')}</div>
                     <div>
                         <div style="font-weight:700;font-size:1rem;color:var(--ok,#22c55e)">${avgRounded} / 5</div>
-                        <div class="text-muted text-xs">${kudos.length} kudos received</div>
+                        <div class="text-muted text-xs">${t('kudos_received', { n: kudos.length })}</div>
                     </div>
                 </div>` +
                 kudos.map(r => {
@@ -2865,7 +3499,7 @@ async function renderDefects() {
                     return `
                     <div style="border:1px solid var(--ok,#22c55e);border-radius:10px;padding:.85rem 1rem;margin-bottom:.65rem">
                         <div class="flex justify-between items-start mb-1">
-                            <span style="font-size:.75rem;font-weight:700;color:var(--ok,#22c55e)">Kudos</span>
+                            <span style="font-size:.75rem;font-weight:700;color:var(--ok,#22c55e)">${t('kudos_label')}</span>
                             <span style="font-size:.75rem;color:var(--muted)">${date}</span>
                         </div>
                         <div style="margin-bottom:.4rem">${windowRatingHtml(r.rating || 5, 5, '1rem')}</div>
@@ -2880,10 +3514,10 @@ async function renderDefects() {
     const compEl = document.getElementById('complaints-list');
     if (compEl) {
         if (!complaints.length) {
-            compEl.innerHTML = '<p class="text-muted text-sm">No complaints on record.</p>';
+            compEl.innerHTML = `<p class="text-muted text-sm">${t('no_complaints')}</p>`;
         } else {
             compEl.innerHTML = complaints.map(r => {
-                const severity  = r.severity === 'major' ? '🔴 Major Issue' : '🟡 Minor Issue';
+                const severity  = r.severity === 'major' ? t('major_issue') : t('minor_issue');
                 const date = r.createdAt?.toDate ? new Date(r.createdAt.toDate()).toLocaleDateString() : '';
                 return `
                 <div style="border:1px solid var(--bad,#ef4444);border-radius:10px;padding:.85rem 1rem;margin-bottom:.65rem">
@@ -2905,12 +3539,12 @@ async function renderDefects() {
             .sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
 
         if (!inspections.length) {
-            inspEl.innerHTML = '<p class="text-muted text-sm">No failed inspections.</p>';
+            inspEl.innerHTML = `<p class="text-muted text-sm">${t('no_inspections')}</p>`;
         } else {
             inspEl.innerHTML = inspections.map(fi => {
                 const iStatus  = fi.installerStatus;
                 const statusColor = iStatus === 'fixed' ? 'var(--ok)' : iStatus === 'not_fixed' ? 'var(--bad)' : 'var(--warn,#f59e0b)';
-                const statusLabel = iStatus === 'fixed' ? 'Fixed' : iStatus === 'not_fixed' ? 'Not Fixed' : 'Pending';
+                const statusLabel = iStatus === 'fixed' ? t('insp_fixed') : iStatus === 'not_fixed' ? t('insp_not_fixed') : t('insp_pending');
                 return `
                 <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
                     <div class="flex justify-between items-start mb-1">
@@ -2919,12 +3553,12 @@ async function renderDefects() {
                     </div>
                     <div style="font-size:.8rem;color:var(--muted);margin-bottom:.5rem">
                         ${esc(fi.clientName || '')}${fi.inspectionDate ? ' · ' + esc(fi.inspectionDate) : ''}
-                        ${fi.fee ? ' · <strong style="color:var(--bad)">Fee: $' + fi.fee + '</strong>' : ''}
+                        ${fi.fee ? ` · <strong style="color:var(--bad)">${t('fee_label')}${fi.fee}</strong>` : ''}
                     </div>
-                    <div style="font-size:.85rem;margin-bottom:.65rem"><strong>Reason:</strong> ${esc(fi.reason || '—')}</div>
+                    <div style="font-size:.85rem;margin-bottom:.65rem"><strong>${t('reason_label')}</strong> ${esc(fi.reason || '—')}</div>
                     ${fi.installerNote ? `<div style="font-size:.8rem;color:var(--muted);margin-bottom:.65rem;font-style:italic">"${esc(fi.installerNote)}"</div>` : ''}
                     <button class="btn btn-secondary btn-sm w-full" onclick="showInspectionUpdateModal('${fi.id}','${esc(fi.installerStatus||'')}','${esc(fi.installerNote||'').replace(/'/g,"\\'")}')">
-                        ${iStatus ? 'Update Status' : 'Mark Status'}
+                        ${iStatus ? t('update_status_btn') : t('mark_status_btn')}
                     </button>
                 </div>`;
             }).join('');
@@ -2939,7 +3573,7 @@ async function renderDefects() {
             .filter(r => r.openings && r.openings.some(o => o.defects && o.defects.length > 0));
 
         if (!withDefects.length) {
-            listEl.innerHTML = '<p class="text-muted text-sm">No job defects reported yet.</p>';
+            listEl.innerHTML = `<p class="text-muted text-sm">${t('no_defects')}</p>`;
         } else {
             listEl.innerHTML = withDefects.map(r => {
                 const defects = r.openings.flatMap(o =>
@@ -2965,23 +3599,23 @@ function showInspectionUpdateModal(inspId, currentStatus, currentNote) {
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9000;display:flex;align-items:flex-end';
     overlay.innerHTML = `
         <div style="background:var(--surface);border-radius:16px 16px 0 0;padding:1.25rem;width:100%;max-width:640px;margin:0 auto">
-            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">Update Inspection Status</div>
+            <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">${t('insp_update_title')}</div>
             <div class="form-group">
-                <label class="form-label">Status</label>
+                <label class="form-label">${t('status_label2')}</label>
                 <div style="display:flex;gap:.65rem">
                     <button id="insp-btn-fixed" class="btn flex-1 ${currentStatus==='fixed'?'btn-primary':'btn-secondary'}"
-                            onclick="selectInspStatus('fixed')">✅ Fixed</button>
+                            onclick="selectInspStatus('fixed')">✅ ${t('insp_fixed')}</button>
                     <button id="insp-btn-not_fixed" class="btn flex-1 ${currentStatus==='not_fixed'?'btn-primary':'btn-secondary'}"
-                            onclick="selectInspStatus('not_fixed')">⏳ Not Fixed</button>
+                            onclick="selectInspStatus('not_fixed')">⏳ ${t('insp_not_fixed')}</button>
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Note</label>
-                <textarea class="form-input" id="insp-note-input" rows="3" placeholder="What was done, or why it's pending…">${esc(currentNote)}</textarea>
+                <label class="form-label">${t('note_label')}</label>
+                <textarea class="form-input" id="insp-note-input" rows="3" placeholder="${t('insp_note_placeholder')}">${esc(currentNote)}</textarea>
             </div>
             <div style="display:flex;gap:.65rem;margin-top:.75rem">
-                <button class="btn btn-secondary flex-1" onclick="document.getElementById('insp-update-overlay').remove()">Cancel</button>
-                <button class="btn btn-primary flex-1" onclick="submitInspectionUpdate('${inspId}')">Save</button>
+                <button class="btn btn-secondary flex-1" onclick="document.getElementById('insp-update-overlay').remove()">${t('cancel')}</button>
+                <button class="btn btn-primary flex-1" onclick="submitInspectionUpdate('${inspId}')">${t('save_btn')}</button>
             </div>
         </div>`;
     document.body.appendChild(overlay);
@@ -3001,7 +3635,7 @@ async function submitInspectionUpdate(inspId) {
     const overlay = document.getElementById('insp-update-overlay');
     const status  = overlay?.dataset.status;
     const note    = document.getElementById('insp-note-input')?.value.trim() || '';
-    if (!status) { alert('Please select a status.'); return; }
+    if (!status) { alert(t('alert_select_status')); return; }
     try {
         await db.collection('failed_inspections').doc(inspId).update({
             installerStatus:    status,
@@ -3010,7 +3644,7 @@ async function submitInspectionUpdate(inspId) {
         });
         overlay?.remove();
         renderDefects();
-    } catch(err) { alert('Could not save: ' + err.message); }
+    } catch(err) { alert(t('alert_save_error', { err: err.message })); }
 }
 
 // ============================================================
@@ -3021,17 +3655,17 @@ async function renderEarnings() {
     const today      = new Date().toISOString().slice(0, 10);
     const monthStart = today.slice(0, 7) + '-01';
     el.innerHTML = `
-        <h2 style="margin-bottom:1rem">Earnings Report</h2>
+        <h2 style="margin-bottom:1rem">${t('earnings_title')}</h2>
         <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1rem">
             <div>
-                <label class="form-label" style="font-size:.75rem">From</label>
+                <label class="form-label" style="font-size:.75rem">${t('from_label')}</label>
                 <input type="date" class="form-input" id="earn-from" value="${monthStart}" style="font-size:.85rem;padding:.35rem .6rem">
             </div>
             <div>
-                <label class="form-label" style="font-size:.75rem">To</label>
+                <label class="form-label" style="font-size:.75rem">${t('to_label')}</label>
                 <input type="date" class="form-input" id="earn-to" value="${today}" style="font-size:.85rem;padding:.35rem .6rem">
             </div>
-            <button class="btn btn-primary btn-sm" onclick="loadEarningsReport()">Run Report</button>
+            <button class="btn btn-primary btn-sm" onclick="loadEarningsReport()">${t('run_report')}</button>
         </div>
         <div id="earnings-results"></div>`;
     await loadEarningsReport();
@@ -3073,7 +3707,7 @@ async function loadEarningsReport() {
         }
 
         if (jobs.length === 0) {
-            resultsEl.innerHTML = '<p class="text-muted text-sm" style="text-align:center;padding:1.5rem 0">No jobs in this date range.</p>';
+            resultsEl.innerHTML = `<p class="text-muted text-sm" style="text-align:center;padding:1.5rem 0">${t('no_jobs_range')}</p>`;
             return;
         }
 
@@ -3117,13 +3751,13 @@ async function loadEarningsReport() {
             total += rowTotal;
             const d1 = toDate(j.startDt);
             const d2 = toDate(j._lastDt);
-            const fmt = d => d?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const fmt = d => d?.toLocaleDateString(_lang === 'es' ? 'es-MX' : 'en-US', { month: 'short', day: 'numeric' });
             const dateStr = (j._days > 1 && d1 && d2 && d1.toDateString() !== d2.toDateString())
                 ? fmt(d1) + ' – ' + fmt(d2)
                 : fmt(d1) || '—';
-            const daysNote = j._days > 1 ? ` · ${j._days} days` : '';
+            const daysNote = j._days > 1 ? ` · ${t('days_suffix', { n: j._days })}` : '';
             const ewLines = ewItems.map(r =>
-                `<div style="font-size:.75rem;color:var(--muted)">+ Extra work: ${esc(r.description || '')} <span style="color:var(--ok);font-weight:600">$${parseFloat(r.amountApproved).toFixed(2)}</span></div>`
+                `<div style="font-size:.75rem;color:var(--muted)">${t('extra_work_line', { desc: esc(r.description || '') })} <span style="color:var(--ok);font-weight:600">$${parseFloat(r.amountApproved).toFixed(2)}</span></div>`
             ).join('');
             return `
             <div style="padding:.55rem 0;border-bottom:1px solid var(--hairline)">
@@ -3142,12 +3776,12 @@ async function loadEarningsReport() {
 
         resultsEl.innerHTML = rows + `
         <div style="display:flex;justify-content:space-between;padding:.75rem 0;font-weight:700;font-size:1rem;border-top:2px solid var(--hairline);margin-top:.25rem">
-            <span>${dedupedJobs.length} job${dedupedJobs.length !== 1 ? 's' : ''}</span>
+            <span>${t(dedupedJobs.length !== 1 ? 'job_plural' : 'job_singular', { n: dedupedJobs.length })}</span>
             <span style="color:var(--ok)">$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>`;
 
     } catch(err) {
-        resultsEl.innerHTML = `<div class="alert alert-error">Could not load earnings: ${esc(err.message)}</div>`;
+        resultsEl.innerHTML = `<div class="alert alert-error">${t('earnings_error', { err: esc(err.message) })}</div>`;
     }
 }
 
@@ -3163,20 +3797,18 @@ function toDate(val) {
 
 function formatTime(date) {
     if (!date) return '';
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return date.toLocaleTimeString(_lang === 'es' ? 'es-MX' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
 
 const LEGACY_STATUS_DISPLAY = {
-    not_started:  'Not Started',
-    completed:    'Completed',
-    needs_return: 'Needs Return Trip',
-    on_hold:      'On Hold'
+    en: { not_started: 'Not Started', completed: 'Completed', needs_return: 'Needs Return Trip', on_hold: 'On Hold' },
+    es: { not_started: 'No Iniciado', completed: 'Completado', needs_return: 'Necesita Regreso',  on_hold: 'En Espera' }
 };
 
 function statusDisplay(status) {
     const opt = STATUS_OPTIONS.find(s => s.val === status);
-    if (opt) return opt.label;
-    return LEGACY_STATUS_DISPLAY[status] || status;
+    if (opt) return (_lang === 'es' && opt.label_es) ? opt.label_es : opt.label;
+    return (LEGACY_STATUS_DISPLAY[_lang] || LEGACY_STATUS_DISPLAY.en)[status] || status;
 }
 
 function statusDotColor(status) {
@@ -4395,7 +5027,7 @@ async function saveSignatureAndClose() {
     for (let i = 0; i < imageData.length; i += 4) {
         if (imageData[i] < 200 || imageData[i+1] < 200 || imageData[i+2] < 200) { hasInk = true; break; }
     }
-    if (!hasInk) { alert('Please sign before saving.'); return; }
+    if (!hasInk) { alert(t('alert_please_sign')); return; }
 
     try {
         // Convert canvas to blob and upload
@@ -4754,7 +5386,7 @@ function wfRenderCustomerSig(el) {
 
 async function wfNextFromCustomer() {
     if (!canvasHasInk('wf-cust-canvas')) {
-        alert('Please have the customer sign before continuing.');
+        alert(t('alert_customer_sign'));
         return;
     }
     wfCustBlob = await canvasToBlob('wf-cust-canvas');
@@ -4841,8 +5473,7 @@ let cfCustBlob       = null;
 let cfAgreementText  = '';
 let cfRating         = null;
 
-const DEFAULT_COC_AGREEMENT =
-    'By signing this Certificate of Completion you are stating that you are satisfied with the product and craftsmanship as performed.\n\nUpon your signature you are authorizing Armor Vue to redeem the remaining balance of the project currently at {AMOUNT}.\n\nThe Armor Vue family thanks you for your trust and hope you will consider us for any future needs.';
+const DEFAULT_COC_AGREEMENT = null; // Replaced by t('coc_agreement') for i18n
 
 async function showCertificateFlow(jobId) {
     cfJobId  = jobId;
@@ -4983,7 +5614,7 @@ function cfRenderAgreement(el) {
     const fin    = job.financials || {};
     const bd = parseFloat(fin.balanceDue);
     const amount = (!isNaN(bd) && bd > 0) ? '$' + bd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'the remaining balance';
-    const raw    = (cfAgreementText || DEFAULT_COC_AGREEMENT).replace('{AMOUNT}', amount);
+    const raw    = (cfAgreementText || t('coc_agreement')).replace('{AMOUNT}', amount);
     const html   = esc(raw).replace(/\n/g, '<br>');
     el.innerHTML = `
         <div style="flex:1;overflow-y:auto">
@@ -5035,7 +5666,7 @@ function cfRenderSummary(el) {
 
 async function cfNextFromCustomer() {
     if (!canvasHasInk('cf-cust-canvas')) {
-        alert('Please have the customer sign before continuing.');
+        alert(t('alert_customer_sign'));
         return;
     }
     cfCustBlob = await canvasToBlob('cf-cust-canvas');
@@ -5310,7 +5941,7 @@ async function ewSubmitRequest() {
         if (backBtn) backBtn.style.display = 'none';
         ewRenderCurrent();
     } catch(err) {
-        alert('Could not submit request: ' + err.message);
+        alert(t('alert_submit_error', { err: err.message }));
         if (btn) { btn.disabled = false; btn.textContent = 'Submit Request'; }
     }
 }
@@ -5574,110 +6205,26 @@ function startTutorial(forced = false) {
     const { driver } = window.driver.js;
     const driverObj = driver({
         showProgress: true,
-        progressText: '{{current}} of {{total}}',
+        progressText: t('tut_progress'),
         allowClose:   !forced,
         showButtons:  forced ? ['next', 'previous'] : ['next', 'previous', 'close'],
-        nextBtnText:  'Next →',
-        prevBtnText:  '← Back',
-        doneBtnText:  'Got it ✓',
+        nextBtnText:  t('tut_next'),
+        prevBtnText:  t('tut_back'),
+        doneBtnText:  t('tut_done'),
         onDestroyed:  () => markTutorialComplete(),
         steps: [
-            {
-                popover: {
-                    title:       '👋 Welcome to Armor Vue',
-                    description: 'This quick tour walks you through the app in about 30 seconds. Use the arrows to go forward and back, or click anywhere outside to skip.'
-                }
-            },
-            {
-                element: '#week-nav',
-                popover: {
-                    title:       '📆 Week Navigation',
-                    description: 'Use the ‹ and › arrows to move between weeks. The heading shows the week you\'re currently viewing.',
-                    side:  'bottom',
-                    align: 'center'
-                }
-            },
-            {
-                element: '#week-strip',
-                popover: {
-                    title:       '📅 Day Selector',
-                    description: 'Tap any day to see your jobs for that day. The number badge shows how many jobs are scheduled. Today is highlighted in blue.',
-                    side:  'bottom',
-                    align: 'center'
-                }
-            },
-            {
-                element: '#day-jobs',
-                popover: {
-                    title:       '🏠 Your Jobs',
-                    description: 'Jobs for the selected day appear here. Each card shows the job number, customer name, time, and address. <strong>Tap a card</strong> to open it.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '▶ Starting a Job',
-                    description: 'When you open a job, tap <strong>Start Job</strong>. You\'ll be prompted to take a wide shot of the property and photograph any pre-existing conditions. Enter the amount collected from the customer and you\'re in.'
-                }
-            },
-            {
-                popover: {
-                    title:       '🔧 Working a Job',
-                    description: 'Once started, four tools become available on the job screen:<br><br>📷 <strong>Progress Photos</strong> — document your work as you go<br>🚶 <strong>Walkthrough Checklist</strong> — confirm quality checks with the customer<br>✅ <strong>Certificate of Completion</strong> — get customer sign-off when done<br>🔧 <strong>Extra Work Requests</strong> — request approval for anything outside the original scope'
-                }
-            },
-            {
-                popover: {
-                    title:       '✅ Completing a Job',
-                    description: 'Walk the customer through the <strong>Certificate of Completion</strong>. Rate the job, collect the customer\'s signature, then add your own to close it out. The job status updates automatically.'
-                }
-            },
-            {
-                element: '#nav-blackout',
-                popover: {
-                    title:       '🗓 Days Off',
-                    description: 'Need time off? Submit a date and reason here. Management will be notified and it\'ll be noted on the schedule.',
-                    side:  'top',
-                    align: 'start'
-                }
-            },
-            {
-                element: '#nav-defects',
-                popover: {
-                    title:       '⚠️ Inspections/Quality',
-                    description: 'This is where you\'ll see any failed inspections and any customer or company concerns.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                element: '#nav-earnings',
-                popover: {
-                    title:       '💰 Earnings',
-                    description: 'View your pay summary for any date range — total jobs completed and earnings broken down by job.',
-                    side:  'top',
-                    align: 'end'
-                }
-            },
-            {
-                element: '#nav-documents',
-                popover: {
-                    title:       '📄 Documents',
-                    description: 'Upload and manage your required documents here — things like your driver\'s license, insurance, and certifications. If a document is expired or missing you\'ll be notified.',
-                    side:  'top',
-                    align: 'end'
-                }
-            },
-            {
-                element: '#tut-help-btn',
-                popover: {
-                    title:       '❓ Need a refresher?',
-                    description: 'Tap the <strong>?</strong> button in the top bar any time to replay this tour.',
-                    side:  'bottom',
-                    align: 'end'
-                }
-            }
+            { popover: { title: t('tut_welcome_title'), description: t('tut_welcome_desc') } },
+            { element: '#week-nav',    popover: { title: t('tut_weeknav_title'), description: t('tut_weeknav_desc'), side: 'bottom', align: 'center' } },
+            { element: '#week-strip',  popover: { title: t('tut_daysel_title'),  description: t('tut_daysel_desc'),  side: 'bottom', align: 'center' } },
+            { element: '#day-jobs',    popover: { title: t('tut_jobs_title'),    description: t('tut_jobs_desc'),    side: 'top',    align: 'center' } },
+            { popover: { title: t('tut_start_title'),   description: t('tut_start_desc')   } },
+            { popover: { title: t('tut_working_title'), description: t('tut_working_desc') } },
+            { popover: { title: t('tut_complete_title'),description: t('tut_complete_desc')} },
+            { element: '#nav-blackout',  popover: { title: t('tut_daysoff_title'),  description: t('tut_daysoff_desc'),  side: 'top', align: 'start' } },
+            { element: '#nav-defects',   popover: { title: t('tut_insp_title'),     description: t('tut_insp_desc'),     side: 'top', align: 'center' } },
+            { element: '#nav-earnings',  popover: { title: t('tut_earnings_title'), description: t('tut_earnings_desc'), side: 'top', align: 'end' } },
+            { element: '#nav-documents', popover: { title: t('tut_docs_title'),     description: t('tut_docs_desc'),     side: 'top', align: 'end' } },
+            { element: '#tut-help-btn',  popover: { title: t('tut_help_title'),     description: t('tut_help_desc'),     side: 'bottom', align: 'end' } }
         ]
     });
     driverObj.drive();
@@ -5696,55 +6243,19 @@ function startJobDetailTutorial() {
     const { driver } = window.driver.js;
     const driverObj = driver({
         showProgress:  true,
-        progressText:  '{{current}} of {{total}}',
+        progressText:  t('tut_progress'),
         allowClose:    true,
         showButtons:   ['next', 'previous', 'close'],
-        nextBtnText:   'Next →',
-        prevBtnText:   '← Back',
-        doneBtnText:   'Got it ✓',
+        nextBtnText:   t('tut_next'),
+        prevBtnText:   t('tut_back'),
+        doneBtnText:   t('tut_done'),
         steps: [
-            {
-                popover: {
-                    title:       '📋 Your Job Page',
-                    description: 'This is where you\'ll work a job from start to finish. Here\'s a quick rundown of how it all flows.'
-                }
-            },
-            {
-                element: '#jd-details',
-                popover: {
-                    title:       '📍 Job Details',
-                    description: 'Customer name, address, time, product count, balance due, and your pay are all here. Tap the address to open it in Maps.',
-                    side:  'bottom',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '📦 Receive Product First',
-                    description: 'Before you can start a job, you may need to confirm product receipt. When you tap a job card on the schedule you\'ll see a <strong>Receive Inventory</strong> button if product is assigned. Confirm it before heading to site — <strong>Start Job</strong> won\'t unlock until that\'s done.'
-                }
-            },
-            {
-                element: '#status-bar',
-                popover: {
-                    title:       '▶ Start Job',
-                    description: 'Once product is received, tap <strong>Start Job</strong>. You\'ll take exterior photos of the property and document any pre-existing conditions before work begins.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '🔧 Once Started',
-                    description: 'Four tools unlock on this page:<br><br>📷 <strong>Progress Photos</strong> — photo each opening as you install<br>🚶 <strong>Walkthrough Checklist</strong> — walk the customer through a quality check<br>✅ <strong>Certificate of Completion</strong> — collect the customer\'s signature to close out<br>🔧 <strong>Extra Work Requests</strong> — flag anything outside the original scope for approval'
-                }
-            },
-            {
-                popover: {
-                    title:       '✅ Closing Out',
-                    description: 'Complete the <strong>Certificate of Completion</strong> last — it captures the customer\'s signature and your sign-off, and locks the job as done.'
-                }
-            }
+            { popover: { title: t('tut_jd_title'),          description: t('tut_jd_desc') } },
+            { element: '#jd-details', popover: { title: t('tut_jd_details_title'), description: t('tut_jd_details_desc'), side: 'bottom', align: 'center' } },
+            { popover: { title: t('tut_jd_product_title'),  description: t('tut_jd_product_desc') } },
+            { element: '#status-bar', popover: { title: t('tut_jd_startjob_title'), description: t('tut_jd_startjob_desc'), side: 'top', align: 'center' } },
+            { popover: { title: t('tut_jd_tools_title'),    description: t('tut_jd_tools_desc') } },
+            { popover: { title: t('tut_jd_close_title'),    description: t('tut_jd_close_desc') } }
         ]
     });
     driverObj.drive();
@@ -5767,40 +6278,14 @@ function startProgressPhotosTutorial() {
     if (!window.driver || !window.driver.js) return;
     const { driver } = window.driver.js;
     driver({
-        showProgress: true, progressText: '{{current}} of {{total}}',
+        showProgress: true, progressText: t('tut_progress'),
         allowClose: true, showButtons: ['next', 'previous', 'close'],
-        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        nextBtnText: t('tut_next'), prevBtnText: t('tut_back'), doneBtnText: t('tut_done'),
         steps: [
-            {
-                popover: {
-                    title:       '📷 Progress Photos',
-                    description: 'This is where you document your installation opening by opening.'
-                }
-            },
-            {
-                element: '#pp-header-right',
-                popover: {
-                    title:       '➕ Add an Opening',
-                    description: 'Tap <strong>+ Add Opening</strong> to register each window, door, or slider you\'re installing. Add one for each unit on the job.',
-                    side:  'bottom',
-                    align: 'end'
-                }
-            },
-            {
-                element: '#pp-content',
-                popover: {
-                    title:       '📋 Opening List',
-                    description: 'Each opening you add appears here. Tap one to open the photo wizard — you\'ll work through the required shots one by one (before install, during, and final).',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '⚠️ Reporting Issues',
-                    description: 'Inside each opening you can also report a defect if something is wrong with the unit — damaged, missing, wrong specs, etc. That gets flagged to the office automatically.'
-                }
-            }
+            { popover: { title: t('tut_pp_title'),       description: t('tut_pp_desc') } },
+            { element: '#pp-header-right', popover: { title: t('tut_pp_add_title'),   description: t('tut_pp_add_desc'),   side: 'bottom', align: 'end' } },
+            { element: '#pp-content',      popover: { title: t('tut_pp_list_title'),  description: t('tut_pp_list_desc'),  side: 'top',    align: 'center' } },
+            { popover: { title: t('tut_pp_issues_title'), description: t('tut_pp_issues_desc') } }
         ]
     }).drive();
 }
@@ -5812,31 +6297,13 @@ function startWalkthroughTutorial() {
     if (!window.driver || !window.driver.js) return;
     const { driver } = window.driver.js;
     driver({
-        showProgress: true, progressText: '{{current}} of {{total}}',
+        showProgress: true, progressText: t('tut_progress'),
         allowClose: true, showButtons: ['next', 'previous', 'close'],
-        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        nextBtnText: t('tut_next'), prevBtnText: t('tut_back'), doneBtnText: t('tut_done'),
         steps: [
-            {
-                popover: {
-                    title:       '🚶 Walkthrough Checklist',
-                    description: 'Do this with the customer present before you close out. Walk them through each quality item and confirm it together.'
-                }
-            },
-            {
-                element: '#wf-content',
-                popover: {
-                    title:       '✅ Check Off Each Item',
-                    description: 'Tap each circle to mark it done. Work through the full list with the customer — every item needs to be acknowledged before you can continue.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '✍️ Signatures',
-                    description: 'Once the checklist is complete, you\'ll collect the <strong>customer\'s signature</strong> first, then add <strong>your own</strong> to sign off. Both are required.'
-                }
-            }
+            { popover: { title: t('tut_wf_title'),       description: t('tut_wf_desc') } },
+            { element: '#wf-content', popover: { title: t('tut_wf_check_title'), description: t('tut_wf_check_desc'), side: 'top', align: 'center' } },
+            { popover: { title: t('tut_wf_sigs_title'),  description: t('tut_wf_sigs_desc') } }
         ]
     }).drive();
 }
@@ -5848,37 +6315,14 @@ function startCOCTutorial() {
     if (!window.driver || !window.driver.js) return;
     const { driver } = window.driver.js;
     driver({
-        showProgress: true, progressText: '{{current}} of {{total}}',
+        showProgress: true, progressText: t('tut_progress'),
         allowClose: true, showButtons: ['next', 'previous', 'close'],
-        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        nextBtnText: t('tut_next'), prevBtnText: t('tut_back'), doneBtnText: t('tut_done'),
         steps: [
-            {
-                popover: {
-                    title:       '✅ Certificate of Completion',
-                    description: 'This is the final step to close out a job. Do this with the customer present.'
-                }
-            },
-            {
-                element: '#cf-content',
-                popover: {
-                    title:       '⭐ Step 1 — Rate the Job',
-                    description: 'Start by rating the product quality, sales experience, and installation. These ratings help us improve.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '📄 Step 2 — Agreement & Summary',
-                    description: 'The customer reviews the completion agreement and a summary of the work done.'
-                }
-            },
-            {
-                popover: {
-                    title:       '✍️ Step 3 — Signatures',
-                    description: 'The customer signs first, then you add your signature. Once both are captured the job is locked as complete and the status updates automatically.'
-                }
-            }
+            { popover: { title: t('tut_coc_title'),      description: t('tut_coc_desc') } },
+            { element: '#cf-content', popover: { title: t('tut_coc_rate_title'),  description: t('tut_coc_rate_desc'),  side: 'top', align: 'center' } },
+            { popover: { title: t('tut_coc_agree_title'), description: t('tut_coc_agree_desc') } },
+            { popover: { title: t('tut_coc_sigs_title'),  description: t('tut_coc_sigs_desc') } }
         ]
     }).drive();
 }
@@ -5890,31 +6334,13 @@ function startExtraWorkTutorial() {
     if (!window.driver || !window.driver.js) return;
     const { driver } = window.driver.js;
     driver({
-        showProgress: true, progressText: '{{current}} of {{total}}',
+        showProgress: true, progressText: t('tut_progress'),
         allowClose: true, showButtons: ['next', 'previous', 'close'],
-        nextBtnText: 'Next →', prevBtnText: '← Back', doneBtnText: 'Got it ✓',
+        nextBtnText: t('tut_next'), prevBtnText: t('tut_back'), doneBtnText: t('tut_done'),
         steps: [
-            {
-                popover: {
-                    title:       '🔧 Extra Work Requests',
-                    description: 'Use this if you discover work that\'s outside the original scope — additional damage, extra units, anything that wasn\'t in the original job.'
-                }
-            },
-            {
-                element: '#ew-content',
-                popover: {
-                    title:       '➕ Submit a Request',
-                    description: 'Tap <strong>+ New Request</strong> to describe what\'s needed, add photos if you have them, and enter the amount. The office will review and approve, deny, or counter.',
-                    side:  'top',
-                    align: 'center'
-                }
-            },
-            {
-                popover: {
-                    title:       '⏳ Waiting on Approval',
-                    description: 'Once submitted, your request shows as <strong>Pending</strong>. If management counters with a different amount, you\'ll be able to accept or decline it here.'
-                }
-            }
+            { popover: { title: t('tut_ew_title'),       description: t('tut_ew_desc') } },
+            { element: '#ew-content', popover: { title: t('tut_ew_submit_title'), description: t('tut_ew_submit_desc'), side: 'top', align: 'center' } },
+            { popover: { title: t('tut_ew_wait_title'),  description: t('tut_ew_wait_desc') } }
         ]
     }).drive();
 }
