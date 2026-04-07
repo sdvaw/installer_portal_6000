@@ -955,6 +955,10 @@ const STRINGS = {
     inv_override_confirm:  'Allow this installer to start without receiving any inventory?',
     inv_override_granted:  'Override granted — installer can now start',
     inv_received_of:       '{n} of {total} received',
+    translate_btn:         '🌐 Translate',
+    show_original:         'Show Original',
+    translating:           'Translating…',
+    translate_error:       'Could not translate. Try again.',
     // Job detail
     job_label:             'Job',
     phone_label:           'Phone',
@@ -1194,6 +1198,10 @@ const STRINGS = {
     inv_override_confirm:  '¿Permitir que el instalador empiece sin recibir ningún inventario?',
     inv_override_granted:  'Permiso otorgado — el instalador ya puede iniciar',
     inv_received_of:       '{n} de {total} recibidos',
+    translate_btn:         '🌐 Traducir',
+    show_original:         'Ver Original',
+    translating:           'Traduciendo…',
+    translate_error:       'No se pudo traducir. Intente de nuevo.',
     // Job detail
     job_label:             'Trabajo',
     phone_label:           'Teléfono',
@@ -2589,7 +2597,56 @@ function getSeriesMemberIds(jobId) {
     return siblings.map(j => j.id);
 }
 
+let _notesTranslated       = null;   // cached translation for current job
+let _notesShowingTranslated = false;  // currently displaying translation
+
+async function translateJobNotes() {
+    const btn     = document.getElementById('jd-notes-translate-btn');
+    const notesEl = document.getElementById('jd-notes-text');
+    if (!notesEl || !btn) return;
+
+    // Toggle back to original
+    if (_notesShowingTranslated) {
+        notesEl.textContent = notesEl.dataset.original;
+        btn.textContent     = t('translate_btn');
+        _notesShowingTranslated = false;
+        return;
+    }
+
+    // Use cached translation
+    if (_notesTranslated) {
+        notesEl.textContent     = _notesTranslated;
+        btn.textContent         = t('show_original');
+        _notesShowingTranslated = true;
+        return;
+    }
+
+    btn.textContent = t('translating');
+    btn.disabled    = true;
+    notesEl.dataset.original = notesEl.textContent;
+
+    try {
+        const res  = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(notesEl.dataset.original)}&langpair=en|es`);
+        const data = await res.json();
+        if (data.responseStatus === 200 && data.responseData?.translatedText) {
+            _notesTranslated        = data.responseData.translatedText;
+            notesEl.textContent     = _notesTranslated;
+            btn.textContent         = t('show_original');
+            btn.disabled            = false;
+            _notesShowingTranslated = true;
+        } else {
+            throw new Error(data.responseDetails || 'no translation');
+        }
+    } catch(e) {
+        showToast(t('translate_error'));
+        btn.textContent = t('translate_btn');
+        btn.disabled    = false;
+    }
+}
+
 async function openJobDetail(jobId) {
+    _notesTranslated        = null;   // reset per job
+    _notesShowingTranslated = false;
     showPage('job-detail');
     const el = document.getElementById('page-job-detail');
     el.innerHTML = `<div class="text-center p-4" style="padding-top:3rem"><span class="spinner spinner-lg"></span></div>`;
@@ -2700,7 +2757,10 @@ function renderJobDetail(job, rec, recId) {
         ${job.notes ? `
         <div class="detail-section">
             <h3>${t('job_notes')}</h3>
-            <div class="detail-notes">${esc(job.notes)}</div>
+            <div class="detail-notes" id="jd-notes-text">${esc(job.notes)}</div>
+            ${_lang === 'es' ? `<button class="btn btn-ghost btn-sm mt-1" id="jd-notes-translate-btn"
+                style="font-size:.75rem;color:var(--accent);padding:.25rem .5rem"
+                onclick="translateJobNotes()">🌐 ${t('translate_btn')}</button>` : ''}
         </div>` : ''}
 
         ${job.address ? `
