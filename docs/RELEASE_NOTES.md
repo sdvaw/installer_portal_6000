@@ -2,6 +2,56 @@
 
 ---
 
+## v2.6.0 — Inventory Partial Receipt, Language & Document Fixes
+**Released:** 2026-04-07
+
+### Overview
+Inventory receipt redesigned to support partial/multi-day jobs. Spanish/English language switch now covers job note translation. Two bugs fixed: documents tab blank due to JS variable shadowing, and a translate feature added for office-entered job notes.
+
+---
+
+### New Features
+
+#### Inventory — Partial Receipt with Stepper UI
+- Inventory modal replaced all-or-nothing checkboxes with per-category `[−] count [+]` steppers showing `n of total received`.
+- Row border turns amber on partial receipt, green when fully received.
+- **Start Job is now hard-blocked** until at least 1 unit of any category is received. Previously blocking required ALL units — breaking multi-day jobs where only some product is taken on day 1.
+- Receive Inventory button remains accessible until all categories are fully received, so installers can log the rest on day 2+.
+- Backward compatible: existing records that stored a Timestamp are treated as fully received automatically.
+
+#### Inventory — Manager Override
+- When Start Job is blocked (zero inventory received), a manager previewing the installer's portal sees an orange **🔓 Override Inventory Block** button.
+- Confirming writes `inventoryOverride: true` (with manager UID + timestamp) to the job_record, unblocking Start Job for the installer immediately.
+
+#### Job Notes — On-Demand Translation
+- When language is set to Spanish, a **🌐 Traducir** button appears below job notes.
+- Taps the MyMemory free translation API (en→es, no API key required) and replaces the note text in-place.
+- Toggle back to original with **Ver Original**. Translation cached per job visit.
+
+---
+
+### Bug Fixes
+
+#### Documents Tab — Blank Page
+- `renderDocumentsPage` used `t` as the `.map()` callback parameter, silently shadowing the global `t()` translation function. Every `t('doc_required')` etc. threw a TypeError, leaving the page blank with no visible error.
+- Fix: renamed parameter from `t` to `dt`.
+
+---
+
+### Data Model Changes
+- `job_records.inventoryReceived.{windows|doors|sgds}` — changed from Timestamp to Number (units received). Backward compatible via `invReceivedCount()` helper.
+- `job_records.inventoryOverride` — new Boolean flag (+ `inventoryOverrideBy`, `inventoryOverrideAt`) set by manager to bypass inventory block.
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — installer.html changes
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required (backward compat handled in JS)
+
+---
+
 ## v2.5.0 — Security Hardening & Auth Reliability
 **Released:** 2026-04-05
 
