@@ -1954,6 +1954,25 @@ function weekKey(offset) {
     return monday.toISOString().slice(0, 10);
 }
 
+// For multi-day jobs entered as separate TeamUp events, only one event usually
+// has the custom fields (windowCount etc.) filled in. Propagate counts from the
+// sibling that has them to any sibling that doesn't, so inventory logic works
+// regardless of which day's card the installer taps.
+function propagateJobCounts(jobs) {
+    const countsByNum = {};
+    jobs.forEach(j => {
+        if (j.jobNumber && ((j.windowCount > 0) || (j.doorCount > 0) || (j.sgdCount > 0))) {
+            countsByNum[j.jobNumber] = { windowCount: j.windowCount, doorCount: j.doorCount, sgdCount: j.sgdCount };
+        }
+    });
+    jobs.forEach(j => {
+        if (j.jobNumber && !(j.windowCount > 0) && !(j.doorCount > 0) && !(j.sgdCount > 0)) {
+            const c = countsByNum[j.jobNumber];
+            if (c) { j.windowCount = c.windowCount; j.doorCount = c.doorCount; j.sgdCount = c.sgdCount; }
+        }
+    });
+}
+
 async function fetchWeekJobs(offset) {
     const key = weekKey(offset);
     if (jobCache[key]) return jobCache[key];
@@ -1972,6 +1991,7 @@ async function fetchWeekJobs(offset) {
             .filter(j => !j.isServiceCall && (j.assignedIds || []).map(String).includes(tidStr))
             .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
 
+        propagateJobCounts(jobs);
         jobCache[key] = jobs;
         return jobs;
     } catch(err) {
@@ -1987,6 +2007,7 @@ async function fetchWeekJobs(offset) {
                     (j.assignedIds || []).map(String).includes(tidStr);
             })
             .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
+        propagateJobCounts(jobs);
         jobCache[key] = jobs;
         return jobs;
     }
