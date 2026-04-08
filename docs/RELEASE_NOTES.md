@@ -2,6 +2,45 @@
 
 ---
 
+## v2.7.0 — Multi-Day Job Fixes & Quality Tab Ratings
+**Released:** 2026-04-08
+
+### Overview
+Fixes multi-day job handling across inventory, earnings, and the schedule. Inspections/Quality tab now shows real data — aggregate customer installation rating pulled from completed COC flows.
+
+---
+
+### New Features
+
+#### Inspections/Quality — Customer Installation Rating
+- Replaced empty kudos/complaints sections with an **Installation Rating** aggregate card.
+- Reads `job_records.cocRating.install` — the rating customers give during the COC signing flow.
+- Displays: large average score, star rating, total count, and a per-star distribution bar chart.
+- Both English and Spanish supported.
+
+---
+
+### Bug Fixes
+
+#### Multi-Day Jobs — Earnings & Week Pay Double-Counting
+- The dedup key was a regex on the job ID (`^(\d+)-rid-\d+$`). Jobs entered as separate TeamUp events (not recurring series) have unique IDs with no series pattern, so dedup silently failed and pay was counted once per day.
+- Fix: use `j.jobNumber` as primary dedup key (falling back to `seriesId` then `id`). Same job number = same job.
+- Applies to both the schedule week pay header and the earnings report.
+
+#### Multi-Day Jobs — Inventory Block Missing on Day 2
+- `propagateJobCounts()` (added in v2.6.0) copies window/door/sgd counts from the sibling that has them, but only within a single week load. For jobs where day 1 and day 2 fall in different calendar weeks, day 2's cache entry still had null counts.
+- Fix: `showJobActions` is now async. If the cached job has no counts, it fetches the job document fresh from Firestore before evaluating the inventory block. Result is written back to the week cache so subsequent taps are instant.
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — installer.html changes
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.6.0 — Inventory Partial Receipt, Language & Document Fixes
 **Released:** 2026-04-07
 
