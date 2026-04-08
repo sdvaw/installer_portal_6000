@@ -2284,9 +2284,26 @@ function quickRequestDayOff(dateStr) {
 // ============================================================
 let jasCurrentJobId = null;
 
-function showJobActions(jobId) {
+async function showJobActions(jobId) {
     jasCurrentJobId = jobId;
-    const job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+    let job = weekJobsData?.jobs?.find(j => j.id === jobId) || {};
+
+    // If cached job has no counts, fetch fresh from Firestore.
+    // Happens when day 2 of a multi-week job is in a different week cache than day 1.
+    if (!(job.windowCount > 0) && !(job.doorCount > 0) && !(job.sgdCount > 0)) {
+        try {
+            const snap = await db.collection('jobs').doc(jobId).get();
+            if (snap.exists) {
+                const fresh = { id: snap.id, ...snap.data() };
+                // Update cache so subsequent taps are instant
+                if (weekJobsData?.jobs) {
+                    const idx = weekJobsData.jobs.findIndex(j => j.id === jobId);
+                    if (idx >= 0) Object.assign(weekJobsData.jobs[idx], fresh);
+                }
+                job = { ...job, ...fresh };
+            }
+        } catch(e) { /* non-fatal — proceed with cached data */ }
+    }
     // For series jobs, find whichever sibling has a record
     const seriesIds = getSeriesMemberIds(jobId);
     const rec = seriesIds.reduce((found, id) =>
