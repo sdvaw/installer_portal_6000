@@ -2123,8 +2123,7 @@ async function renderSchedule() {
         // Parse series from job ID directly (format: {seriesId}-rid-{ts}) — no sync needed.
         const seenSeries = new Set();
         let weekTotal = jobs.reduce((sum, j) => {
-            const m = j.id.match(/^(\d+)-rid-\d+$/);
-            const key = m ? m[1] : j.id;
+            const key = j.seriesId || j.id;
             if (seenSeries.has(key)) return sum;
             seenSeries.add(key);
             const pay = parseFloat((j.financials?.installerPay || '').toString().replace(/[,$\s]/g, ''));
@@ -3771,11 +3770,10 @@ async function loadEarningsReport() {
             return;
         }
 
-        // Deduplicate multi-day recurring jobs — parse series from ID format {seriesId}-rid-{ts}
+        // Deduplicate multi-day recurring jobs using seriesId field
         const seen = new Map();
         for (const j of jobs) {
-            const m = j.id.match(/^(\d+)-rid-\d+$/);
-            const key = m ? m[1] : j.id;
+            const key = j.seriesId || j.id;
             if (!seen.has(key)) {
                 seen.set(key, { ...j, _days: 1, _lastDt: j.startDt });
             } else {
