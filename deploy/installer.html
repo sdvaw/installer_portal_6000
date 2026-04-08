@@ -3356,8 +3356,8 @@ function renderDocumentsPage(blockingMode) {
         return;
     }
 
-    const rows = _docTypes.map(t => {
-        const doc    = _installerDocs[t.id];
+    const rows = _docTypes.map(dt => {
+        const doc    = _installerDocs[dt.id];
         const status = computeDocStatus(doc);
         const color  = docStatusColor(status);
         const label  = docStatusLabel(status);
@@ -3369,8 +3369,8 @@ function renderDocumentsPage(blockingMode) {
         <div style="border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;margin-bottom:.75rem">
             <div class="flex justify-between items-start mb-2">
                 <div>
-                    <div style="font-weight:600;font-size:.95rem">${esc(t.name)}</div>
-                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${t.required ? t('doc_required') : t('doc_optional')}</div>
+                    <div style="font-weight:600;font-size:.95rem">${esc(dt.name)}</div>
+                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">${dt.required ? t('doc_required') : t('doc_optional')}</div>
                 </div>
                 <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:${color};white-space:nowrap">${label}</span>
             </div>
@@ -3381,9 +3381,9 @@ function renderDocumentsPage(blockingMode) {
             </div>
             <div class="flex gap-2">
                 <a href="${esc(doc.fileUrl)}" target="_blank" class="btn btn-ghost btn-sm">${t('doc_view')}</a>
-                <button class="btn btn-secondary btn-sm" onclick="startDocUpload('${t.id}')">${t('doc_replace')}</button>
+                <button class="btn btn-secondary btn-sm" onclick="startDocUpload('${dt.id}')">${t('doc_replace')}</button>
             </div>` : `
-            <button class="btn btn-primary btn-sm w-full" onclick="startDocUpload('${t.id}')">${t('doc_upload')}</button>`}
+            <button class="btn btn-primary btn-sm w-full" onclick="startDocUpload('${dt.id}')">${t('doc_upload')}</button>`}
         </div>`;
     }).join('');
 
