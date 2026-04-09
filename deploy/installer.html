@@ -900,6 +900,8 @@
 </nav>
 
 <script src="js/firebase-config.js?v=1773015005"></script>
+<script src="js/error-logger.js"></script>
+<script>_initLogger('installer');</script>
 <script>
 // ============================================================
 // ARMOR VUE INSTALLER PORTAL — Phase 3
@@ -1417,6 +1419,7 @@ function t(key, vars) {
 function toggleLang() {
     _lang = _lang === 'en' ? 'es' : 'en';
     localStorage.setItem('arv_lang', _lang);
+    _logEvent('language_changed', { lang: _lang });
     document.documentElement.lang = _lang;
     const btn = document.getElementById('lang-toggle');
     if (btn) btn.textContent = _lang === 'es' ? 'ES | EN' : 'EN | ES';
@@ -1757,6 +1760,9 @@ function handleLogout() {
 // PAGE NAVIGATION
 // ============================================================
 function showPage(name) {
+    if (['schedule','blackout','defects','earnings','documents'].includes(name)) {
+        _logEvent('section_viewed', { section: name });
+    }
     document.querySelectorAll('.installer-page').forEach(p => {
         p.classList.remove('active');
         p.style.display = '';   // clear any inline display set by auth screens
@@ -1837,6 +1843,7 @@ async function loadPortalAsInstaller(installerId) {
 
         // Load configurable statuses before showing portal
         await loadStatusOptions();
+        _logEvent('portal_loaded', { installerType: currentInstallerType() });
 
         document.getElementById('nav-installer-name').textContent = '👁 ' + (currentInstaller.displayName || 'Preview');
         document.getElementById('top-nav').style.display    = '';
@@ -4335,6 +4342,7 @@ const SP_DEFAULTS = [
 ];
 
 async function startJobFlow(jobId) {
+    _logEvent('job_started', { jobId });
     let reqs = [];
     try {
         const snap = await db.collection('photo_requirements')
@@ -6257,11 +6265,12 @@ async function cfSaveAll() {
 
         delete jobRecordCache[cfJobId];
         jobCache = {};
+        _logEvent('coc_completed', { jobId: cfJobId, installRating: cfRating?.install || null });
         closeModal();
         await openJobDetail(cfJobId);
     } catch(err) {
+        _logError('coc_completion', err);
         alert('Could not save certificate: ' + err.message);
-        console.error(err);
         const btn = document.getElementById('cf-apply-btn');
         if (btn) { btn.disabled = false; btn.textContent = 'Apply My Signature & Complete Job'; }
     }

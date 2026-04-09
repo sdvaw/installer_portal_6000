@@ -205,6 +205,25 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------
+    // ERROR LOGS — written by any signed-in user (all portals)
+    //              only admin can read
+    // --------------------------------------------------------
+    match /error_logs/{logId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // ANALYTICS EVENTS — written by any signed-in user
+    //                    admin + management can read
+    // --------------------------------------------------------
+    match /analytics_events/{eventId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin() || isManagementUser();
+      allow update, delete: if isAdmin();
+    }
+
+    // --------------------------------------------------------
     // INSTALLER DOCUMENTS — compliance docs uploaded by installers
     //   admin + management: full access (verify, view all)
     //   installer: read/create/update own docs; cannot set verifiedAt/verifiedBy

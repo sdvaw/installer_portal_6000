@@ -2,6 +2,47 @@
 
 ---
 
+## v2.8.0 — Error Logging, Analytics & Beta Test Guide
+**Released:** 2026-04-08
+
+### Overview
+Instrumentation release ahead of beta. All three portals now have global error trapping and Firestore-based analytics. Errors are automatically captured and logged without any action from testers. A comprehensive beta test checklist covers every critical flow.
+
+---
+
+### New Features
+
+#### Global Error Logging (All Portals)
+- New `js/error-logger.js` shared module loaded by all three portals.
+- `window.onerror` and `unhandledrejection` traps catch any uncaught JS error or promise rejection.
+- Errors written to `error_logs` Firestore collection with: portal, version, context, message, stack trace, URL, installer ID, and user agent.
+- Rate-limited to 15 errors per session; deduplicates identical errors so a loop doesn't spam Firestore.
+- Admin-only read access on `error_logs`.
+
+#### Analytics Event Tracking (Installer Portal)
+- Key events logged to `analytics_events` collection: `portal_loaded`, `section_viewed`, `job_started`, `coc_completed`, `language_changed`.
+- `coc_completed` includes the installation rating given by the customer.
+- Admin + management can read `analytics_events` (future: surface in reports dashboard).
+
+#### Beta Test Guide
+- `docs/BETA_TEST_GUIDE.md` — comprehensive 15-section checklist covering every installer portal flow with explicit pass/fail criteria.
+
+---
+
+### Firestore Changes
+- New collection: `error_logs` — signed-in users can create; admin-only read.
+- New collection: `analytics_events` — signed-in users can create; admin + management read.
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — error-logger.js + all three portal changes
+- [x] `firebase deploy --only firestore:rules` — two new collection rules
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.7.0 — Multi-Day Job Fixes & Quality Tab Ratings
 **Released:** 2026-04-08
 
