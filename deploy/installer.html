@@ -5585,7 +5585,7 @@ async function showCertificateFlow(jobId) {
         cfRating = { ...cfJobRecord.cocRating };
     }
     showModal('modal-certificate');
-    cfRenderScreen(0);
+    cfRenderScreen(1); // RATINGS DISABLED: was cfRenderScreen(0)
     maybeStartCOCTutorial();
 }
 
@@ -5599,9 +5599,9 @@ function cfRenderScreen(n) {
         return;
     }
     cfScreen = n;
-    document.getElementById('cf-back-btn').style.display = n > 0 ? '' : 'none';
+    document.getElementById('cf-back-btn').style.display = n > 1 ? '' : 'none'; // RATINGS DISABLED: was n > 0
     const el = document.getElementById('cf-content');
-    if (n === 0) cfRenderRating(el);
+    // if (n === 0) cfRenderRating(el); // RATINGS DISABLED
     if (n === 1) cfRenderAgreement(el);
     if (n === 2) cfRenderSummary(el);
     if (n === 3) cfRenderInstallerSig(el);
@@ -5775,7 +5775,7 @@ function cfRenderInstallerSig(el) {
 }
 
 function cfGoBack() {
-    if (cfScreen > 0) cfRenderScreen(cfScreen - 1);
+    if (cfScreen > 1) cfRenderScreen(cfScreen - 1); // RATINGS DISABLED: was > 0
 }
 
 // ============================================================
