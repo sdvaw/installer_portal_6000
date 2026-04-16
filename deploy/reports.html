@@ -693,8 +693,12 @@ function jobRow(item) {
     const dt = job.startDt ? (job.startDt.toDate ? job.startDt.toDate() : new Date(job.startDt)) : null;
     const timeStr = dt ? dt.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
 
-    // Row color driven by installer status color
-    const borderCol = noRec ? '#94a3b8' : statusCol;
+    // Row color: status color for jobs with records; flag severity for no-record rows
+    const hasBadFlag  = flags.some(f => f.sev >= 2);
+    const hasWarnFlag = !hasBadFlag && flags.length > 0;
+    const borderCol = noRec
+        ? (hasBadFlag ? '#ef4444' : hasWarnFlag ? '#eab308' : '#94a3b8')
+        : statusCol;
 
     // Convert hex to rgba for background tint
     function hexAlpha(hex, a) {
