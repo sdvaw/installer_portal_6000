@@ -552,8 +552,8 @@ function getFlags(rec, job) {
         const todayStr = now.toISOString().slice(0,10);
         const jobDay   = startDt.toISOString().slice(0,10);
         const noActivity = !rec || rec.status === 'not_started';
+        const minsElapsed = (now - startDt) / 60000;
         if (jobDay === todayStr && noActivity) {
-            const minsElapsed = (now - startDt) / 60000;
             if (minsElapsed > _lateStartMins) {
                 flags.push({ type: 'late_start', label: 'Late Start', sev: 2 });
             }

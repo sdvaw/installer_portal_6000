@@ -319,7 +319,8 @@ Two documents: `portal` and `teamup`.
   cocAgreementText:       string,
   monthlyGoal:            number,    // Monthly collection goal ($)
   analyticsLaborWarnPct:  number,    // Labor % yellow threshold
-  analyticsLaborBadPct:   number     // Labor % red threshold
+  analyticsLaborBadPct:   number,    // Labor % red threshold
+  lateStartMins:          number     // Minutes after scheduled start before Late Start flag fires (default 60)
 }
 ```
 

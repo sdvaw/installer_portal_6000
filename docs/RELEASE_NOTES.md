@@ -2,6 +2,52 @@
 
 ---
 
+## v2.9.0 — Daily Review Status Colors & Late Start Flag
+**Released:** 2026-05-06
+
+### Overview
+Daily Review gets a visual overhaul: job rows now display the installer's actual status color as a pill badge with a matching background tint. A new configurable Late Start flag highlights jobs with no recorded activity past a threshold, giving managers an at-a-glance view of jobs that haven't started on time.
+
+---
+
+### New Features
+
+#### Daily Review — Status-Color-Coded Job Rows
+- Job rows now pull the status color directly from the `_statusOptions` configuration instead of deriving color from flag severity.
+- Status label rendered as a colored pill badge with border and RGBA background tint (12% alpha) matching the status color.
+- New `hexAlpha(hex, alpha)` helper converts hex color codes to RGBA for dynamic inline styling.
+
+#### Daily Review — Late Start Flag
+- New flag type `late_start` (severity 2 = red) fires for any job scheduled today where no activity has been recorded and the elapsed time since the scheduled start exceeds the configured threshold.
+- Flag runs for all jobs, including those with no record — previously, no-record rows were evaluated only for general flags.
+
+#### Portal Settings — Late Start Threshold
+- New input in the admin portal Portal Settings section: **Late Start Threshold (minutes)**.
+- Stored as `settings/portal.lateStartMins` (default: 60). Configurable from 5 to 480 minutes in 5-minute increments.
+
+---
+
+### Bug Fixes
+
+#### No-Record Job Rows Now Use Flag-Driven Color
+- No-record job rows were hardcoded grey regardless of flag state.
+- Fix: rows without a record now apply flag-driven color (red for Late Start, yellow for warnings, grey if no flags), consistent with rows that have records.
+
+---
+
+### Firestore Changes
+- `settings/portal` document: new field `lateStartMins` (number).
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — reports.html, index.html, installer.html
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.8.0 — Error Logging, Analytics & Beta Test Guide
 **Released:** 2026-04-08
 
