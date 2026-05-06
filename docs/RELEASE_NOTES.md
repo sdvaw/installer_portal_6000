@@ -2,6 +2,33 @@
 
 ---
 
+## v2.10.0 — PWA Install Support (Installer Portal)
+**Released:** 2026-05-06
+
+### Overview
+The installer portal is now installable as a Progressive Web App on both iOS and Android. Installers can add it to their home screen for a full-screen, app-like experience with no browser chrome.
+
+---
+
+### New Features
+
+#### PWA — Add to Home Screen
+- Web App Manifest (`manifest.json`) defines app name, colors, icons, and standalone display mode.
+- Service worker (`sw.js`) enables Chrome's install prompt on Android. Uses network-first strategy with shell caching for resilience.
+- Two SVG icons (192×192 and 512×512) with the "AV" mark on the dark `#0B0F14` background.
+- iOS supported via existing `apple-mobile-web-app-capable` meta tags plus new `apple-touch-icon` and status bar style.
+- App title shown on home screen: **Armor Vue**.
+
+---
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — installer.html, manifest.json, sw.js, icons/
+- [x] No Firestore rule changes
+- [x] No Cloud Function changes
+- [x] No data migrations required
+
+---
+
 ## v2.9.0 — Daily Review Status Colors & Late Start Flag
 **Released:** 2026-05-06
 
