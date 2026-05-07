@@ -1759,7 +1759,7 @@ function addPhotoReq() { openPhotoReqModal(null); }
 function editPhotoReq(id) {
     db.collection('photo_requirements').doc(id).get().then(doc => {
         if (doc.exists) openPhotoReqModal({ id: doc.id, ...doc.data() });
-    });
+    }).catch(err => flash('error', 'Could not load photo requirement: ' + err.message));
 }
 
 function openPhotoReqModal(req) {
