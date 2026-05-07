@@ -1232,6 +1232,15 @@ async function renderSettings(retries = 1) {
                     </div>
                     <p class="text-muted text-sm mt-1">Flag today's jobs as "Late Start" if no activity is recorded within this many minutes of scheduled start time.</p>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">EmailJS — Service ID</label>
+                    <input class="form-input" id="set-emailjs-service" type="text" placeholder="service_xxxxxxx" style="max-width:240px">
+                    <p class="text-muted text-sm mt-1">Required for Extra Work Request email notifications.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">EmailJS — Template ID</label>
+                    <input class="form-input" id="set-emailjs-template" type="text" placeholder="template_xxxxxxx" style="max-width:240px">
+                </div>
                 <div id="portal-settings-msg" class="hidden alert mb-3"></div>
                 <button class="btn btn-primary" onclick="savePortalSettings()">Save Portal Settings</button>
             </div>
@@ -1370,10 +1379,14 @@ async function loadSettings() {
             const laborWarnEl = document.getElementById('set-labor-warn');
             const laborHighEl = document.getElementById('set-labor-high');
             const lateStartEl = document.getElementById('set-late-start-mins');
-            if (goalEl      && pd.monthlyGoal   != null) goalEl.value      = pd.monthlyGoal;
-            if (laborWarnEl && pd.laborWarnPct  != null) laborWarnEl.value = pd.laborWarnPct;
-            if (laborHighEl && pd.laborHighPct  != null) laborHighEl.value = pd.laborHighPct;
-            if (lateStartEl && pd.lateStartMins != null) lateStartEl.value = pd.lateStartMins;
+            if (goalEl      && pd.monthlyGoal    != null) goalEl.value      = pd.monthlyGoal;
+            if (laborWarnEl && pd.laborWarnPct   != null) laborWarnEl.value = pd.laborWarnPct;
+            if (laborHighEl && pd.laborHighPct   != null) laborHighEl.value = pd.laborHighPct;
+            if (lateStartEl && pd.lateStartMins  != null) lateStartEl.value = pd.lateStartMins;
+            const emailSvcEl  = document.getElementById('set-emailjs-service');
+            const emailTplEl  = document.getElementById('set-emailjs-template');
+            if (emailSvcEl && pd.emailjsServiceId)  emailSvcEl.value  = pd.emailjsServiceId;
+            if (emailTplEl && pd.emailjsTemplateId) emailTplEl.value  = pd.emailjsTemplateId;
         }
     } catch(err) {
         if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
@@ -1394,9 +1407,11 @@ async function savePortalSettings() {
     const goal         = parseFloat(goalEl?.value)      || 0;
     const laborWarnPct = parseFloat(laborWarnEl?.value) || 28;
     const laborHighPct = parseFloat(laborHighEl?.value) || 35;
-    const lateStartMins = parseFloat(lateStartEl?.value) || 60;
+    const lateStartMins    = parseFloat(lateStartEl?.value) || 60;
+    const emailjsServiceId  = document.getElementById('set-emailjs-service')?.value.trim() || '';
+    const emailjsTemplateId = document.getElementById('set-emailjs-template')?.value.trim() || '';
     try {
-        await db.collection('settings').doc('portal').set({ monthlyGoal: goal, laborWarnPct, laborHighPct, lateStartMins }, { merge: true });
+        await db.collection('settings').doc('portal').set({ monthlyGoal: goal, laborWarnPct, laborHighPct, lateStartMins, emailjsServiceId, emailjsTemplateId }, { merge: true });
         msgEl.className = 'alert alert-ok';
         msgEl.textContent = 'Portal settings saved.';
         msgEl.classList.remove('hidden');

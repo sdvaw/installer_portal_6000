@@ -2974,8 +2974,11 @@ let POSITIVE_COMPLETION_STATUSES = [];
 async function loadStatusOptions() {
     try {
         const snap = await db.collection('settings').doc('portal').get();
-        if (snap.exists && Array.isArray(snap.data().statuses) && snap.data().statuses.length > 0) {
-            STATUS_OPTIONS = snap.data().statuses;
+        if (snap.exists) {
+            const pd = snap.data();
+            if (Array.isArray(pd.statuses) && pd.statuses.length > 0) STATUS_OPTIONS = pd.statuses;
+            if (pd.emailjsServiceId)  EMAILJS_SERVICE_ID          = pd.emailjsServiceId;
+            if (pd.emailjsTemplateId) EMAILJS_EXTRA_WORK_TEMPLATE = pd.emailjsTemplateId;
         }
         POSITIVE_COMPLETION_STATUSES = STATUS_OPTIONS.filter(s => s.requiresSignatures).map(s => s.val);
     } catch(e) {
@@ -5786,8 +5789,8 @@ function cfGoBack() {
 // EXTRA WORK REQUEST MODULE
 // ============================================================
 
-const EMAILJS_SERVICE_ID          = 'YOUR_SERVICE_ID';
-const EMAILJS_EXTRA_WORK_TEMPLATE = 'YOUR_TEMPLATE_ID';
+let EMAILJS_SERVICE_ID          = '';
+let EMAILJS_EXTRA_WORK_TEMPLATE = '';
 
 async function showExtraWorkFlow(jobId) {
     ewJobId          = jobId;
