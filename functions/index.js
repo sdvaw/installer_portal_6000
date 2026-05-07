@@ -10,11 +10,13 @@ const archiver         = require('archiver');
 const os               = require('os');
 const fs               = require('fs');
 const path             = require('path');
+const Anthropic        = require('@anthropic-ai/sdk');
 
 admin.initializeApp();
 const db = admin.firestore();
 
-const webhookSecret = defineSecret('WEBHOOK_SECRET');
+const webhookSecret   = defineSecret('WEBHOOK_SECRET');
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 
 // Admin UID — must match firestore.rules and installer.html
 const ADMIN_UID = 'yKCWdsUceONZJtysdweYW2vamFV2';
@@ -764,3 +766,245 @@ const TeamUp = {
         return finalSnap.size;
     }
 };
+
+// ============================================================
+// PARSE DELIVERY TICKET — admin-callable. Accepts a base64-
+// encoded PDF, uses Claude to extract line items, matches to
+// a job by job number, and writes to delivery_tickets.
+// ============================================================
+exports.parseDeliveryTicket = onCall(
+    { secrets: [anthropicApiKey], timeoutSeconds: 120 },
+    async (request) => {
+        requireAdmin(request);
+
+        const { pdfBase64, sourceEmail } = request.data || {};
+        if (!pdfBase64) throw new Error('pdfBase64 is required');
+
+        const anthropic = new Anthropic({ apiKey: anthropicApiKey.value() });
+
+        const message = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            messages: [{
+                role: 'user',
+                content: [
+                    {
+                        type: 'document',
+                        source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 }
+                    },
+                    {
+                        type: 'text',
+                        text: `Extract the following fields from this delivery ticket and return ONLY valid JSON, no explanation:
+
+{
+  "jobNumber": "numeric part of the Purchase Order Number field (e.g. '11108' from 'Dart #11108R')",
+  "customerName": "name part of the Purchase Order Number field (e.g. 'Dart' from 'Dart #11108R')",
+  "supplier": "company name at the top of the document",
+  "orderDate": "Order Date field in YYYY-MM-DD format",
+  "deliveryDate": "Request Date field in YYYY-MM-DD format",
+  "qcStatus": "RTS if document shows QC'd-RTS stamp, otherwise null",
+  "bundleCount": number,
+  "boxCount": number,
+  "sheetCount": number,
+  "items": [
+    {
+      "lineNumber": "WH.LN value e.g. 33.1",
+      "itemNumber": "Item Number column value",
+      "quantity": number,
+      "uom": "U/M column value e.g. PC",
+      "description": "first line of Description column (size and color)",
+      "specs": {
+        "frameColor": "Frame Color value or null",
+        "frameType": "Frame Type value or null",
+        "glassConfig": "Glass Configuration value or null",
+        "location": "Location value or null"
+      }
+    }
+  ]
+}
+
+Rules:
+- jobNumber must be only digits (strip any trailing letters like R, A, B)
+- dates must be YYYY-MM-DD or null if not found
+- items array must have one entry per line item row in the table
+- return null for any field you cannot find`
+                    }
+                ]
+            }]
+        });
+
+        let extracted;
+        try {
+            const raw = message.content[0].text.trim();
+            const jsonStr = raw.startsWith('```') ? raw.replace(/```json?\n?/g, '').replace(/```/g, '') : raw;
+            extracted = JSON.parse(jsonStr);
+        } catch (e) {
+            throw new Error('Claude returned unparseable JSON: ' + message.content[0].text.slice(0, 200));
+        }
+
+        if (!extracted.jobNumber) throw new Error('Could not extract job number from PDF');
+
+        // Match to job in Firestore
+        let jobId = null;
+        let jobCustomerName = null;
+        try {
+            const jobSnap = await db.collection('jobs')
+                .where('jobNumber', '==', extracted.jobNumber).limit(1).get();
+            if (!jobSnap.empty) {
+                jobId = jobSnap.docs[0].id;
+                jobCustomerName = jobSnap.docs[0].data().customerName || null;
+            }
+        } catch (e) {
+            logger.warn('Could not match delivery ticket to job:', extracted.jobNumber, e.message);
+        }
+
+        const doc = {
+            jobNumber:    extracted.jobNumber,
+            jobId:        jobId,
+            customerName: extracted.customerName || jobCustomerName || null,
+            supplier:     extracted.supplier     || null,
+            orderDate:    extracted.orderDate     || null,
+            deliveryDate: extracted.deliveryDate  || null,
+            qcStatus:     extracted.qcStatus      || null,
+            bundleCount:  extracted.bundleCount   ?? 0,
+            boxCount:     extracted.boxCount      ?? 0,
+            sheetCount:   extracted.sheetCount    ?? 0,
+            items:        Array.isArray(extracted.items) ? extracted.items : [],
+            sourceEmail:  sourceEmail || null,
+            matched:      !!jobId,
+            receivedAt:   admin.firestore.FieldValue.serverTimestamp(),
+            status:       'pending'
+        };
+
+        const ref = await db.collection('delivery_tickets').add(doc);
+        logger.info(`Delivery ticket created: ${ref.id} for job #${extracted.jobNumber} matched=${!!jobId}`);
+
+        return { id: ref.id, jobNumber: extracted.jobNumber, matched: !!jobId, itemCount: doc.items.length };
+    }
+);
+
+// ============================================================
+// INGEST DELIVERY EMAIL — webhook called by Power Automate when
+// a delivery ticket email lands in the Gmail inbox. Accepts the
+// PDF attachment as base64. Secured via X-Webhook-Secret.
+// ============================================================
+exports.ingestDeliveryEmail = onRequest(
+    { secrets: [webhookSecret, anthropicApiKey], timeoutSeconds: 120 },
+    async (req, res) => {
+        if (req.method !== 'POST') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
+
+        const secret = webhookSecret.value();
+        if (!secret || req.headers['x-webhook-secret'] !== secret) {
+            res.status(401).json({ error: 'Unauthorized' }); return;
+        }
+
+        const { pdfBase64, sourceEmail } = req.body || {};
+        if (!pdfBase64) { res.status(400).json({ error: 'Missing pdfBase64' }); return; }
+
+        try {
+            const anthropic = new Anthropic({ apiKey: anthropicApiKey.value() });
+
+            const message = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 1024,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'document',
+                            source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 }
+                        },
+                        {
+                            type: 'text',
+                            text: `Extract the following fields from this delivery ticket and return ONLY valid JSON, no explanation:
+
+{
+  "jobNumber": "numeric part of the Purchase Order Number field (e.g. '11108' from 'Dart #11108R')",
+  "customerName": "name part of the Purchase Order Number field (e.g. 'Dart' from 'Dart #11108R')",
+  "supplier": "company name at the top of the document",
+  "orderDate": "Order Date field in YYYY-MM-DD format",
+  "deliveryDate": "Request Date field in YYYY-MM-DD format",
+  "qcStatus": "RTS if document shows QC'd-RTS stamp, otherwise null",
+  "bundleCount": number,
+  "boxCount": number,
+  "sheetCount": number,
+  "items": [
+    {
+      "lineNumber": "WH.LN value e.g. 33.1",
+      "itemNumber": "Item Number column value",
+      "quantity": number,
+      "uom": "U/M column value e.g. PC",
+      "description": "first line of Description column (size and color)",
+      "specs": {
+        "frameColor": "Frame Color value or null",
+        "frameType": "Frame Type value or null",
+        "glassConfig": "Glass Configuration value or null",
+        "location": "Location value or null"
+      }
+    }
+  ]
+}
+
+Rules:
+- jobNumber must be only digits (strip any trailing letters like R, A, B)
+- dates must be YYYY-MM-DD or null if not found
+- items array must have one entry per line item row in the table
+- return null for any field you cannot find`
+                        }
+                    ]
+                }]
+            });
+
+            let extracted;
+            try {
+                const raw = message.content[0].text.trim();
+                const jsonStr = raw.startsWith('```') ? raw.replace(/```json?\n?/g, '').replace(/```/g, '') : raw;
+                extracted = JSON.parse(jsonStr);
+            } catch (e) {
+                logger.error('Claude returned unparseable JSON', message.content[0].text.slice(0, 200));
+                res.status(500).json({ error: 'Parse failed' }); return;
+            }
+
+            if (!extracted.jobNumber) { res.status(422).json({ error: 'Could not extract job number' }); return; }
+
+            let jobId = null;
+            let jobCustomerName = null;
+            try {
+                const jobSnap = await db.collection('jobs')
+                    .where('jobNumber', '==', extracted.jobNumber).limit(1).get();
+                if (!jobSnap.empty) {
+                    jobId = jobSnap.docs[0].id;
+                    jobCustomerName = jobSnap.docs[0].data().customerName || null;
+                }
+            } catch (e) {
+                logger.warn('Could not match delivery ticket to job:', extracted.jobNumber, e.message);
+            }
+
+            const doc = {
+                jobNumber:    extracted.jobNumber,
+                jobId:        jobId,
+                customerName: extracted.customerName || jobCustomerName || null,
+                supplier:     extracted.supplier     || null,
+                orderDate:    extracted.orderDate     || null,
+                deliveryDate: extracted.deliveryDate  || null,
+                qcStatus:     extracted.qcStatus      || null,
+                bundleCount:  extracted.bundleCount   ?? 0,
+                boxCount:     extracted.boxCount      ?? 0,
+                sheetCount:   extracted.sheetCount    ?? 0,
+                items:        Array.isArray(extracted.items) ? extracted.items : [],
+                sourceEmail:  sourceEmail || null,
+                matched:      !!jobId,
+                receivedAt:   admin.firestore.FieldValue.serverTimestamp(),
+                status:       'pending'
+            };
+
+            const ref = await db.collection('delivery_tickets').add(doc);
+            logger.info(`Delivery ticket ingested: ${ref.id} for job #${extracted.jobNumber} matched=${!!jobId}`);
+            res.status(200).json({ success: true, id: ref.id, jobNumber: extracted.jobNumber, matched: !!jobId });
+
+        } catch (e) {
+            logger.error('ingestDeliveryEmail error:', e.message);
+            res.status(500).json({ error: e.message });
+        }
+    }
+);

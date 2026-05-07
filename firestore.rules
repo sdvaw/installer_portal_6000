@@ -224,6 +224,19 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------
+    // DELIVERY TICKETS — written by Cloud Function (admin SDK)
+    //   admin + management: full access (view, match, update status)
+    //   installers: read tickets matched to their jobs
+    //   create: blocked — only Cloud Function can create
+    // --------------------------------------------------------
+    match /delivery_tickets/{ticketId} {
+      allow read, update, delete: if isAdmin() || isManagementUser();
+      allow create: if false;
+      allow read: if isSignedIn()
+        && resource.data.jobId != null;
+    }
+
+    // --------------------------------------------------------
     // INSTALLER DOCUMENTS — compliance docs uploaded by installers
     //   admin + management: full access (verify, view all)
     //   installer: read/create/update own docs; cannot set verifiedAt/verifiedBy
