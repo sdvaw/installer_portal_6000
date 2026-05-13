@@ -2746,6 +2746,7 @@ async function openJobDetail(jobId) {
         const rec = records[effectiveRecId] || null;
 
         renderJobDetail(job, rec, effectiveRecId);
+        loadDeliverySection(job.id);
     } catch(err) {
         el.innerHTML = `<div class="alert alert-error m-4">Could not load job: ${esc(err.message)}</div>`;
     }
@@ -2822,6 +2823,8 @@ function renderJobDetail(job, rec, recId) {
             <a href="https://maps.google.com/?q=${encodeURIComponent(job.address)}" target="_blank"
                class="btn btn-secondary w-full">${t('open_in_maps')}</a>
         </div>` : ''}
+
+        <div id="jd-delivery-wrap"></div>
 
         <div class="detail-section">
             <h3>${t('office_comments')}</h3>
@@ -3162,9 +3165,52 @@ async function updateJobStatus(jobId, newStatus, statusNote, amountCollected = n
         const job    = { id: jobDoc.id, ...jobDoc.data() };
         const newRec = jobRecordCache[jobId];
         renderJobDetail(job, newRec, jobId);
+        loadDeliverySection(job.id);
 
     } catch(err) {
         alert(t('alert_status_error', { err: err.message }));
+    }
+}
+
+async function loadDeliverySection(jobId) {
+    const wrap = document.getElementById('jd-delivery-wrap');
+    if (!wrap) return;
+    try {
+        const snap = await db.collection('delivery_tickets')
+            .where('jobId', '==', jobId).limit(1).get();
+        if (snap.empty) return;
+
+        const ticket = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        const items  = Array.isArray(ticket.items) ? ticket.items : [];
+
+        const itemRows = items.map(i => {
+            const specs = i.specs ? Object.entries(i.specs).filter(([,v])=>v).map(([,v])=>esc(String(v))).join(' · ') : '';
+            return `
+            <div style="display:flex;justify-content:space-between;align-items:baseline;padding:.3rem 0;border-bottom:1px solid var(--hairline)">
+                <div>
+                    <span style="font-size:.85rem">${esc(i.description||i.itemNumber||'—')}</span>
+                    ${specs ? `<div style="font-size:.73rem;color:var(--muted);margin-top:.1rem">${specs}</div>` : ''}
+                </div>
+                <span style="font-size:.85rem;font-weight:600;white-space:nowrap;margin-left:.75rem">${i.quantity ?? ''} ${esc(i.uom||'')}</span>
+            </div>`;
+        }).join('');
+
+        const bundleInfo = [
+            ticket.bundleCount ? `${ticket.bundleCount} bundle${ticket.bundleCount!==1?'s':''}` : '',
+            ticket.boxCount    ? `${ticket.boxCount} box${ticket.boxCount!==1?'es':''}` : ''
+        ].filter(Boolean).join(', ');
+
+        const qcBadge = ticket.qcStatus === 'RTS'
+            ? `<span style="font-size:.72rem;padding:.1rem .4rem;border-radius:8px;background:#d1fae5;color:#065f46;font-weight:600;margin-left:.5rem">QC: RTS ✓</span>` : '';
+
+        wrap.innerHTML = `
+        <div class="detail-section">
+            <h3>Delivery <span style="font-size:.8rem;font-weight:400;color:var(--muted)">${esc(ticket.deliveryDate||'')}</span>${qcBadge}</h3>
+            <div style="font-size:.8rem;color:var(--muted);margin-bottom:.6rem">${esc(ticket.supplier||'')}${bundleInfo ? ' · ' + bundleInfo : ''}</div>
+            ${itemRows || '<p class="text-muted text-sm">No items on file.</p>'}
+        </div>`;
+    } catch(err) {
+        console.warn('loadDeliverySection:', err.message);
     }
 }
 

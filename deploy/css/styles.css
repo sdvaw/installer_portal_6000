@@ -89,6 +89,13 @@ h3 { font-size: 1.125rem; font-weight: 600; }
 .font-bold  { font-weight: 700; }
 .font-medium{ font-weight: 500; }
 
+/* --- SECTION LABEL ----------------------------------------- */
+.section-label {
+  font-size: .72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--muted); padding: .6rem 0 .4rem;
+}
+
 /* --- CARD -------------------------------------------------- */
 .card {
   background: var(--surface);

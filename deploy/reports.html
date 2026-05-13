@@ -479,6 +479,7 @@ function showPortal() {
     if (currentRole === 'finance' || currentRole === 'manager') tabs.push({ id: 'analytics', label: '📊 Analytics' });
     if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'service',   label: '🔧 Service' });
     if (currentRole === 'service' || currentRole === 'manager') tabs.push({ id: 'materials', label: '📦 Materials' });
+    if (currentRole === 'manager') tabs.push({ id: 'staging',   label: '🚚 Staging' });
 
     document.getElementById('app').innerHTML = `
         <nav class="admin-nav">
@@ -508,6 +509,7 @@ function switchTab(tab) {
     if (tab === 'analytics') loadAnalyticsReport();
     if (tab === 'service')   loadServiceReport();
     if (tab === 'materials') loadMaterialsTab();
+    if (tab === 'staging')   loadStagingTab();
 }
 
 // ── DAILY REVIEW ──────────────────────────────────────────────
@@ -2447,6 +2449,96 @@ async function runAnalytics() {
 
     } catch(err) {
         el.innerHTML = `<div class="empty-state">Error loading analytics: ${esc(err.message)}</div>`;
+    }
+}
+
+// ── STAGING TAB ───────────────────────────────────────────────
+async function loadStagingTab() {
+    const content = document.getElementById('report-content');
+    content.innerHTML = '<div class="text-center p-6"><span class="spinner"></span></div>';
+
+    if (!auth.currentUser) { showLogin(); return; }
+    try {
+        const snap = await db.collection('delivery_tickets')
+            .orderBy('deliveryDate', 'asc').get();
+        const tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (!tickets.length) {
+            content.innerHTML = `<div class="empty-state">No delivery tickets on file. Upload PDFs from the Admin Portal → Deliveries.</div>`;
+            return;
+        }
+
+        // Group by deliveryDate
+        const todayStr = new Date().toISOString().slice(0,10);
+        const groups = {};
+        for (const t of tickets) {
+            const key = t.deliveryDate || 'No date';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(t);
+        }
+
+        const fmtDate = d => {
+            if (!d || d === 'No date') return 'No delivery date';
+            const [y, m, day] = d.split('-');
+            return new Date(+y, +m - 1, +day).toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+        };
+
+        const isOverdue = d => d && d < todayStr;
+        const isToday   = d => d === todayStr;
+
+        let html = '';
+        for (const [date, group] of Object.entries(groups)) {
+            const label  = fmtDate(date);
+            const badge  = isToday(date)  ? `<span style="font-size:.72rem;padding:.1rem .45rem;border-radius:10px;background:#fef9c3;color:#854d0e;font-weight:600;margin-left:.5rem">Today</span>`
+                         : isOverdue(date) ? `<span style="font-size:.72rem;padding:.1rem .45rem;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:600;margin-left:.5rem">Overdue</span>` : '';
+            const totalItems   = group.reduce((s,t) => s + (t.items?.length || 0), 0);
+            const totalBundles = group.reduce((s,t) => s + (t.bundleCount || 0), 0);
+            const unmatched    = group.filter(t => !t.matched).length;
+            const received     = group.filter(t => t.status === 'received').length;
+
+            const rows = group.map(t => {
+                const qcBadge = t.qcStatus === 'RTS'
+                    ? `<span style="font-size:.7rem;padding:.1rem .4rem;border-radius:8px;background:#d1fae5;color:#065f46;font-weight:600">RTS</span>` : '';
+                const matchState = t.matched
+                    ? `<span style="font-size:.7rem;color:var(--muted)">Job #${esc(t.jobNumber)}</span>`
+                    : `<span style="font-size:.7rem;color:#dc2626;font-weight:500">Unmatched</span>`;
+                const recvState = t.status === 'received'
+                    ? `<span style="font-size:.7rem;color:var(--ok)">✓ Received</span>` : '';
+
+                const specs = i => {
+                    if (!i.specs) return '';
+                    const p = Object.entries(i.specs).filter(([,v])=>v).map(([,v])=>esc(String(v))).join(' · ');
+                    return p ? `<span style="color:var(--muted);font-size:.75rem"> — ${p}</span>` : '';
+                };
+
+                const itemList = (t.items||[]).map(i =>
+                    `<li style="padding:.2rem 0;border-bottom:1px solid var(--hairline)">${esc(i.description||i.itemNumber||'—')}${specs(i)} &nbsp;<strong>${i.quantity ?? ''} ${esc(i.uom||'')}</strong></li>`
+                ).join('');
+
+                return `
+                <details style="background:var(--surface-2,#f9fafb);border:1px solid var(--hairline);border-radius:6px;margin:.35rem 0;overflow:hidden">
+                    <summary style="padding:.6rem .85rem;cursor:pointer;list-style:none;display:flex;align-items:center;gap:.5rem;user-select:none">
+                        <span style="font-weight:500;flex:1">${esc(t.customerName||'—')}</span>
+                        <span style="font-size:.8rem;color:var(--muted)">${t.items?.length||0} items · ${t.bundleCount||0}B</span>
+                        ${qcBadge} ${matchState} ${recvState}
+                    </summary>
+                    <ul style="list-style:none;margin:0;padding:.3rem .85rem .65rem;font-size:.82rem">${itemList || '<li class="text-muted">No items extracted.</li>'}</ul>
+                </details>`;
+            }).join('');
+
+            html += `
+            <div style="margin-bottom:1.5rem">
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+                    <h3 style="font-size:1rem;margin:0">${esc(label)}${badge}</h3>
+                    <span style="font-size:.8rem;color:var(--muted);margin-left:auto">${group.length} ticket${group.length!==1?'s':''} · ${totalItems} items · ${totalBundles} bundles${unmatched ? ` · <span style="color:#dc2626">${unmatched} unmatched</span>` : ''} · ${received} received</span>
+                </div>
+                ${rows}
+            </div>`;
+        }
+
+        content.innerHTML = html;
+    } catch(err) {
+        content.innerHTML = `<div class="empty-state">Error loading staging: ${esc(err.message)}</div>`;
     }
 }
 </script>

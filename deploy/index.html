@@ -207,6 +207,7 @@ function showDashboard() {
             <div class="admin-nav-links" id="nav-links">
                 <button class="nav-link active"  onclick="switchSection('dashboard')">Dashboard</button>
                 <button class="nav-link"          onclick="switchSection('installers')">Installers</button>
+                <button class="nav-link"          onclick="switchSection('deliveries')">Deliveries</button>
                 <button class="nav-link"          onclick="switchSection('settings')">System</button>
                 <button class="nav-link"          onclick="switchSection('teamup')">TeamUp Status</button>
             </div>
@@ -219,6 +220,7 @@ function showDashboard() {
         <main class="admin-content">
             <div id="section-dashboard"></div>
             <div id="section-installers"  class="hidden"></div>
+            <div id="section-deliveries"  class="hidden"></div>
             <div id="section-settings"    class="hidden"></div>
             <div id="section-teamup"      class="hidden"></div>
             <div id="section-management"  class="hidden"></div>
@@ -233,11 +235,12 @@ function switchSection(name) {
         const matches = btn.textContent.toLowerCase().replace(/\s/g,'').startsWith(name.slice(0,4));
         btn.classList.toggle('active', matches);
     });
-    ['dashboard','installers','settings','teamup','management','staff'].forEach(s => {
+    ['dashboard','installers','deliveries','settings','teamup','management','staff'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
     });
     if (name === 'dashboard')  renderDashboard();
     if (name === 'installers') renderInstallers();
+    if (name === 'deliveries') renderDeliveries();
     if (name === 'settings')   renderSettings();
     if (name === 'teamup')     renderTeamUpStatus();
     if (name === 'management') renderManagement();
@@ -3489,6 +3492,315 @@ function closeModal() { modalRoot.innerHTML = ''; }
 function copyPortalLink() {
     const url = 'https://installer-portal-6000.web.app/installer.html';
     navigator.clipboard.writeText(url).then(() => flash('ok', 'Portal link copied to clipboard.'));
+}
+
+// ============================================================
+// DELIVERIES SECTION
+// ============================================================
+async function renderDeliveries() {
+    const el = document.getElementById('section-deliveries');
+    if (!el) return;
+    el.innerHTML = `
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2>Deliveries</h2>
+                <p class="text-muted text-sm">Upload delivery ticket PDFs · Claude AI parses and matches to jobs automatically.</p>
+            </div>
+            <button class="btn btn-primary" onclick="showDeliveryUpload()">+ Upload PDF</button>
+        </div>
+        <div id="dt-list"><div class="text-center p-6"><span class="spinner"></span></div></div>`;
+    loadDeliveryTickets();
+}
+
+async function loadDeliveryTickets() {
+    const wrap = document.getElementById('dt-list');
+    if (!wrap) return;
+    try {
+        const snap = await db.collection('delivery_tickets')
+            .orderBy('receivedAt', 'desc').limit(100).get();
+
+        if (snap.empty) {
+            wrap.innerHTML = `<div class="card text-center text-muted p-6">No delivery tickets yet. Upload a PDF to get started.</div>`;
+            return;
+        }
+
+        const tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const unmatched = tickets.filter(t => !t.matched);
+        const matched   = tickets.filter(t =>  t.matched);
+
+        let html = '';
+        if (unmatched.length) {
+            html += `<div class="section-label" style="color:var(--color-warn,#f59e0b)">Unmatched — needs review (${unmatched.length})</div>`;
+            html += unmatched.map(t => deliveryTicketRow(t)).join('');
+        }
+        html += `<div class="section-label">Matched (${matched.length})</div>`;
+        html += matched.length
+            ? matched.map(t => deliveryTicketRow(t)).join('')
+            : `<div class="text-muted text-sm" style="padding:.5rem 0">No matched tickets yet.</div>`;
+
+        wrap.innerHTML = html;
+    } catch(err) {
+        wrap.innerHTML = `<div class="alert alert-error">Error loading tickets: ${esc(err.message)}</div>`;
+    }
+}
+
+function deliveryTicketRow(t) {
+    const receivedAt = t.receivedAt?.toDate ? t.receivedAt.toDate() : null;
+    const receivedStr = receivedAt ? receivedAt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    const deliveryStr = t.deliveryDate || '—';
+    const qcBadge = t.qcStatus === 'RTS'
+        ? `<span style="font-size:.7rem;padding:.1rem .45rem;border-radius:10px;background:#d1fae5;color:#065f46;font-weight:600">RTS</span>`
+        : '';
+    const matchBadge = t.matched
+        ? `<span style="font-size:.7rem;padding:.1rem .45rem;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:600">Job #${esc(t.jobNumber)}</span>`
+        : `<span style="font-size:.7rem;padding:.1rem .45rem;border-radius:10px;background:#fee2e2;color:#991b1b;font-weight:600">Unmatched</span>`;
+    const statusBadge = t.status === 'received'
+        ? `<span style="font-size:.7rem;padding:.1rem .45rem;border-radius:10px;background:#f3f4f6;color:#374151;font-weight:500">Received</span>`
+        : '';
+    const bundleInfo = t.bundleCount ? `${t.bundleCount}B` : '';
+    const boxInfo    = t.boxCount    ? `${t.boxCount}Bx` : '';
+    const countInfo  = [bundleInfo, boxInfo].filter(Boolean).join(' ');
+
+    return `
+    <div class="card mb-3" style="cursor:pointer" onclick="openDeliveryTicket('${t.id}')">
+        <div class="flex justify-between items-center">
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:600;margin-bottom:.2rem">${esc(t.customerName || '—')} · ${esc(t.supplier || '—')}</div>
+                <div style="font-size:.8rem;color:var(--color-muted,#6b7280)">
+                    Delivery: <strong style="color:var(--color-text,#111)">${esc(deliveryStr)}</strong>
+                    &nbsp;·&nbsp; ${t.items?.length ?? 0} items${countInfo ? ' · ' + countInfo : ''}
+                    &nbsp;·&nbsp; Received: ${receivedStr}
+                </div>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center;flex-shrink:0;margin-left:.75rem">
+                ${qcBadge} ${matchBadge} ${statusBadge}
+                <span style="color:var(--color-muted,#9ca3af)">›</span>
+            </div>
+        </div>
+    </div>`;
+}
+
+function openDeliveryTicket(ticketId) {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal-box" style="max-width:680px">
+                <div class="modal-header">
+                    <h3>Delivery Ticket</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body" id="dt-modal-body">
+                    <div class="text-center p-4"><span class="spinner"></span></div>
+                </div>
+            </div>
+        </div>`;
+
+    db.collection('delivery_tickets').doc(ticketId).get().then(doc => {
+        if (!doc.exists) { document.getElementById('dt-modal-body').innerHTML = '<p class="text-muted">Ticket not found.</p>'; return; }
+        const t = { id: doc.id, ...doc.data() };
+        renderDeliveryTicketModal(t);
+    }).catch(err => {
+        document.getElementById('dt-modal-body').innerHTML = `<p class="text-error">Error: ${esc(err.message)}</p>`;
+    });
+}
+
+function renderDeliveryTicketModal(t) {
+    const body = document.getElementById('dt-modal-body');
+    if (!body) return;
+
+    const items = Array.isArray(t.items) ? t.items : [];
+
+    const specsRow = s => {
+        if (!s) return '';
+        const pairs = Object.entries(s).filter(([,v]) => v);
+        if (!pairs.length) return '';
+        return `<div style="font-size:.75rem;color:var(--color-muted,#6b7280);margin-top:.15rem">${pairs.map(([k,v]) => `${k}: ${esc(String(v))}`).join(' · ')}</div>`;
+    };
+
+    const itemRows = items.length
+        ? items.map(i => `
+            <tr>
+                <td style="padding:.4rem .5rem;font-size:.8rem;color:var(--color-muted,#6b7280)">${esc(i.lineNumber||'')}</td>
+                <td style="padding:.4rem .5rem">
+                    <div style="font-weight:500">${esc(i.description||i.itemNumber||'—')}</div>
+                    ${specsRow(i.specs)}
+                </td>
+                <td style="padding:.4rem .5rem;text-align:right;white-space:nowrap">${i.quantity ?? ''} ${esc(i.uom||'')}</td>
+            </tr>`).join('')
+        : `<tr><td colspan="3" class="text-muted text-sm" style="padding:.75rem .5rem">No line items extracted.</td></tr>`;
+
+    const matchSection = !t.matched ? `
+        <div style="margin-top:1rem;padding:1rem;background:var(--surface-2,#f9fafb);border-radius:8px;border:1px solid var(--color-border,#e5e7eb)">
+            <div style="font-weight:600;margin-bottom:.5rem;font-size:.9rem">Manual Job Match</div>
+            <p class="text-muted text-sm" style="margin-bottom:.5rem">Job #${esc(t.jobNumber||'—')} was not found automatically. Enter the correct job number to link this ticket.</p>
+            <div style="display:flex;gap:.5rem;align-items:center">
+                <input id="dt-match-input" type="text" class="input" placeholder="Job number (digits only)" value="${esc(t.jobNumber||'')}" style="width:180px">
+                <button class="btn btn-primary btn-sm" onclick="matchDeliveryTicket('${t.id}')">Match</button>
+            </div>
+        </div>` : '';
+
+    const receivedBtn = t.status !== 'received'
+        ? `<button class="btn btn-secondary btn-sm" onclick="markDeliveryReceived('${t.id}')">✓ Mark Received at Warehouse</button>`
+        : `<span style="font-size:.8rem;color:var(--color-ok,#22c55e);font-weight:500">✓ Received at warehouse</span>`;
+
+    body.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem 1.5rem;margin-bottom:1rem;font-size:.875rem">
+            <div><span class="text-muted">Customer</span><br><strong>${esc(t.customerName||'—')}</strong></div>
+            <div><span class="text-muted">Job #</span><br><strong>${esc(t.jobNumber||'—')} ${t.matched ? '✓' : '<span style="color:#dc2626">(unmatched)</span>'}</strong></div>
+            <div><span class="text-muted">Supplier</span><br>${esc(t.supplier||'—')}</div>
+            <div><span class="text-muted">QC Status</span><br>${t.qcStatus === 'RTS' ? '<span style="color:#065f46;font-weight:600">RTS ✓</span>' : '<span class="text-muted">Not stamped</span>'}</div>
+            <div><span class="text-muted">Order Date</span><br>${esc(t.orderDate||'—')}</div>
+            <div><span class="text-muted">Delivery Date</span><br><strong>${esc(t.deliveryDate||'—')}</strong></div>
+            <div><span class="text-muted">Bundles / Boxes</span><br>${t.bundleCount||0} bundles · ${t.boxCount||0} boxes · ${t.sheetCount||0} sheets</div>
+            <div><span class="text-muted">Source</span><br style="font-size:.75rem">${esc(t.sourceEmail||'Manual upload')}</div>
+        </div>
+
+        <h4 style="margin:.75rem 0 .4rem;font-size:.9rem">Line Items (${items.length})</h4>
+        <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+                <thead>
+                    <tr style="border-bottom:2px solid var(--color-border,#e5e7eb);font-size:.75rem;color:var(--color-muted,#6b7280);text-transform:uppercase;letter-spacing:.04em">
+                        <th style="padding:.3rem .5rem;text-align:left;font-weight:500">Line</th>
+                        <th style="padding:.3rem .5rem;text-align:left;font-weight:500">Description</th>
+                        <th style="padding:.3rem .5rem;text-align:right;font-weight:500">Qty</th>
+                    </tr>
+                </thead>
+                <tbody style="border-bottom:1px solid var(--color-border,#e5e7eb)">${itemRows}</tbody>
+            </table>
+        </div>
+
+        ${matchSection}
+
+        <div style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            ${receivedBtn}
+            <button class="btn btn-ghost btn-sm" onclick="deleteDeliveryTicket('${t.id}')" style="color:#dc2626">Delete</button>
+        </div>`;
+}
+
+async function matchDeliveryTicket(ticketId) {
+    const input = document.getElementById('dt-match-input');
+    const jobNum = (input?.value || '').replace(/\D/g,'').trim();
+    if (!jobNum) { flash('error', 'Enter a valid job number.'); return; }
+
+    try {
+        const jobSnap = await db.collection('jobs').where('jobNumber', '==', jobNum).limit(1).get();
+        if (jobSnap.empty) { flash('error', `Job #${jobNum} not found in Firestore.`); return; }
+        const jobId = jobSnap.docs[0].id;
+        const customerName = jobSnap.docs[0].data().customerName || null;
+        await db.collection('delivery_tickets').doc(ticketId).update({
+            jobNumber: jobNum, jobId, matched: true,
+            customerName: customerName
+        });
+        flash('ok', `Matched to Job #${jobNum}.`);
+        closeModal();
+        loadDeliveryTickets();
+    } catch(err) {
+        flash('error', 'Match failed: ' + err.message);
+    }
+}
+
+async function markDeliveryReceived(ticketId) {
+    try {
+        await db.collection('delivery_tickets').doc(ticketId).update({
+            status: 'received',
+            receivedAtWarehouse: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        flash('ok', 'Marked as received at warehouse.');
+        closeModal();
+        loadDeliveryTickets();
+    } catch(err) {
+        flash('error', 'Update failed: ' + err.message);
+    }
+}
+
+async function deleteDeliveryTicket(ticketId) {
+    if (!confirm('Delete this delivery ticket? This cannot be undone.')) return;
+    try {
+        await db.collection('delivery_tickets').doc(ticketId).delete();
+        flash('ok', 'Ticket deleted.');
+        closeModal();
+        loadDeliveryTickets();
+    } catch(err) {
+        flash('error', 'Delete failed: ' + err.message);
+    }
+}
+
+function showDeliveryUpload() {
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal-box" style="max-width:480px">
+                <div class="modal-header">
+                    <h3>Upload Delivery Ticket PDF</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted text-sm" style="margin-bottom:1rem">
+                        Claude AI will read the PDF and extract job number, delivery date, and all line items automatically.
+                    </p>
+                    <label style="display:block;border:2px dashed var(--color-border,#d1d5db);border-radius:8px;padding:2rem;text-align:center;cursor:pointer;transition:border-color .15s"
+                           onmouseover="this.style.borderColor='var(--accent,#2563eb)'"
+                           onmouseout="this.style.borderColor='var(--color-border,#d1d5db)'">
+                        <div style="font-size:2rem;margin-bottom:.5rem">📄</div>
+                        <div style="font-weight:500;margin-bottom:.25rem">Click to select PDF</div>
+                        <div style="font-size:.8rem;color:var(--color-muted,#6b7280)">or drag and drop</div>
+                        <input type="file" accept=".pdf,application/pdf" style="display:none" onchange="handleDeliveryPdfSelect(event)">
+                    </label>
+                    <div id="dt-upload-status" style="margin-top:1rem"></div>
+                </div>
+            </div>
+        </div>`;
+
+    // Wire drag-drop
+    const zone = modalRoot.querySelector('label');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--accent,#2563eb)'; });
+    zone.addEventListener('dragleave', () => { zone.style.borderColor='var(--color-border,#d1d5db)'; });
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.style.borderColor='var(--color-border,#d1d5db)';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') processDeliveryPdf(file);
+        else flash('error', 'Please drop a PDF file.');
+    });
+}
+
+async function handleDeliveryPdfSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    processDeliveryPdf(file);
+}
+
+async function processDeliveryPdf(file) {
+    const statusEl = document.getElementById('dt-upload-status');
+    if (statusEl) statusEl.innerHTML = `<div class="text-center"><span class="spinner"></span> Parsing with Claude AI…</div>`;
+
+    try {
+        const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+        const fn = firebase.functions().httpsCallable('parseDeliveryTicket');
+        const result = await fn({ pdfBase64: base64 });
+        const { jobNumber, matched, itemCount } = result.data;
+
+        if (statusEl) statusEl.innerHTML = `
+            <div class="alert alert-success">
+                <strong>Parsed successfully!</strong><br>
+                Job #${esc(jobNumber)} · ${itemCount} items · ${matched ? '✓ Matched to job' : '⚠ No matching job found — you can match manually'}.
+            </div>`;
+
+        loadDeliveryTickets();
+
+        setTimeout(() => {
+            if (!matched) { closeModal(); flash('warn', `Job #${jobNumber} not matched — open the ticket to match manually.`); }
+            else closeModal();
+        }, 2000);
+
+    } catch(err) {
+        if (statusEl) statusEl.innerHTML = `<div class="alert alert-error">Parse failed: ${esc(err.message)}</div>`;
+    }
 }
 
 function isValidEmail(email) {
