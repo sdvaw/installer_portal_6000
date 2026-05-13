@@ -2,6 +2,38 @@
 
 ---
 
+## v2.11.0 — Delivery Ticket UI
+**Released:** 2026-05-13
+
+### Overview
+Full UI surface for the delivery ticket feature across all three portals. Admins can upload PDFs and manage tickets, managers can view the staging calendar, and installers see delivery info directly on their job detail screen.
+
+### New Features
+
+#### Admin Portal — Deliveries Tab
+- New "Deliveries" nav section in the admin portal.
+- PDF upload via file picker or drag-and-drop — Claude AI parses the ticket and writes to Firestore automatically.
+- Ticket list grouped by matched/unmatched status with delivery date, item count, bundle count, and QC badge.
+- Ticket detail modal: full line-item table with specs, manual job match for unmatched tickets, mark-received action, delete.
+
+#### Reports Portal — Staging Tab (Manager only)
+- New "🚚 Staging" tab shows all incoming deliveries grouped by delivery date.
+- Each date group shows ticket count, total items, bundles, and unmatched/received counts.
+- Per-ticket collapsible detail shows full item list with specs.
+- Today and overdue date badges for at-a-glance priority.
+
+#### Installer Portal — Delivery Section on Job Detail
+- Matched delivery tickets now surface on the installer's job detail screen.
+- Shows delivery date, supplier, bundle count, and all line items with specs.
+- Loads asynchronously — no impact on job detail render time.
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting` — index.html, reports.html, installer.html, styles.css
+- [x] No Firestore rule changes (delivery_tickets rules already deployed in v2.10.x)
+- [x] No Cloud Function changes (parseDeliveryTicket already deployed)
+
+---
+
 ## v2.10.0 — PWA Install Support (Installer Portal)
 **Released:** 2026-05-06
 
