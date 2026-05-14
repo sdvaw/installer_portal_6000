@@ -2005,7 +2005,10 @@ async function fetchWeekJobs(offset) {
 
         const jobs = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
-            .filter(j => !j.isServiceCall && (j.assignedIds || []).map(String).includes(tidStr))
+            .filter(j => !j.isServiceCall && (
+                (j.assignedIds || []).map(String).includes(tidStr) ||
+                (j.assignedInstallerIds || []).includes(currentInstaller.id)
+            ))
             .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
 
         propagateJobCounts(jobs);
@@ -2020,8 +2023,10 @@ async function fetchWeekJobs(offset) {
             .map(d => ({ id: d.id, ...d.data() }))
             .filter(j => {
                 const start = toDate(j.startDt);
-                return !j.isServiceCall && start >= monday && start <= sunday &&
-                    (j.assignedIds || []).map(String).includes(tidStr);
+                return !j.isServiceCall && start >= monday && start <= sunday && (
+                    (j.assignedIds || []).map(String).includes(tidStr) ||
+                    (j.assignedInstallerIds || []).includes(currentInstaller.id)
+                );
             })
             .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
         propagateJobCounts(jobs);
@@ -3831,7 +3836,10 @@ async function loadEarningsReport() {
                 .get();
             jobs = snap.docs
                 .map(d => ({ id: d.id, ...d.data() }))
-                .filter(j => (j.assignedIds || []).map(String).includes(tidStr))
+                .filter(j => (
+                    (j.assignedIds || []).map(String).includes(tidStr) ||
+                    (j.assignedInstallerIds || []).includes(currentInstaller.id)
+                ))
                 .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
         } catch(e) {
             const snap = await db.collection('jobs').get();
@@ -3839,8 +3847,10 @@ async function loadEarningsReport() {
                 .map(d => ({ id: d.id, ...d.data() }))
                 .filter(j => {
                     const start = toDate(j.startDt);
-                    return start >= from && start <= to &&
-                        (j.assignedIds || []).map(String).includes(tidStr);
+                    return start >= from && start <= to && (
+                        (j.assignedIds || []).map(String).includes(tidStr) ||
+                        (j.assignedInstallerIds || []).includes(currentInstaller.id)
+                    );
                 })
                 .sort((a, b) => toDate(a.startDt) - toDate(b.startDt));
         }

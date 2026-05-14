@@ -208,6 +208,7 @@ function showDashboard() {
                 <button class="nav-link active"  onclick="switchSection('dashboard')">Dashboard</button>
                 <button class="nav-link"          onclick="switchSection('installers')">Installers</button>
                 <button class="nav-link"          onclick="switchSection('deliveries')">Deliveries</button>
+                <button class="nav-link" id="nav-jobs-btn" onclick="switchSection('jobs')" style="display:none">Jobs</button>
                 <button class="nav-link"          onclick="switchSection('settings')">System</button>
                 <button class="nav-link"          onclick="switchSection('teamup')">TeamUp Status</button>
             </div>
@@ -221,6 +222,7 @@ function showDashboard() {
             <div id="section-dashboard"></div>
             <div id="section-installers"  class="hidden"></div>
             <div id="section-deliveries"  class="hidden"></div>
+            <div id="section-jobs"        class="hidden"></div>
             <div id="section-settings"    class="hidden"></div>
             <div id="section-teamup"      class="hidden"></div>
             <div id="section-management"  class="hidden"></div>
@@ -235,12 +237,13 @@ function switchSection(name) {
         const matches = btn.textContent.toLowerCase().replace(/\s/g,'').startsWith(name.slice(0,4));
         btn.classList.toggle('active', matches);
     });
-    ['dashboard','installers','deliveries','settings','teamup','management','staff'].forEach(s => {
+    ['dashboard','installers','deliveries','jobs','settings','teamup','management','staff'].forEach(s => {
         document.getElementById('section-' + s).classList.toggle('hidden', s !== name);
     });
     if (name === 'dashboard')  renderDashboard();
     if (name === 'installers') renderInstallers();
     if (name === 'deliveries') renderDeliveries();
+    if (name === 'jobs')       renderJobs();
     if (name === 'settings')   renderSettings();
     if (name === 'teamup')     renderTeamUpStatus();
     if (name === 'management') renderManagement();
@@ -1125,6 +1128,46 @@ async function renderSettings(retries = 1) {
             <p class="text-muted text-sm">Configure integrations, statuses, staff, sync, and database tools.</p>
         </div>
 
+        <!-- Scheduling Integrations -->
+        <details class="card mb-4">
+            <summary><div class="card-summary-text"><h3>Scheduling Integrations</h3><p>Connected scheduling apps and manual job entry.</p></div><span class="card-chevron">▶</span></summary>
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label">Connected Apps</label>
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
+                        <span style="display:inline-block;background:var(--ok);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">CONNECTED</span>
+                        <span style="font-weight:600">TeamUp</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                        <input type="checkbox" id="set-manual-jobs">
+                        Enable Manual Job Entry
+                    </label>
+                    <p class="text-muted text-sm mt-1">Adds a Jobs section to the admin nav where you can create and assign jobs without TeamUp.</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Other Scheduling Apps</label>
+                    <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.25rem">
+                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
+                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
+                            <span>Jobber</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
+                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
+                            <span>Google Calendar</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
+                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
+                            <span>ServiceTitan</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="scheduling-settings-msg" class="hidden alert mb-3"></div>
+                <button class="btn btn-primary" onclick="saveSchedulingSettings()">Save</button>
+            </div>
+        </details>
+
         <!-- TeamUp Sync -->
         <details class="card mb-4">
             <summary><div class="card-summary-text"><h3>TeamUp Sync</h3><p>Pull latest people and jobs from TeamUp into Firestore.</p></div><span class="card-chevron">▶</span></summary>
@@ -1390,6 +1433,9 @@ async function loadSettings() {
             const emailTplEl  = document.getElementById('set-emailjs-template');
             if (emailSvcEl && pd.emailjsServiceId)  emailSvcEl.value  = pd.emailjsServiceId;
             if (emailTplEl && pd.emailjsTemplateId) emailTplEl.value  = pd.emailjsTemplateId;
+            const manualJobsEl = document.getElementById('set-manual-jobs');
+            if (manualJobsEl && pd.manualJobsEnabled != null) manualJobsEl.checked = pd.manualJobsEnabled;
+            refreshJobsNav(pd.manualJobsEnabled);
         }
     } catch(err) {
         if (err.code === 'permission-denied' && retries > 0 && auth.currentUser) {
@@ -3478,6 +3524,302 @@ async function deleteStaff(uid) {
         await db.collection('management_users').doc(uid).delete();
         flash('ok', 'Staff member deleted.');
         await loadStaffList();
+    } catch(err) { flash('error', 'Delete failed: ' + err.message); }
+}
+
+// ============================================================
+// MANUAL JOBS SECTION
+// ============================================================
+function refreshJobsNav(enabled) {
+    const btn = document.getElementById('nav-jobs-btn');
+    if (btn) btn.style.display = enabled ? '' : 'none';
+}
+
+async function saveSchedulingSettings() {
+    const manualJobsEnabled = document.getElementById('set-manual-jobs')?.checked || false;
+    const msgEl = document.getElementById('scheduling-settings-msg');
+    try {
+        await db.collection('settings').doc('portal').set({ manualJobsEnabled }, { merge: true });
+        refreshJobsNav(manualJobsEnabled);
+        msgEl.className = 'alert alert-ok';
+        msgEl.textContent = 'Scheduling settings saved.';
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 3000);
+    } catch(err) {
+        msgEl.className = 'alert alert-error';
+        msgEl.textContent = 'Could not save: ' + err.message;
+        msgEl.classList.remove('hidden');
+    }
+}
+
+let _manualJobsEnabled = false;
+
+async function renderJobs() {
+    const el = document.getElementById('section-jobs');
+    if (!el) return;
+
+    try {
+        const portalDoc = await db.collection('settings').doc('portal').get();
+        _manualJobsEnabled = portalDoc.exists && portalDoc.data().manualJobsEnabled === true;
+    } catch(e) { _manualJobsEnabled = false; }
+
+    if (!_manualJobsEnabled) {
+        el.innerHTML = `
+            <div class="mb-6"><h2>Jobs</h2></div>
+            <div class="card p-6 text-center">
+                <p class="text-muted mb-4">Manual Job Entry is disabled. Enable it in <a href="#" onclick="switchSection('settings');return false;">System &rarr; Scheduling Integrations</a>.</p>
+            </div>`;
+        return;
+    }
+
+    el.innerHTML = `
+        <div class="mb-6" style="display:flex;justify-content:space-between;align-items:center">
+            <div><h2>Jobs</h2><p class="text-muted text-sm">Manually created jobs assigned to installers.</p></div>
+            <button class="btn btn-primary" onclick="openJobModal(null)">+ New Job</button>
+        </div>
+        <div id="jobs-list"><div class="text-center p-4"><span class="spinner"></span></div></div>`;
+
+    await loadJobsList();
+}
+
+async function loadJobsList() {
+    const el = document.getElementById('jobs-list');
+    if (!el) return;
+    try {
+        const snap = await db.collection('jobs').where('source', '==', 'manual').orderBy('startDt', 'desc').get();
+        if (snap.empty) {
+            el.innerHTML = '<p class="text-sm text-muted p-4">No manual jobs yet. Click "+ New Job" to create one.</p>';
+            return;
+        }
+        const fmtDate = ts => {
+            if (!ts) return '—';
+            const d = ts.toDate ? ts.toDate() : new Date(ts);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        };
+        el.innerHTML = `
+            <table class="data-table">
+                <thead><tr>
+                    <th>Customer</th><th>Job #</th><th>Date</th><th>Installers</th><th>Actions</th>
+                </tr></thead>
+                <tbody>
+                    ${snap.docs.map(d => {
+                        const j = d.data();
+                        const names = (j.assignedInstallerNames || []).join(', ') || '—';
+                        return `<tr>
+                            <td><strong>${esc(j.customerName || '—')}</strong></td>
+                            <td class="text-sm">${esc(j.jobNumber || '—')}</td>
+                            <td class="text-sm">${fmtDate(j.startDt)}</td>
+                            <td class="text-sm">${esc(names)}</td>
+                            <td class="flex gap-2">
+                                <button class="btn btn-sm btn-secondary" onclick="openJobModal('${d.id}')">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteJob('${d.id}')">Delete</button>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+    } catch(err) { el.innerHTML = `<p class="text-sm text-muted p-4">Could not load jobs: ${esc(err.message)}</p>`; }
+}
+
+async function openJobModal(jobId) {
+    let job = null;
+    if (jobId) {
+        const snap = await db.collection('jobs').doc(jobId).get();
+        if (snap.exists) job = snap.data();
+    }
+
+    const installerSnap = await db.collection('installers').where('status', '==', 'active').orderBy('displayName').get();
+    const installers = installerSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const toInputDate = ts => {
+        if (!ts) return '';
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toISOString().slice(0, 10);
+    };
+    const toInputTime = ts => {
+        if (!ts) return '';
+        const d = ts.toDate ? ts.toDate() : new Date(ts);
+        return d.toTimeString().slice(0, 5);
+    };
+
+    const assignedIds = job?.assignedInstallerIds || [];
+    const checkboxes = installers.map(inst => `
+        <label style="display:flex;align-items:center;gap:.4rem;padding:.2rem 0;cursor:pointer">
+            <input type="checkbox" name="job-installer" value="${inst.id}" data-teamup="${inst.teamupId || ''}" data-name="${esc(inst.displayName)}"
+                ${assignedIds.includes(inst.id) ? 'checked' : ''}>
+            ${esc(inst.displayName)}
+        </label>`).join('');
+
+    modalRoot.innerHTML = `
+        <div class="modal-overlay active" onclick="if(event.target===this)closeModal()">
+            <div class="modal" style="max-width:580px">
+                <div class="modal-header">
+                    <h3>${job ? 'Edit Job' : 'New Job'}</h3>
+                    <button class="modal-close" onclick="closeModal()">✕</button>
+                </div>
+                <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+                    <div class="form-group">
+                        <label class="form-label">Customer Name *</label>
+                        <input class="form-input" id="jm-customer" value="${esc(job?.customerName || '')}" placeholder="e.g. Jane Smith">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Customer Phone</label>
+                        <input class="form-input" id="jm-phone" value="${esc(job?.customerPhone || '')}" placeholder="(555) 555-5555">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Address</label>
+                        <textarea class="form-input" id="jm-address" rows="2" placeholder="123 Main St, City, ST 00000">${esc(job?.address || '')}</textarea>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+                        <div class="form-group">
+                            <label class="form-label">Date *</label>
+                            <input class="form-input" id="jm-date" type="date" value="${toInputDate(job?.startDt)}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Start Time</label>
+                            <input class="form-input" id="jm-start-time" type="time" value="${toInputTime(job?.startDt)}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">End Time</label>
+                            <input class="form-input" id="jm-end-time" type="time" value="${toInputTime(job?.endDt)}">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Assigned Installers</label>
+                        <div style="border:1px solid var(--hairline);border-radius:6px;padding:.5rem .75rem;max-height:140px;overflow-y:auto">
+                            ${checkboxes || '<span class="text-muted text-sm">No active installers found.</span>'}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Job Number</label>
+                        <input class="form-input" id="jm-jobnum" value="${esc(job?.jobNumber || '')}" placeholder="Auto-generated if blank">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-input" id="jm-notes" rows="2">${esc(job?.notes || '')}</textarea>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+                        <div class="form-group">
+                            <label class="form-label">Windows</label>
+                            <input class="form-input" id="jm-windows" type="number" min="0" value="${job?.windowCount ?? ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Doors</label>
+                            <input class="form-input" id="jm-doors" type="number" min="0" value="${job?.doorCount ?? ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Sliders</label>
+                            <input class="form-input" id="jm-sliders" type="number" min="0" value="${job?.sgdCount ?? ''}">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem">
+                        <div class="form-group">
+                            <label class="form-label">Balance Due</label>
+                            <input class="form-input" id="jm-balance" type="number" min="0" step="0.01" value="${job?.financials?.balanceDue ?? ''}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Payment Method</label>
+                            <input class="form-input" id="jm-payment" value="${esc(job?.financials?.paymentMethod || '')}">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Installer Pay</label>
+                            <input class="form-input" id="jm-pay" type="number" min="0" step="0.01" value="${job?.financials?.installerPay ?? ''}">
+                        </div>
+                    </div>
+                    <div id="jm-error" class="hidden alert alert-error"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" id="jm-submit" onclick="saveJob('${jobId || ''}')">Save Job</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+async function saveJob(jobId) {
+    const customerName   = document.getElementById('jm-customer').value.trim();
+    const customerPhone  = document.getElementById('jm-phone').value.trim();
+    const address        = document.getElementById('jm-address').value.trim();
+    const dateVal        = document.getElementById('jm-date').value;
+    const startTimeVal   = document.getElementById('jm-start-time').value;
+    const endTimeVal     = document.getElementById('jm-end-time').value;
+    const jobNumber      = document.getElementById('jm-jobnum').value.trim() || `M-${Date.now()}`;
+    const notes          = document.getElementById('jm-notes').value.trim();
+    const windowCount    = parseInt(document.getElementById('jm-windows').value) || null;
+    const doorCount      = parseInt(document.getElementById('jm-doors').value)   || null;
+    const sgdCount       = parseInt(document.getElementById('jm-sliders').value) || null;
+    const balanceDue     = parseFloat(document.getElementById('jm-balance').value) || 0;
+    const paymentMethod  = document.getElementById('jm-payment').value.trim();
+    const installerPay   = parseFloat(document.getElementById('jm-pay').value)   || 0;
+    const errEl          = document.getElementById('jm-error');
+    const btn            = document.getElementById('jm-submit');
+
+    if (!customerName) {
+        errEl.textContent = 'Customer Name is required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+    if (!dateVal) {
+        errEl.textContent = 'Date is required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const startDate = new Date(`${dateVal}T${startTimeVal || '08:00'}`);
+    const endDate   = new Date(`${dateVal}T${endTimeVal   || '17:00'}`);
+
+    const checked = [...document.querySelectorAll('input[name="job-installer"]:checked')];
+    const assignedInstallerIds      = checked.map(c => c.value);
+    const assignedInstallerTeamupIds = checked.map(c => c.dataset.teamup).filter(Boolean).map(Number);
+    const assignedInstallerNames    = checked.map(c => c.dataset.name);
+
+    const payload = {
+        source:         'manual',
+        jobNumber,
+        customerName,
+        customerPhone,
+        address,
+        startDt:        firebase.firestore.Timestamp.fromDate(startDate),
+        endDt:          firebase.firestore.Timestamp.fromDate(endDate),
+        notes,
+        officeComments: [],
+        windowCount,
+        doorCount,
+        sgdCount,
+        financials: { balanceDue, paymentMethod, installerPay, contractAmt: '' },
+        assignedInstallerIds,
+        assignedIds:    assignedInstallerTeamupIds,
+        assignedInstallerNames,
+        isServiceCall:  false,
+        updatedAt:      firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    try {
+        if (jobId) {
+            await db.collection('jobs').doc(jobId).update(payload);
+        } else {
+            payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('jobs').add(payload);
+        }
+        closeModal();
+        flash('ok', jobId ? 'Job updated.' : 'Job created.');
+        await loadJobsList();
+    } catch(err) {
+        errEl.textContent = 'Could not save: ' + err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Save Job';
+    }
+}
+
+async function deleteJob(jobId) {
+    if (!confirm('Delete this job? This cannot be undone.')) return;
+    try {
+        await db.collection('jobs').doc(jobId).delete();
+        flash('ok', 'Job deleted.');
+        await loadJobsList();
     } catch(err) { flash('error', 'Delete failed: ' + err.message); }
 }
 
