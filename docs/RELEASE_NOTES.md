@@ -2,6 +2,37 @@
 
 ---
 
+## v2.12.0 — Manual Job Entry
+**Released:** 2026-05-13
+
+### Overview
+Feature-flagged system for creating and assigning jobs without TeamUp. Off by default; enabled via a new toggle in System > Scheduling Integrations.
+
+### New Features
+
+#### Admin Portal — Scheduling Integrations Settings Card
+- New card in System settings showing currently connected apps (TeamUp shown as green "Connected" badge).
+- "Enable Manual Job Entry" checkbox writes `manualJobsEnabled` to `settings/portal`.
+- Informational list of future integrations (Jobber, Google Calendar, ServiceTitan) marked "Coming Soon."
+
+#### Admin Portal — Jobs Section
+- New "Jobs" nav link (hidden when feature is off, shown when enabled).
+- Lists all `source: 'manual'` jobs ordered by date with customer name, job number, date, and assigned installers.
+- Full CRUD: create, edit, and delete manual jobs.
+- Create/edit modal: customer name, phone, address, date, start/end time, installer checklist (active installers), job number, notes, window/door/slider counts, balance due, payment method, installer pay.
+- Auto-generates job number (`M-<timestamp>`) if left blank.
+- Writes `assignedInstallerIds` (Firestore doc IDs) and `assignedIds` (TeamUp IDs) for cross-filter compatibility.
+
+#### Installer Portal — Filter Update
+- Job filters in all 4 locations updated to also match `assignedInstallerIds` so manual jobs appear on the installer's schedule without a TeamUp calendar ID.
+
+### Deployment Checklist
+- [x] `firebase deploy --only hosting`
+- [x] No Firestore rule changes required (jobs collection already writable by admin)
+- [x] No Cloud Function changes
+
+---
+
 ## v2.11.0 — Delivery Ticket UI
 **Released:** 2026-05-13
 
