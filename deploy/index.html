@@ -1130,41 +1130,61 @@ async function renderSettings(retries = 1) {
 
         <!-- Scheduling Integrations -->
         <details class="card mb-4">
-            <summary><div class="card-summary-text"><h3>Scheduling Integrations</h3><p>Connected scheduling apps and manual job entry.</p></div><span class="card-chevron">▶</span></summary>
+            <summary><div class="card-summary-text"><h3>Scheduling Integrations</h3><p>Where jobs come from. Connect a scheduling app or enter jobs directly.</p></div><span class="card-chevron">▶</span></summary>
             <div class="card-body">
-                <div class="form-group">
-                    <label class="form-label">Connected Apps</label>
-                    <div style="display:flex;align-items:center;gap:.5rem;margin-top:.25rem">
-                        <span style="display:inline-block;background:var(--ok);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">CONNECTED</span>
-                        <span style="font-weight:600">TeamUp</span>
+                <p class="text-muted text-sm mb-4">You can use multiple sources simultaneously — jobs from all active sources appear in the portal and the installer schedule.</p>
+                <div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--hairline);border-radius:8px;overflow:hidden">
+
+                    <!-- TeamUp -->
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid var(--hairline)">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:.9rem">TeamUp</div>
+                            <div style="font-size:.78rem;color:var(--muted)">Syncs jobs and installers from your TeamUp calendar automatically.</div>
+                        </div>
+                        <span style="background:var(--ok,#22c55e);color:#fff;font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:4px;white-space:nowrap">CONNECTED</span>
                     </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-                        <input type="checkbox" id="set-manual-jobs">
-                        Enable Manual Job Entry
-                    </label>
-                    <p class="text-muted text-sm mt-1">Adds a Jobs section to the admin nav where you can create and assign jobs without TeamUp.</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Other Scheduling Apps</label>
-                    <div style="display:flex;flex-direction:column;gap:.4rem;margin-top:.25rem">
-                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
-                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
-                            <span>Jobber</span>
+
+                    <!-- Manual / Internal -->
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid var(--hairline)">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:.9rem">Manual Entry <span style="font-size:.72rem;font-weight:400;color:var(--muted);margin-left:.3rem">built-in</span></div>
+                            <div style="font-size:.78rem;color:var(--muted)">Create and assign jobs directly in the admin portal — no external app required.</div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
-                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
-                            <span>Google Calendar</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:.5rem;opacity:.5">
-                            <span style="display:inline-block;background:var(--muted);color:#fff;font-size:.7rem;font-weight:700;padding:.2rem .5rem;border-radius:4px">COMING SOON</span>
-                            <span>ServiceTitan</span>
-                        </div>
+                        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;white-space:nowrap;font-size:.85rem">
+                            <input type="checkbox" id="set-manual-jobs"> Enable
+                        </label>
                     </div>
+
+                    <!-- Jobber -->
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid var(--hairline);opacity:.45">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:.9rem">Jobber</div>
+                            <div style="font-size:.78rem;color:var(--muted)">Import scheduled jobs from Jobber via API sync.</div>
+                        </div>
+                        <span style="background:var(--muted,#9ca3af);color:#fff;font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:4px;white-space:nowrap">COMING SOON</span>
+                    </div>
+
+                    <!-- Google Calendar -->
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid var(--hairline);opacity:.45">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:.9rem">Google Calendar</div>
+                            <div style="font-size:.78rem;color:var(--muted)">Sync job events from a shared Google Calendar.</div>
+                        </div>
+                        <span style="background:var(--muted,#9ca3af);color:#fff;font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:4px;white-space:nowrap">COMING SOON</span>
+                    </div>
+
+                    <!-- ServiceTitan -->
+                    <div style="display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;opacity:.45">
+                        <div style="flex:1">
+                            <div style="font-weight:600;font-size:.9rem">ServiceTitan</div>
+                            <div style="font-size:.78rem;color:var(--muted)">Pull dispatched jobs from ServiceTitan via webhook or API.</div>
+                        </div>
+                        <span style="background:var(--muted,#9ca3af);color:#fff;font-size:.68rem;font-weight:700;padding:.2rem .5rem;border-radius:4px;white-space:nowrap">COMING SOON</span>
+                    </div>
+
                 </div>
-                <div id="scheduling-settings-msg" class="hidden alert mb-3"></div>
-                <button class="btn btn-primary" onclick="saveSchedulingSettings()">Save</button>
+                <div id="scheduling-settings-msg" class="hidden alert mb-3 mt-3"></div>
+                <button class="btn btn-primary mt-4" onclick="saveSchedulingSettings()">Save</button>
             </div>
         </details>
 
