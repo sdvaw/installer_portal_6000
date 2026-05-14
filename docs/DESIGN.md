@@ -1,8 +1,8 @@
 # Armor Vue — Installer Portal
 ## System Design Document
 
-**Version:** 2.4
-**Date:** March 2026
+**Version:** 2.7
+**Date:** May 2026
 **Status:** Production
 **Live URL:** https://installer-portal-6000.web.app
 
@@ -15,7 +15,7 @@ The Armor Vue Installer Portal is a web-based field operations platform for a wi
 1. **Installers** — Field technicians who use the portal on-site to document job completions, collect signatures, report defects, upload compliance documents, and update job status.
 2. **Management Staff** — Office personnel (Finance, Service, Managers) who use the dashboard to monitor jobs, track collections, manage defects, review analytics, and manage daily operations.
 
-The system integrates with **TeamUp** (a calendar/scheduling SaaS) as the source of truth for job scheduling, and uses **Firebase** as the backend for authentication, data storage, and file hosting. Failed inspection emails are ingested via a **Power Automate** webhook.
+The system uses **Firebase** as the backend for authentication, data storage, file hosting, and Cloud Functions. Jobs enter the system from two sources: **TeamUp** (calendar/scheduling SaaS, synced automatically) and **Manual Entry** (admin creates jobs directly, feature-flagged off by default). Delivery tickets are parsed from PDFs via the **Claude API** and matched to jobs. Failed inspection emails are ingested via a **Power Automate** webhook.
 
 ---
 
@@ -28,7 +28,8 @@ The system integrates with **TeamUp** (a calendar/scheduling SaaS) as the source
 | Database | Cloud Firestore (NoSQL) |
 | File Storage | Firebase Storage |
 | Backend Functions | Firebase Cloud Functions (Node.js) |
-| Scheduling Source | TeamUp Calendar API |
+| Scheduling Source | TeamUp Calendar API (primary) · Manual Entry (feature-flagged) |
+| PDF Parsing | Claude API (Anthropic) via Cloud Function |
 | Email Ingestion | Power Automate → Cloud Function webhook |
 | Frontend | Vanilla HTML/CSS/JavaScript (no framework) |
 | Firebase SDK | Firebase Compat v10 |
@@ -190,31 +191,42 @@ Management staff use **email + password** authentication via Firebase Auth. On s
 
 ### 6.1 Collection: `jobs`
 
-Cached from TeamUp. Read-only from the app's perspective (sync function writes).
+Jobs originate from two sources (see `source` field):
+
+- **TeamUp sync** — written by the Cloud Function. `source: 'teamup'` (or absent on older docs).
+- **Manual entry** — written by admin when `settings/portal.manualJobsEnabled` is true. `source: 'manual'`.
 
 ```
 {
-  id:             string,       // TeamUp event ID
-  jobNumber:      string,
-  customerName:   string,
-  address:        string,
-  startDt:        timestamp,
-  endDt:          timestamp,
-  assignedIds:    string[],     // TeamUp subcalendar IDs
-  windowCount:    number,
-  doorCount:      number,
-  sliderCount:    number,
-  isServiceCall:  boolean,
+  id:                    string,       // Firestore doc ID (TeamUp event ID for synced jobs)
+  source:                string,       // 'teamup' | 'manual'
+  jobNumber:             string,
+  customerName:          string,
+  customerPhone:         string,
+  address:               string,
+  startDt:               timestamp,
+  endDt:                 timestamp,
+  assignedIds:           string[],     // TeamUp subcalendar IDs
+  assignedInstallerIds:  string[],     // Firestore installer doc IDs (manual jobs)
+  windowCount:           number,
+  doorCount:             number,
+  sliderCount:           number,
+  isServiceCall:         boolean,
+  notes:                 string,
+  officeComments:        Comment[],
   financials: {
-    balanceDue:    string,       // Amount installer needs to collect
+    balanceDue:    string,
     paymentMethod: string,
-    installerPay:  string,       // Installer compensation
-    contractAmt:   string        // Total contract value (management reports only — never shown to installers)
+    installerPay:  string,
+    contractAmt:   string        // Never shown to installers
   },
-  customerPhone:  string,
-  lastSyncedAt:   timestamp
+  lastSyncedAt:          timestamp,    // TeamUp jobs only
+  createdAt:             timestamp,    // Manual jobs only
+  updatedAt:             timestamp
 }
 ```
+
+**Installer job filter** checks both `assignedIds` (TeamUp calendar ID) and `assignedInstallerIds` (Firestore doc ID), so both TeamUp-synced and manually-created jobs appear in the installer's schedule.
 
 ### 6.2 Collection: `job_records`
 
@@ -320,7 +332,10 @@ Two documents: `portal` and `teamup`.
   monthlyGoal:            number,    // Monthly collection goal ($)
   analyticsLaborWarnPct:  number,    // Labor % yellow threshold
   analyticsLaborBadPct:   number,    // Labor % red threshold
-  lateStartMins:          number     // Minutes after scheduled start before Late Start flag fires (default 60)
+  lateStartMins:          number,    // Minutes after scheduled start before Late Start flag fires (default 60)
+  emailjsServiceId:       string,    // EmailJS service ID for extra-work request emails
+  emailjsTemplateId:      string,    // EmailJS template ID
+  manualJobsEnabled:      boolean    // Feature flag — enables manual job entry in admin portal (default false)
 }
 ```
 
@@ -404,7 +419,40 @@ Written by Cloud Function when Power Automate webhook delivers a failed inspecti
 }
 ```
 
-### 6.10 Other Collections
+### 6.10 Collection: `delivery_tickets`
+
+Created by `parseDeliveryTicket` Cloud Function (admin-callable) or `ingestDeliveryEmail` webhook (Power Automate). Never written directly from the client.
+
+```
+{
+  jobNumber:     string,       // Matched key — digits only
+  jobId:         string|null,  // Firestore jobs doc ID; null if unmatched
+  matched:       boolean,
+  customerName:  string,
+  supplier:      string,
+  orderDate:     string,       // YYYY-MM-DD
+  deliveryDate:  string,       // YYYY-MM-DD
+  qcStatus:      string|null,  // 'RTS' or null
+  bundleCount:   number,
+  boxCount:      number,
+  sheetCount:    number,
+  items: [{
+    lineNumber:  string,
+    itemNumber:  string,
+    quantity:    number,
+    uom:         string,
+    description: string,
+    specs: { frameColor, frameType, glassConfig, location }
+  }],
+  status:        string,       // 'pending' | 'received'
+  sourceEmail:   string|null,
+  receivedAt:    timestamp
+}
+```
+
+**Access:** Admin and management read/write. Installers can read matched tickets (`jobId != null`) to see delivery info on their job detail screen.
+
+### 6.11 Other Collections
 
 | Collection | Purpose |
 |-----------|---------|
